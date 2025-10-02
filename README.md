@@ -263,129 +263,111 @@ curl -X POST "http://localhost:3000/chats/6281234567890@s.whatsapp.net/images" \
 
 ## 📚 API Endpoints
 
-Complete API reference available at: [https://bump.sh/gdbrns/doc/go-whatsapp-multi-session-rest-api](https://bump.sh/gdbrns/doc/go-whatsapp-multi-session-rest-api)
+Complete API reference: [https://bump.sh/gdbrns/doc/go-whatsapp-multi-session-rest-api](https://bump.sh/gdbrns/doc/go-whatsapp-multi-session-rest-api)
 
-### All Endpoints (87 Total)
+### All Endpoints (97 Total)
 
 | # | Status | Description | Method | Endpoint |
-|---|--------|-------------|--------|----------|
-| **Authentication** |
+|---|:------:|-------------|:------:|----------|
 | 1 | ✅ | Register device & get JWT token | POST | `/device/add` |
-| **Device Management** |
-| 2 | ✅ | List all devices | GET | `/devices` |
-| 3 | ✅ | Get device info | GET | `/devices/{device_id}` |
-| 4 | ✅ | Login via QR code | POST | `/devices/{device_id}/login` |
-| 5 | ✅ | Login with pairing code | POST | `/devices/{device_id}/login-code` |
-| 6 | ✅ | Reconnect device | POST | `/devices/{device_id}/reconnect` |
-| 7 | ✅ | Logout & delete session | DELETE | `/devices/{device_id}/session` |
-| 8 | ✅ | Check if phone is registered | GET | `/devices/{device_id}/contacts/{phone}/registered` |
-| 9 | ✅ | Get device status | GET | `/devices/{device_id}/status` |
-| **User Management** |
-| 10 | ✅ | Get user info by JID | GET | `/users/{user_jid}` |
-| 11 | ✅ | Get user profile picture | GET | `/users/{user_jid}/profile-picture` |
-| 12 | ✅ | Block user | POST | `/users/{user_jid}/block` |
-| 13 | ✅ | Unblock user | DELETE | `/users/{user_jid}/block` |
-| 14 | ✅ | Get my privacy settings | GET | `/users/me/privacy` |
-| 15 | ✅ | Update privacy settings | PATCH | `/users/me/privacy` |
-| 16 | ✅ | Get status privacy | GET | `/users/me/status-privacy` |
-| 17 | ✅ | Update WhatsApp status | POST | `/users/me/status` |
-| 18 | ✅ | Get user's linked devices | GET | `/users/{jid}/devices` |
-| **Messaging** |
-| 19 | ✅ | Send text message | POST | `/chats/{chat_jid}/messages` |
-| 20 | ✅ | Send link message | POST | `/chats/{chat_jid}/links` |
-| 21 | ✅ | Send location | POST | `/chats/{chat_jid}/locations` |
-| 22 | ✅ | Send contact | POST | `/chats/{chat_jid}/contacts` |
-| 23 | ✅ | Send poll | POST | `/chats/{chat_jid}/polls` |
-| 24 | ✅ | Send poll vote | POST | `/chats/{chat_jid}/polls/{message_id}/votes` |
-| 25 | ✅ | Send image | POST | `/chats/{chat_jid}/images` |
-| 26 | ✅ | Send video | POST | `/chats/{chat_jid}/videos` |
-| 27 | ✅ | Send audio | POST | `/chats/{chat_jid}/audios` |
-| 28 | ✅ | Send document/file | POST | `/chats/{chat_jid}/documents` |
-| 29 | ✅ | Send sticker | POST | `/chats/{chat_jid}/stickers` |
-| 30 | ✅ | Get chat messages | GET | `/chats/{chat_jid}/messages` |
-| 31 | ✅ | Archive/unarchive chat | POST | `/chats/{chat_jid}/archive` |
-| 32 | ✅ | Pin/unpin chat | POST | `/chats/{chat_jid}/pin` |
-| **Message Actions** |
-| 33 | ✅ | Mark message as read | POST | `/messages/{message_id}/read` |
-| 34 | ✅ | React to message | POST | `/messages/{message_id}/reaction` |
-| 35 | ✅ | Edit message | PATCH | `/messages/{message_id}` |
-| 36 | ✅ | Delete message | DELETE | `/messages/{message_id}` |
-| 37 | ✅ | Forward message | POST | `/messages/{message_id}/forward` |
-| 38 | ✅ | Reply to message | POST | `/messages/{message_id}/reply` |
-| 39 | ✅ | Get message thumbnail | GET | `/media/{message_id}/thumbnail` |
-| **Groups** |
-| 40 | ✅ | List all groups | GET | `/groups` |
-| 41 | ✅ | Get group info | GET | `/groups/{group_jid}` |
-| 42 | ✅ | Create new group | POST | `/groups` |
-| 43 | ✅ | Leave group | POST | `/groups/{group_jid}/leave` |
-| 44 | ✅ | Update group name | PATCH | `/groups/{group_jid}/name` |
-| 45 | ✅ | Update group description | PATCH | `/groups/{group_jid}/description` |
-| 46 | ✅ | Update group photo | POST | `/groups/{group_jid}/photo` |
-| 47 | ✅ | Get group invite link | GET | `/groups/{group_jid}/invite-link` |
-| 48 | ✅ | Update group settings | PATCH | `/groups/{group_jid}/settings` |
-| 49 | ✅ | Get participant requests | GET | `/groups/{group_jid}/participant-requests` |
-| 50 | ✅ | Set join approval mode | POST | `/groups/{group_jid}/join-approval` |
-| 51 | ✅ | Get group info from invite | GET | `/groups/invite/{invite_code}` |
-| 52 | ✅ | Join group via invite link | POST | `/groups/{group_jid}/join-invite` |
-| 53 | ✅ | Set member add mode | PATCH | `/groups/{group_jid}/member-add-mode` |
+| 2 | ✅ | Login via QR code | POST | `/devices/{device_id}/login` |
+| 3 | ✅ | Login with pairing code | POST | `/devices/{device_id}/login-code` |
+| 4 | ✅ | Send text message | POST | `/chats/{chat_jid}/messages` |
+| 5 | ✅ | Send image | POST | `/chats/{chat_jid}/images` |
+| 6 | ✅ | Send video | POST | `/chats/{chat_jid}/videos` |
+| 7 | ✅ | Send audio | POST | `/chats/{chat_jid}/audios` |
+| 8 | ✅ | Send document/file | POST | `/chats/{chat_jid}/documents` |
+| 9 | ✅ | Send sticker | POST | `/chats/{chat_jid}/stickers` |
+| 10 | ✅ | Send location | POST | `/chats/{chat_jid}/locations` |
+| 11 | ✅ | Send contact | POST | `/chats/{chat_jid}/contacts` |
+| 12 | ✅ | Send link message | POST | `/chats/{chat_jid}/links` |
+| 13 | ✅ | Send poll | POST | `/chats/{chat_jid}/polls` |
+| 14 | ✅ | Mark message as read | POST | `/messages/{message_id}/read` |
+| 15 | ✅ | React to message | POST | `/messages/{message_id}/reaction` |
+| 16 | ✅ | Reply to message | POST | `/messages/{message_id}/reply` |
+| 17 | ✅ | Forward message | POST | `/messages/{message_id}/forward` |
+| 18 | ✅ | Delete message | DELETE | `/messages/{message_id}` |
+| 19 | ✅ | Edit message | PATCH | `/messages/{message_id}` |
+| 20 | ✅ | Get chat messages | GET | `/chats/{chat_jid}/messages` |
+| 21 | ✅ | Download media from message | POST | `/media/download` |
+| 22 | ✅ | Get message thumbnail | GET | `/media/{message_id}/thumbnail` |
+| 23 | ✅ | List all devices | GET | `/devices` |
+| 24 | ✅ | Get device info | GET | `/devices/{device_id}` |
+| 25 | ✅ | Get device status | GET | `/devices/{device_id}/status` |
+| 26 | ✅ | Reconnect device | POST | `/devices/{device_id}/reconnect` |
+| 27 | ✅ | Logout & delete session | DELETE | `/devices/{device_id}/session` |
+| 28 | ✅ | Check if phone is registered | GET | `/devices/{device_id}/contacts/{phone}/registered` |
+| 29 | ✅ | Get user info by JID | GET | `/users/{user_jid}` |
+| 30 | ✅ | Get user profile picture | GET | `/users/{user_jid}/profile-picture` |
+| 31 | ✅ | Update WhatsApp status | POST | `/users/me/status` |
+| 32 | ✅ | Get my privacy settings | GET | `/users/me/privacy` |
+| 33 | ✅ | Update privacy settings | PATCH | `/users/me/privacy` |
+| 34 | ✅ | Get status privacy | GET | `/users/me/status-privacy` |
+| 35 | ✅ | Block user | POST | `/users/{user_jid}/block` |
+| 36 | ✅ | Unblock user | DELETE | `/users/{user_jid}/block` |
+| 37 | ✅ | Get user's linked devices | GET | `/users/{jid}/devices` |
+| 38 | ✅ | List all groups | GET | `/groups` |
+| 39 | ✅ | Get joined groups | GET | `/groups/joined` |
+| 40 | ✅ | Get group info | GET | `/groups/{group_jid}` |
+| 41 | ✅ | Create new group | POST | `/groups` |
+| 42 | ✅ | Join group via invite link | POST | `/groups/{group_jid}/join-invite` |
+| 43 | ✅ | Get group invite link | GET | `/groups/{group_jid}/invite-link` |
+| 44 | ✅ | Get group info from invite | GET | `/groups/invite/{invite_code}` |
+| 45 | ✅ | Leave group | POST | `/groups/{group_jid}/leave` |
+| 46 | ✅ | Add participants | POST | `/groups/{group_jid}/participants` |
+| 47 | ✅ | Remove participants | DELETE | `/groups/{group_jid}/participants` |
+| 48 | ✅ | Promote to admin | POST | `/groups/{group_jid}/admins` |
+| 49 | ✅ | Demote admin | DELETE | `/groups/{group_jid}/admins` |
+| 50 | ✅ | Update group name | PATCH | `/groups/{group_jid}/name` |
+| 51 | ✅ | Update group description | PATCH | `/groups/{group_jid}/description` |
+| 52 | ✅ | Update group photo | POST | `/groups/{group_jid}/photo` |
+| 53 | ✅ | Update group settings | PATCH | `/groups/{group_jid}/settings` |
 | 54 | ✅ | Set group topic | PATCH | `/groups/{group_jid}/topic` |
-| 55 | ✅ | Link group to community | POST | `/groups/{parent_group_jid}/link/{group_jid}` |
-| 56 | ✅ | Get community participants | GET | `/groups/{community_jid}/linked-participants` |
-| 57 | ✅ | Get community subgroups | GET | `/groups/{community_jid}/subgroups` |
-| 58 | ✅ | Add participants | POST | `/groups/{group_jid}/participants` |
-| 59 | ✅ | Remove participants | DELETE | `/groups/{group_jid}/participants` |
-| 60 | ✅ | Approve join requests | POST | `/groups/{group_jid}/requests/approve` |
-| 61 | ✅ | Reject join requests | POST | `/groups/{group_jid}/requests/reject` |
-| 62 | ✅ | Promote to admin | POST | `/groups/{group_jid}/admins` |
-| 63 | ✅ | Demote admin | DELETE | `/groups/{group_jid}/admins` |
-| 64 | ✅ | Get joined groups | GET | `/groups/joined` |
-| **Presence** |
-| 65 | ✅ | Send chat presence (typing) | POST | `/chats/{chat_jid}/presence` |
-| 66 | ✅ | Update presence status | POST | `/presence/status` |
+| 55 | ✅ | Get participant requests | GET | `/groups/{group_jid}/participant-requests` |
+| 56 | ✅ | Approve join requests | POST | `/groups/{group_jid}/requests/approve` |
+| 57 | ✅ | Reject join requests | POST | `/groups/{group_jid}/requests/reject` |
+| 58 | ✅ | Set join approval mode | POST | `/groups/{group_jid}/join-approval` |
+| 59 | ✅ | Set member add mode | PATCH | `/groups/{group_jid}/member-add-mode` |
+| 60 | ✅ | Link group to community | POST | `/groups/{parent_group_jid}/link/{group_jid}` |
+| 61 | ✅ | Get community participants | GET | `/groups/{community_jid}/linked-participants` |
+| 62 | ✅ | Get community subgroups | GET | `/groups/{community_jid}/subgroups` |
+| 63 | ✅ | Send chat presence (typing) | POST | `/chats/{chat_jid}/presence` |
+| 64 | ✅ | Update presence status | POST | `/presence/status` |
+| 65 | ✅ | Archive/unarchive chat | POST | `/chats/{chat_jid}/archive` |
+| 66 | ✅ | Pin/unpin chat | POST | `/chats/{chat_jid}/pin` |
 | 67 | ✅ | Set disappearing timer | PATCH | `/chats/{chat_jid}/disappearing-timer` |
-| **Newsletter/Channel** |
-| 68 | ✅ | Create newsletter | POST | `/newsletters` |
-| 69 | ✅ | Publish message to newsletter | POST | `/newsletters/{jid}/messages` |
-| 70 | ✅ | Follow newsletter | POST | `/newsletters/{jid}/follow` |
-| 71 | ✅ | Unfollow newsletter | POST | `/newsletters/{jid}/unfollow` |
-| 72 | ✅ | Mark newsletter as viewed | POST | `/newsletters/{jid}/mark-viewed` |
-| 73 | ✅ | React to newsletter | POST | `/newsletters/{jid}/reactions` |
-| 74 | ✅ | Subscribe to live updates | POST | `/newsletters/{jid}/live-updates` |
-| 75 | ✅ | Unsubscribe from updates | DELETE | `/newsletters/{jid}/live-updates` |
-| 76 | ✅ | Mute/unmute newsletter | POST | `/newsletters/{jid}/mute` |
-| 77 | ✅ | Get newsletter info | GET | `/newsletters/{jid}` |
-| 78 | ✅ | Get info from invite | GET | `/newsletters/invite/{invite_key}` |
-| 79 | ✅ | Get newsletter messages | GET | `/newsletters/{jid}/messages` |
-| 80 | ✅ | Get newsletter updates | GET | `/newsletters/{jid}/updates` |
-| 81 | ✅ | Get subscribed newsletters | GET | `/newsletters/subscribed` |
-| **Bot** |
-| 82 | ✅ | List available bots | GET | `/bots` |
-| 83 | ✅ | Get bot profile | GET | `/bots/{bot_jid}` |
-| **Business** |
-| 84 | ✅ | Get business profile | GET | `/business/{jid}` |
-| 85 | ✅ | Resolve business link | GET | `/business/links/{code}` |
-| **Contacts** |
-| 86 | ✅ | Check contacts in batch | POST | `/contacts/check` |
-| **Media** |
-| 87 | ✅ | Download media from message | POST | `/media/download` |
-| 88 | ✅ | Download Facebook media | POST | `/media/fb/download` |
-| **Push Notifications** |
-| 89 | ✅ | Register push config | POST | `/push/register` |
-| 90 | ✅ | Get push config | GET | `/push/config` |
-| **QR Code** |
-| 91 | ✅ | Get contact QR code | GET | `/qr/contact` |
-| 92 | ✅ | Revoke contact QR | POST | `/qr/contact/revoke` |
-| 93 | ✅ | Resolve contact QR | POST | `/qr/contact/resolve/{code}` |
-| **Documentation** |
+| 68 | ✅ | Send poll vote | POST | `/chats/{chat_jid}/polls/{message_id}/votes` |
+| 69 | ✅ | Get subscribed newsletters | GET | `/newsletters/subscribed` |
+| 70 | ✅ | Get newsletter info | GET | `/newsletters/{jid}` |
+| 71 | ✅ | Follow newsletter | POST | `/newsletters/{jid}/follow` |
+| 72 | ✅ | Unfollow newsletter | POST | `/newsletters/{jid}/unfollow` |
+| 73 | ✅ | Get newsletter messages | GET | `/newsletters/{jid}/messages` |
+| 74 | ✅ | Publish message to newsletter | POST | `/newsletters/{jid}/messages` |
+| 75 | ✅ | React to newsletter | POST | `/newsletters/{jid}/reactions` |
+| 76 | ✅ | Mark newsletter as viewed | POST | `/newsletters/{jid}/mark-viewed` |
+| 77 | ✅ | Create newsletter | POST | `/newsletters` |
+| 78 | ✅ | Get newsletter updates | GET | `/newsletters/{jid}/updates` |
+| 79 | ✅ | Mute/unmute newsletter | POST | `/newsletters/{jid}/mute` |
+| 80 | ✅ | Subscribe to live updates | POST | `/newsletters/{jid}/live-updates` |
+| 81 | ✅ | Unsubscribe from updates | DELETE | `/newsletters/{jid}/live-updates` |
+| 82 | ✅ | Get info from invite | GET | `/newsletters/invite/{invite_key}` |
+| 83 | ✅ | Get business profile | GET | `/business/{jid}` |
+| 84 | ✅ | Resolve business link | GET | `/business/links/{code}` |
+| 85 | ✅ | Check contacts in batch | POST | `/contacts/check` |
+| 86 | ✅ | Download Facebook media | POST | `/media/fb/download` |
+| 87 | ✅ | List available bots | GET | `/bots` |
+| 88 | ✅ | Get bot profile | GET | `/bots/{bot_jid}` |
+| 89 | ✅ | Get contact QR code | GET | `/qr/contact` |
+| 90 | ✅ | Revoke contact QR | POST | `/qr/contact/revoke` |
+| 91 | ✅ | Resolve contact QR | POST | `/qr/contact/resolve/{code}` |
+| 92 | ✅ | Register push config | POST | `/push/register` |
+| 93 | ✅ | Get push config | GET | `/push/config` |
 | 94 | ✅ | Swagger UI | GET | `/docs/*` |
 | 95 | ✅ | OpenAPI JSON | GET | `/docs/swagger.json` |
 | 96 | ✅ | OpenAPI YAML | GET | `/docs/swagger.yaml` |
 | 97 | ✅ | Function reference | GET | `/docs/function` |
 
-**Legend:**
-- ✅ = Available and tested
-- Total endpoints: **97** (including 4 documentation endpoints)
-- Core API endpoints: **93**
+✅ = Available and tested | **Total: 97 endpoints**
 
 ## 🔐 Authentication Flow
 
