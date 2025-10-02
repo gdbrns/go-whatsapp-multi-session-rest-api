@@ -267,11 +267,10 @@ Complete API reference: [https://bump.sh/gdbrns/doc/go-whatsapp-multi-session-re
 
 ### All Endpoints (97 Total)
 
-**Ordered by usage frequency**: First by user journey after JWT generation, then grouped by category with most-used endpoints first within each group.
+**Ordered by user experience**: User journey flow → stacked by URL path → most-used endpoints first within each URL path group.
 
-| # | Status | Description | Method | Endpoint |
+| No | Status | Description | Method | Endpoint |
 |---|:------:|-------------|:------:|----------|
-| **🔐 Device Management** | | | | |
 | 1 | ✅ | Register device & get JWT token | POST | `/device/add` |
 | 2 | ✅ | Login via QR code | POST | `/devices/{device_id}/login` |
 | 3 | ✅ | Login with pairing code | POST | `/devices/{device_id}/login-code` |
@@ -280,7 +279,6 @@ Complete API reference: [https://bump.sh/gdbrns/doc/go-whatsapp-multi-session-re
 | 6 | ✅ | Get device info | GET | `/devices/{device_id}` |
 | 7 | ✅ | Reconnect device | POST | `/devices/{device_id}/reconnect` |
 | 8 | ✅ | Logout & delete session | DELETE | `/devices/{device_id}/session` |
-| **💬 Core Messaging** | | | | |
 | 9 | ✅ | Send text message | POST | `/chats/{chat_jid}/messages` |
 | 10 | ✅ | Send image | POST | `/chats/{chat_jid}/images` |
 | 11 | ✅ | Send video | POST | `/chats/{chat_jid}/videos` |
@@ -291,22 +289,19 @@ Complete API reference: [https://bump.sh/gdbrns/doc/go-whatsapp-multi-session-re
 | 16 | ✅ | Send contact | POST | `/chats/{chat_jid}/contacts` |
 | 17 | ✅ | Send link message | POST | `/chats/{chat_jid}/links` |
 | 18 | ✅ | Send poll | POST | `/chats/{chat_jid}/polls` |
-| **📝 Message Operations** | | | | |
 | 19 | ✅ | Reply to message | POST | `/messages/{message_id}/reply` |
 | 20 | ✅ | React to message | POST | `/messages/{message_id}/reaction` |
 | 21 | ✅ | Mark message as read | POST | `/messages/{message_id}/read` |
-| 22 | ✅ | Get chat messages | GET | `/chats/{chat_jid}/messages` |
-| 23 | ✅ | Forward message | POST | `/messages/{message_id}/forward` |
-| 24 | ✅ | Edit message | PATCH | `/messages/{message_id}` |
-| 25 | ✅ | Delete message | DELETE | `/messages/{message_id}` |
-| 26 | ✅ | Send poll vote | POST | `/chats/{chat_jid}/polls/{message_id}/votes` |
-| **👥 Chat Management** | | | | |
-| 27 | ✅ | Send chat presence (typing) | POST | `/chats/{chat_jid}/presence` |
-| 28 | ✅ | Update presence status | POST | `/presence/status` |
-| 29 | ✅ | Archive/unarchive chat | POST | `/chats/{chat_jid}/archive` |
-| 30 | ✅ | Pin/unpin chat | POST | `/chats/{chat_jid}/pin` |
-| 31 | ✅ | Set disappearing timer | PATCH | `/chats/{chat_jid}/disappearing-timer` |
-| **👤 User Operations** | | | | |
+| 22 | ✅ | Forward message | POST | `/messages/{message_id}/forward` |
+| 23 | ✅ | Edit message | PATCH | `/messages/{message_id}` |
+| 24 | ✅ | Delete message | DELETE | `/messages/{message_id}` |
+| 25 | ✅ | Get chat messages | GET | `/chats/{chat_jid}/messages` |
+| 26 | ✅ | Send chat presence (typing) | POST | `/chats/{chat_jid}/presence` |
+| 27 | ✅ | Archive/unarchive chat | POST | `/chats/{chat_jid}/archive` |
+| 28 | ✅ | Pin/unpin chat | POST | `/chats/{chat_jid}/pin` |
+| 29 | ✅ | Set disappearing timer | PATCH | `/chats/{chat_jid}/disappearing-timer` |
+| 30 | ✅ | Send poll vote | POST | `/chats/{chat_jid}/polls/{message_id}/votes` |
+| 31 | ✅ | Update presence status | POST | `/presence/status` |
 | 32 | ✅ | Get user info by JID | GET | `/users/{user_jid}` |
 | 33 | ✅ | Get user profile picture | GET | `/users/{user_jid}/profile-picture` |
 | 34 | ✅ | Check if phone is registered | GET | `/devices/{device_id}/contacts/{phone}/registered` |
@@ -317,7 +312,6 @@ Complete API reference: [https://bump.sh/gdbrns/doc/go-whatsapp-multi-session-re
 | 39 | ✅ | Get status privacy | GET | `/users/me/status-privacy` |
 | 40 | ✅ | Block user | POST | `/users/{user_jid}/block` |
 | 41 | ✅ | Unblock user | DELETE | `/users/{user_jid}/block` |
-| **👥 Group Operations** | | | | |
 | 42 | ✅ | Get joined groups | GET | `/groups/joined` |
 | 43 | ✅ | List all groups | GET | `/groups` |
 | 44 | ✅ | Get group info | GET | `/groups/{group_jid}` |
@@ -343,11 +337,9 @@ Complete API reference: [https://bump.sh/gdbrns/doc/go-whatsapp-multi-session-re
 | 64 | ✅ | Link group to community | POST | `/groups/{parent_group_jid}/link/{group_jid}` |
 | 65 | ✅ | Get community participants | GET | `/groups/{community_jid}/linked-participants` |
 | 66 | ✅ | Get community subgroups | GET | `/groups/{community_jid}/subgroups` |
-| **📎 Media Operations** | | | | |
 | 67 | ✅ | Download media from message | POST | `/media/download` |
 | 68 | ✅ | Get message thumbnail | GET | `/media/{message_id}/thumbnail` |
 | 69 | ✅ | Download Facebook media | POST | `/media/fb/download` |
-| **📰 Newsletter Operations** | | | | |
 | 70 | ✅ | Get subscribed newsletters | GET | `/newsletters/subscribed` |
 | 71 | ✅ | Get newsletter info | GET | `/newsletters/{jid}` |
 | 72 | ✅ | Follow newsletter | POST | `/newsletters/{jid}/follow` |
@@ -362,20 +354,16 @@ Complete API reference: [https://bump.sh/gdbrns/doc/go-whatsapp-multi-session-re
 | 81 | ✅ | Create newsletter | POST | `/newsletters` |
 | 82 | ✅ | Get newsletter updates | GET | `/newsletters/{jid}/updates` |
 | 83 | ✅ | Get info from invite | GET | `/newsletters/invite/{invite_key}` |
-| **🤝 Contacts & Business** | | | | |
 | 84 | ✅ | Check contacts in batch | POST | `/contacts/check` |
 | 85 | ✅ | Get business profile | GET | `/business/{jid}` |
 | 86 | ✅ | Resolve business link | GET | `/business/links/{code}` |
-| **🤖 Bot Operations** | | | | |
 | 87 | ✅ | List available bots | GET | `/bots` |
 | 88 | ✅ | Get bot profile | GET | `/bots/{bot_jid}` |
-| **📱 QR & Push Operations** | | | | |
 | 89 | ✅ | Get contact QR code | GET | `/qr/contact` |
 | 90 | ✅ | Revoke contact QR | POST | `/qr/contact/revoke` |
 | 91 | ✅ | Resolve contact QR | POST | `/qr/contact/resolve/{code}` |
 | 92 | ✅ | Register push config | POST | `/push/register` |
 | 93 | ✅ | Get push config | GET | `/push/config` |
-| **📚 Documentation** | | | | |
 | 94 | ✅ | Swagger UI | GET | `/docs/*` |
 | 95 | ✅ | OpenAPI JSON | GET | `/docs/swagger.json` |
 | 96 | ✅ | OpenAPI YAML | GET | `/docs/swagger.yaml` |
