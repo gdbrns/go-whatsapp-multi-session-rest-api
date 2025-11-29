@@ -14,5 +14,5 @@ import (
 // @Success     200
 // @Router      / [get]
 func Index(c *fiber.Ctx) error {
-	return router.ResponseSuccess(c, "Go WhatsApp Multi-Device REST is running")
+	return router.ResponseSuccess(c, "Working great!")
 }
