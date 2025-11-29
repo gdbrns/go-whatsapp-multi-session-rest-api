@@ -1,6 +1,6 @@
 # Builder Image
 # ---------------------------------------------------
-FROM golang:1.24-alpine AS go-builder
+FROM mirror.gcr.io/library/golang:1.24-alpine AS go-builder
 
 WORKDIR /usr/src/app
 
@@ -12,7 +12,7 @@ RUN go mod download \
 
 # Final Image
 # ---------------------------------------------------
-FROM alpine:latest
+FROM mirror.gcr.io/library/alpine:latest
 
 ARG SERVICE_NAME="gowam-rest"
 
@@ -27,7 +27,7 @@ RUN apk --no-cache --update upgrade \
 COPY --from=go-builder /usr/src/app/.env.example ./.env
 COPY --from=go-builder /usr/src/app/main ./gowam-rest
 
-EXPOSE 8000
+EXPOSE 7001
 
 VOLUME ["/usr/app/${SERVICE_NAME}/dbs"]
 CMD ["gowam-rest"]
