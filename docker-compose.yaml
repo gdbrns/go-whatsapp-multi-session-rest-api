@@ -1,0 +1,20 @@
+networks:
+  whatsapp:
+    driver: bridge
+
+services:
+  go-whatsapp-multi-session-rest-api:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    image: 'go-whatsapp-multi-session-rest-api:latest'
+    container_name: 'go-whatsapp-multi-session-rest-api'
+    networks:
+      - whatsapp
+    ports:
+      - 7001:7001
+    env_file:
+      - ./.env
+    volumes:
+      - ./dbs:/usr/app/gowam-rest/dbs
+    restart: unless-stopped

@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Multi-Device REST API Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            padding: 40px 0;
+        }
+
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .api-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .api-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+
+        .api-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .method {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+            text-transform: uppercase;
+        }
+
+        .method.get { background: #28a745; }
+        .method.post { background: #007bff; }
+        .method.put { background: #ffc107; color: #333; }
+        .method.patch { background: #fd7e14; }
+        .method.delete { background: #dc3545; }
+
+        .endpoint {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+
+        .api-content {
+            padding: 25px;
+        }
+
+        .description {
+            margin-bottom: 20px;
+            color: #666;
+            font-size: 1em;
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        .section h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 5px;
+        }
+
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .json-example {
+            background: #2d3748;
+            color: #e2e8f0;
+            border: none;
+        }
+
+        .params-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        .params-table th,
+        .params-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .params-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .param-type {
+            background: #e9ecef;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .required {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .optional {
+            color: #6c757d;
+        }
+
+        .category-header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 30px;
+            margin: 40px -20px 20px -20px;
+            text-align: center;
+            border-radius: 12px;
+        }
+
+        .category-header h2 {
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .category-header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .response-examples {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .response-example {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .response-example h5 {
+            color: #28a745;
+            margin-bottom: 10px;
+        }
+
+        .response-example.error h5 {
+            color: #dc3545;
+        }
+
+        @media (max-width: 768px) {
+            .response-examples {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .api-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+
+        .toc {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            max-width: 250px;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .toc h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .toc ul {
+            list-style: none;
+        }
+
+        .toc li {
+            margin-bottom: 8px;
+        }
+
+        .toc a {
+            color: #666;
+            text-decoration: none;
+            font-size: 0.9em;
+            display: block;
+            padding: 5px;
+            border-radius: 4px;
+            transition: background 0.3s ease;
+        }
+
+        .toc a:hover {
+            background: #f8f9fa;
+            color: #667eea;
+        }
+
+        @media (max-width: 1200px) {
+            .toc {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📱 WhatsApp Multi-Device REST API</h1>
+            <p>Complete RESTful API documentation for WhatsApp Multi-Device and Multi-Session implementation</p>
+        </div>
+
+        <div class="toc">
+            <h3>📋 Table of Contents</h3>
+            <ul>
+                <li><a href="#authentication">Authentication</a></li>
+                <li><a href="#device-management">Device Management</a></li>
+                <li><a href="#user-management">User Management</a></li>
+                <li><a href="#messaging">Messaging</a></li>
+                <li><a href="#message-actions">Message Actions</a></li>
+                <li><a href="#group-management">Group Management</a></li>
+                <li><a href="#presence-status">Presence & Status</a></li>
+                <li><a href="#newsletters">Newsletters & Channels</a></li>
+                <li><a href="#bots">Bot Integration</a></li>
+                <li><a href="#business">Business Profiles</a></li>
+                <li><a href="#contacts">Contact Management</a></li>
+                <li><a href="#push">Push Notifications</a></li>
+                <li><a href="#media">Media Downloads</a></li>
+                <li><a href="#qr">QR Code & Contact Sharing</a></li>
+            </ul>
+        </div>
+
+        <!-- Authentication Section -->
+        <div id="authentication" class="category-header">
+            <h2>🔐 Authentication</h2>
+            <p>All API endpoints require Bearer token authentication except device creation</p>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method post">POST</span>
+                <span class="endpoint">/device/add</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Create new device session with Basic Authentication</div>
+                <div class="section">
+                    <h4>Authentication</h4>
+                    <div class="code-block">Authorization: Basic base64(username:password)</div>
+                </div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "message": "Device session created successfully",
+  "data": {
+    "device_id": "device_123",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "expires_at": null
+  }
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Device Management -->
+        <div id="device-management" class="category-header">
+            <h2>📱 Device Management</h2>
+            <p>Manage WhatsApp device sessions and connections</p>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method post">POST</span>
+                <span class="endpoint">/devices/{device_id}/login</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Generate QR code for WhatsApp device login</div>
+                <div class="section">
+                    <h4>Headers</h4>
+                    <div class="code-block">Authorization: Bearer {jwt_token}</div>
+                </div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "message": "QR code generated successfully",
+  "data": {
+    "qr_code": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+    "timeout": 60,
+    "device_id": "device_123"
+  }
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method post">POST</span>
+                <span class="endpoint">/devices/{device_id}/login-code</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Generate pairing code for device login</div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "message": "Pairing code generated",
+  "data": {
+    "code": "123456",
+    "expires_in": 60
+  }
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method delete">DELETE</span>
+                <span class="endpoint">/devices/{device_id}/session</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Logout and remove device session</div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "message": "Device session terminated successfully"
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method get">GET</span>
+                <span class="endpoint">/devices/{device_id}/status</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Check device connection status</div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "data": {
+    "connected": true,
+    "last_seen": "2025-01-01T12:00:00Z",
+    "phone_number": "+1234567890"
+  }
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Management -->
+        <div id="user-management" class="category-header">
+            <h2>👤 User Management</h2>
+            <p>Manage user profiles, privacy settings, and contacts</p>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method get">GET</span>
+                <span class="endpoint">/users/{user_jid}</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Get user profile information</div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "data": {
+    "jid": "1234567890@s.whatsapp.net",
+    "name": "John Doe",
+    "status": "Available",
+    "profile_picture": "https://example.com/avatar.jpg"
+  }
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method post">POST</span>
+                <span class="endpoint">/users/{user_jid}/block</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Block a user</div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "message": "User blocked successfully"
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method patch">PATCH</span>
+                <span class="endpoint">/users/me/privacy</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Update privacy settings</div>
+                <div class="section">
+                    <h4>Request Body</h4>
+                    <div class="code-block json-example">{
+  "read_receipts": "all",
+  "profile_picture": "contacts",
+  "status": "none",
+  "online_status": "all"
+}</div>
+                </div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "message": "Privacy settings updated",
+  "data": {
+    "read_receipts": "all",
+    "profile_picture": "contacts",
+    "status": "none",
+    "online_status": "all"
+  }
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Messaging -->
+        <div id="messaging" class="category-header">
+            <h2>💬 Messaging</h2>
+            <p>Send various types of messages and media</p>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method post">POST</span>
+                <span class="endpoint">/chats/{chat_jid}/messages</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Send text message</div>
+                <div class="section">
+                    <h4>Request Body</h4>
+                    <div class="code-block json-example">{
+  "text": "Hello, World!",
+  "reply_to_message_id": "message_123"
+}</div>
+                </div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "message": "Message sent successfully",
+  "data": {
+    "message_id": "BAE1234567890ABCDEF",
+    "timestamp": "2025-01-01T12:00:00Z"
+  }
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method post">POST</span>
+                <span class="endpoint">/chats/{chat_jid}/images</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Send image message</div>
+                <div class="section">
+                    <h4>Content-Type</h4>
+                    <div class="code-block">multipart/form-data</div>
+                </div>
+                <div class="section">
+                    <h4>Form Data</h4>
+                    <table class="params-table">
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Required</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr>
+                            <td>file</td>
+                            <td>file</td>
+                            <td class="required">Yes</td>
+                            <td>Image file (JPEG, PNG, etc.)</td>
+                        </tr>
+                        <tr>
+                            <td>caption</td>
+                            <td>string</td>
+                            <td class="optional">No</td>
+                            <td>Image caption</td>
+                        </tr>
+                        <tr>
+                            <td>view_once</td>
+                            <td>boolean</td>
+                            <td class="optional">No</td>
+                            <td>View once media</td>
+                        </tr>
+                        <tr>
+                            <td>reply_to_message_id</td>
+                            <td>string</td>
+                            <td class="optional">No</td>
+                            <td>Reply to message ID</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "message": "Image sent successfully",
+  "data": {
+    "message_id": "BAE1234567890ABCDEF",
+    "media_url": "https://example.com/media/image.jpg",
+    "timestamp": "2025-01-01T12:00:00Z"
+  }
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method post">POST</span>
+                <span class="endpoint">/chats/{chat_jid}/polls</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Create and send poll</div>
+                <div class="section">
+                    <h4>Request Body</h4>
+                    <div class="code-block json-example">{
+  "question": "What's your favorite color?",
+  "options": ["Red", "Blue", "Green", "Yellow"],
+  "max_answers": 1,
+  "reply_to_message_id": "message_123"
+}</div>
+                </div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "message": "Poll created successfully",
+  "data": {
+    "message_id": "BAE1234567890ABCDEF",
+    "poll_id": "poll_123",
+    "timestamp": "2025-01-01T12:00:00Z"
+  }
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Message Actions -->
+        <div id="message-actions" class="category-header">
+            <h2>⚡ Message Actions</h2>
+            <p>React, edit, delete, and manage messages</p>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method post">POST</span>
+                <span class="endpoint">/messages/{message_id}/reaction</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Add emoji reaction to message</div>
+                <div class="section">
+                    <h4>Request Body</h4>
+                    <div class="code-block json-example">{
+  "emoji": "👍"
+}</div>
+                    <p><em>Note: Send empty string to remove reaction</em></p>
+                </div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "message": "Reaction added successfully",
+  "data": {
+    "message_id": "BAE1234567890ABCDEF",
+    "reaction": "👍"
+  }
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method patch">PATCH</span>
+                <span class="endpoint">/messages/{message_id}</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Edit message text</div>
+                <div class="section">
+                    <h4>Request Body</h4>
+                    <div class="code-block json-example">{
+  "text": "Updated message content"
+}</div>
+                </div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "message": "Message edited successfully",
+  "data": {
+    "message_id": "BAE1234567890ABCDEF",
+    "edited": true,
+    "timestamp": "2025-01-01T12:05:00Z"
+  }
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method delete">DELETE</span>
+                <span class="endpoint">/messages/{message_id}</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Delete message</div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "message": "Message deleted successfully"
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Group Management -->
+        <div id="group-management" class="category-header">
+            <h2>👥 Group Management</h2>
+            <p>Create, manage, and administer WhatsApp groups</p>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method post">POST</span>
+                <span class="endpoint">/groups</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Create new WhatsApp group</div>
+                <div class="section">
+                    <h4>Request Body</h4>
+                    <div class="code-block json-example">{
+  "name": "My Awesome Group",
+  "participants": [
+    "1234567890@s.whatsapp.net",
+    "0987654321@s.whatsapp.net"
+  ],
+  "description": "Welcome to our group!",
+  "photo": "base64_encoded_image_data"
+}</div>
+                </div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "message": "Group created successfully",
+  "data": {
+    "group_jid": "120363123456789012@g.us",
+    "name": "My Awesome Group",
+    "participants_count": 3,
+    "created_at": "2025-01-01T12:00:00Z"
+  }
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method get">GET</span>
+                <span class="endpoint">/groups/{group_jid}</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Get group details</div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "data": {
+    "jid": "120363123456789012@g.us",
+    "name": "My Awesome Group",
+    "description": "Welcome to our group!",
+    "owner": "1234567890@s.whatsapp.net",
+    "participants": [
+      {
+        "jid": "1234567890@s.whatsapp.net",
+        "name": "John Doe",
+        "is_admin": true
+      }
+    ],
+    "settings": {
+      "announce": false,
+      "locked": false,
+      "member_add_mode": "all_members"
+    }
+  }
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method post">POST</span>
+                <span class="endpoint">/groups/{group_jid}/participants</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Add participants to group</div>
+                <div class="section">
+                    <h4>Request Body</h4>
+                    <div class="code-block json-example">{
+  "participants": [
+    "1234567890@s.whatsapp.net",
+    "0987654321@s.whatsapp.net"
+  ]
+}</div>
+                </div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "message": "Participants added successfully",
+  "data": {
+    "added": [
+      "1234567890@s.whatsapp.net",
+      "0987654321@s.whatsapp.net"
+    ],
+    "failed": []
+  }
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Presence & Status -->
+        <div id="presence-status" class="category-header">
+            <h2>👁️ Presence & Status</h2>
+            <p>Manage online presence and status updates</p>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method post">POST</span>
+                <span class="endpoint">/chats/{chat_jid}/presence</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Send typing/recording presence indicator</div>
+                <div class="section">
+                    <h4>Request Body</h4>
+                    <div class="code-block json-example">{
+  "presence_type": "composing",
+  "media_type": "audio"
+}</div>
+                    <p><em>Presence types: composing, recording, paused</em></p>
+                </div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "message": "Presence sent successfully"
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Newsletters & Channels -->
+        <div id="newsletters" class="category-header">
+            <h2>📰 Newsletters & Channels</h2>
+            <p>Manage WhatsApp newsletters and broadcast channels</p>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method post">POST</span>
+                <span class="endpoint">/newsletters</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Create new newsletter/channel</div>
+                <div class="section">
+                    <h4>Content-Type</h4>
+                    <div class="code-block">multipart/form-data</div>
+                </div>
+                <div class="section">
+                    <h4>Form Data</h4>
+                    <table class="params-table">
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Required</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr>
+                            <td>name</td>
+                            <td>string</td>
+                            <td class="required">Yes</td>
+                            <td>Newsletter name</td>
+                        </tr>
+                        <tr>
+                            <td>description</td>
+                            <td>string</td>
+                            <td class="required">Yes</td>
+                            <td>Newsletter description</td>
+                        </tr>
+                        <tr>
+                            <td>photo</td>
+                            <td>file</td>
+                            <td class="optional">No</td>
+                            <td>Newsletter photo</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "message": "Newsletter created successfully",
+  "data": {
+    "jid": "123456789012345678@newsletter",
+    "name": "Tech Updates",
+    "description": "Latest technology news",
+    "subscriber_count": 0
+  }
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method post">POST</span>
+                <span class="endpoint">/newsletters/{jid}/follow</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Subscribe to newsletter</div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "message": "Successfully subscribed to newsletter"
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method get">GET</span>
+                <span class="endpoint">/newsletters/{jid}/messages</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Get newsletter message history</div>
+                <div class="section">
+                    <h4>Query Parameters</h4>
+                    <table class="params-table">
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Required</th>
+                            <th>Description</th>
+                        </tr>
+                        <tr>
+                            <td>count</td>
+                            <td>integer</td>
+                            <td class="optional">No</td>
+                            <td>Number of messages to retrieve</td>
+                        </tr>
+                        <tr>
+                            <td>before</td>
+                            <td>string</td>
+                            <td class="optional">No</td>
+                            <td>Server ID to get messages before</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "data": {
+    "messages": [
+      {
+        "server_id": "123456789",
+        "content": {
+          "text": "Breaking news in tech!"
+        },
+        "timestamp": "2025-01-01T12:00:00Z",
+        "views": 150
+      }
+    ],
+    "has_more": true
+  }
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bot Integration -->
+        <div id="bots" class="category-header">
+            <h2>🤖 Bot Integration</h2>
+            <p>Discover and interact with WhatsApp bots</p>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method get">GET</span>
+                <span class="endpoint">/bots</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Discover available WhatsApp bots</div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "data": {
+    "bots": [
+      {
+        "jid": "bot123@bot.whatsapp.net",
+        "name": "Weather Bot",
+        "description": "Get weather updates",
+        "commands": ["/weather", "/forecast"],
+        "category": "utility"
+      }
+    ]
+  }
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Business Profiles -->
+        <div id="business" class="category-header">
+            <h2>🏢 Business Profiles</h2>
+            <p>Access comprehensive business information</p>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method get">GET</span>
+                <span class="endpoint">/business/{jid}</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Get business profile information</div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "data": {
+    "jid": "1234567890@s.whatsapp.net",
+    "name": "Tech Corp",
+    "description": "Leading technology company",
+    "category": "Technology",
+    "address": "123 Tech Street",
+    "website": "https://techcorp.com",
+    "hours": {
+      "monday": "9:00-17:00",
+      "tuesday": "9:00-17:00"
+    },
+    "is_verified": true
+  }
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Management -->
+        <div id="contacts" class="category-header">
+            <h2>📱 Contact Management</h2>
+            <p>Batch contact verification and device information</p>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method post">POST</span>
+                <span class="endpoint">/contacts/check</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Batch verify phone numbers on WhatsApp</div>
+                <div class="section">
+                    <h4>Request Body</h4>
+                    <div class="code-block json-example">{
+  "phones": [
+    "+1234567890",
+    "+0987654321",
+    "+1122334455"
+  ]
+}</div>
+                </div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "data": {
+    "results": [
+      {
+        "phone": "+1234567890",
+        "exists": true,
+        "jid": "1234567890@s.whatsapp.net"
+      },
+      {
+        "phone": "+0987654321",
+        "exists": false
+      }
+    ]
+  }
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Push Notifications -->
+        <div id="push" class="category-header">
+            <h2>🔔 Push Notifications</h2>
+            <p>Real-time push notification management</p>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method post">POST</span>
+                <span class="endpoint">/push/register</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Register device for push notifications</div>
+                <div class="section">
+                    <h4>Request Body</h4>
+                    <div class="code-block json-example">{
+  "type": "fcm",
+  "app_id": "com.example.app",
+  "fcm": {
+    "token": "fcm_registration_token_here"
+  }
+}</div>
+                    <p><em>Types: fcm, apns, webpush</em></p>
+                </div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "message": "Push notification registered successfully",
+  "data": {
+    "registration_id": "push_123",
+    "type": "fcm",
+    "expires_at": "2025-12-31T23:59:59Z"
+  }
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Media Downloads -->
+        <div id="media" class="category-header">
+            <h2>📷 Media Downloads</h2>
+            <p>Download media content from WhatsApp</p>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method post">POST</span>
+                <span class="endpoint">/media/download</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Download media by direct path</div>
+                <div class="section">
+                    <h4>Request Body</h4>
+                    <div class="code-block json-example">{
+  "direct_path": "/v/t62.9046-24/123456789",
+  "enc_file_hash": "base64_encoded_hash",
+  "file_hash": "base64_encoded_file_hash",
+  "media_key": "base64_encoded_media_key",
+  "file_length": 1024000,
+  "media_type": "image",
+  "mms_type": "image/jpeg"
+}</div>
+                </div>
+                <div class="section">
+                    <h4>Response</h4>
+                    <div class="code-block">Binary media file content</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- QR Code & Contact Sharing -->
+        <div id="qr" class="category-header">
+            <h2>🔗 QR Code & Contact Sharing</h2>
+            <p>Generate and manage contact sharing QR codes</p>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <span class="method get">GET</span>
+                <span class="endpoint">/qr/contact</span>
+            </div>
+            <div class="api-content">
+                <div class="description">Generate personal QR code for contact sharing</div>
+                <div class="section">
+                    <h4>Response Example</h4>
+                    <div class="code-block json-example">{
+  "success": true,
+  "data": {
+    "qr_code": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+    "code": "ABC123XYZ",
+    "expires_at": "2025-01-02T12:00:00Z"
+  }
+}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Examples -->
+        <div class="category-header" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);">
+            <h2>❌ Error Responses</h2>
+            <p>Standard error response format</p>
+        </div>
+
+        <div class="response-examples">
+            <div class="response-example error">
+                <h5>Authentication Error</h5>
+                <div class="code-block json-example">{
+  "success": false,
+  "message": "Authentication failed",
+  "error": {
+    "code": "AUTH_FAILED",
+    "details": {
+      "reason": "Invalid token"
+    }
+  }
+}</div>
+            </div>
+
+            <div class="response-example error">
+                <h5>Validation Error</h5>
+                <div class="code-block json-example">{
+  "success": false,
+  "message": "Validation failed",
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "details": {
+      "field": "phone",
+      "reason": "Invalid phone number format"
+    }
+  }
+}</div>
+            </div>
+
+            <div class="response-example error">
+                <h5>WhatsApp API Error</h5>
+                <div class="code-block json-example">{
+  "success": false,
+  "message": "WhatsApp API error",
+  "error": {
+    "code": "WHATSAPP_ERROR",
+    "details": {
+      "reason": "Message not sent",
+      "whatsapp_code": 400
+    }
+  }
+}</div>
+            </div>
+
+            <div class="response-example error">
+                <h5>Rate Limit Error</h5>
+                <div class="code-block json-example">{
+  "success": false,
+  "message": "Rate limit exceeded",
+  "error": {
+    "code": "RATE_LIMIT",
+    "details": {
+      "retry_after": 60,
+      "limit": 100,
+      "remaining": 0
+    }
+  }
+}</div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 50px; color: white; opacity: 0.8;">
+            <p>📖 Complete API Documentation • Version 1.0.0 • Generated October 2025</p>
+        </div>
+    </div>
+</body>
+</html>

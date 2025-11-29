@@ -1,0 +1,42 @@
+version: 2
+
+before:
+  hooks:
+    - make vendor
+
+builds:
+  - main: ./cmd/main/main.go
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s
+      - -w
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - 386
+      - amd64
+      - arm64
+
+archives:
+  - formats:
+      - zip
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+      - .env.example
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  version_template: "{{ .Version }}_{{ .ShortCommit }}"
+
+changelog:
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'

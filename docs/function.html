@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsMeow Functions - Latest Version</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 2em;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .search-container {
+            margin-bottom: 20px;
+        }
+        #searchInput {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .category {
+            background-color: white;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .category-header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 15px;
+            margin: 0;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #e3f2fd;
+        }
+        .implemented {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .not-implemented {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .stats {
+            background-color: #e9ecef;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .function-count {
+            float: right;
+            font-weight: bold;
+        }
+        .no-column {
+            width: 60px;
+            text-align: center;
+        }
+        .function-name {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+        .description {
+            max-width: 400px;
+        }
+        @media (max-width: 768px) {
+            th, td {
+                padding: 8px;
+                font-size: 14px;
+            }
+            .description {
+                max-width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>go.mau.fi/whatsmeow Client Functions</h1>
+        <p><strong>Latest Version:</strong> <code>v0.0.0-20250929162548-7c04e9b206b1</code> (September 29, 2025)</p>
+        <p>This page lists all <strong>129 client methods</strong> available in the <code>go.mau.fi/whatsmeow</code> library, organized by functionality. The "Status" column indicates whether the function is implemented in this REST API wrapper.</p>
+
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Search functions by name or description..." onkeyup="filterFunctions()">
+        </div>
+
+        <div class="stats">
+            <strong>Total Functions:</strong> 129 |
+            <strong>Implemented:</strong> 47 (36%) |
+            <strong>Not Implemented:</strong> 82 (64%)
+        </div>
+    </div>
+
+    <!-- 1. Connection & Authentication (8 functions) -->
+    <div class="category" data-category="connection">
+        <h2 class="category-header">1. Connection & Authentication (8 functions)<span class="function-count">✅ 7/8 Implemented</span></h2>
+        <table>
+            <thead>
+                <tr>
+                    <th class="no-column">No</th>
+                    <th>Function Name</th>
+                    <th>Description</th>
+                    <th>Parameters</th>
+                    <th>Return</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td class="no-column">1</td><td class="function-name">Connect</td><td>Connects the client to the WhatsApp websocket</td><td><code>-</code></td><td><code>error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">2</td><td class="function-name">Disconnect</td><td>Disconnects the client</td><td><code>-</code></td><td><code>-</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">3</td><td class="function-name">IsConnected</td><td>Checks if the client is connected</td><td><code>-</code></td><td><code>bool</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">4</td><td class="function-name">IsLoggedIn</td><td>Checks if the client is logged in</td><td><code>-</code></td><td><code>bool</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">5</td><td class="function-name">WaitForConnection</td><td>Waits for connection establishment with timeout</td><td><code>time.Duration</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">6</td><td class="function-name">Logout</td><td>Logs the client out</td><td><code>context.Context</code></td><td><code>error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">7</td><td class="function-name">PairPhone</td><td>Pairs a phone using a code</td><td><code>context.Context, string, bool, ...</code></td><td><code>string, error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">8</td><td class="function-name">GetQRChannel</td><td>Gets the QR code channel for logging in</td><td><code>context.Context</code></td><td><code>&lt;-chan QRChannelItem, error</code></td><td><span class="implemented">✅</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 2. Message Building & Sending (15 functions) -->
+    <div class="category" data-category="messaging">
+        <h2 class="category-header">2. Message Building & Sending (15 functions)<span class="function-count">✅ 10/15 Implemented</span></h2>
+        <table>
+            <thead>
+                <tr>
+                    <th class="no-column">No</th>
+                    <th>Function Name</th>
+                    <th>Description</th>
+                    <th>Parameters</th>
+                    <th>Return</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td class="no-column">9</td><td class="function-name">SendMessage</td><td>Sends a message</td><td><code>context.Context, types.JID, *waE2E.Message, ...</code></td><td><code>SendResponse, error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">10</td><td class="function-name">SendPresence</td><td>Sends a presence update (e.g., online)</td><td><code>types.Presence</code></td><td><code>error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">11</td><td class="function-name">SendChatPresence</td><td>Sends a chat presence update (e.g., typing)</td><td><code>types.JID, types.ChatPresence, types.ChatPresenceMedia</code></td><td><code>error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">12</td><td class="function-name">SendFBMessage</td><td>Sends Facebook Messenger format messages</td><td><code>context.Context, types.JID, armadillo.RealMessageApplicationSub, ...</code></td><td><code>SendResponse, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">13</td><td class="function-name">SendAppState</td><td>Sends application state synchronization patches</td><td><code>context.Context, appstate.PatchInfo</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">14</td><td class="function-name">BuildEdit</td><td>Builds a message edit</td><td><code>types.JID, types.MessageID, *waE2E.Message</code></td><td><code>*waE2E.Message</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">15</td><td class="function-name">BuildPollCreation</td><td>Builds a poll creation message</td><td><code>string, []string, int</code></td><td><code>*waE2E.Message</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">16</td><td class="function-name">BuildPollVote</td><td>Creates poll vote message for responding to polls</td><td><code>context.Context, *types.MessageInfo, []string</code></td><td><code>*waE2E.Message, error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">17</td><td class="function-name">BuildReaction</td><td>Builds a reaction message</td><td><code>types.JID, types.JID, types.MessageID, string</code></td><td><code>*waE2E.Message</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">18</td><td class="function-name">BuildRevoke</td><td>Builds a message revocation</td><td><code>types.JID, types.JID, types.MessageID</code></td><td><code>*waE2E.Message</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">19</td><td class="function-name">BuildHistorySyncRequest</td><td>Creates request to sync message history</td><td><code>*types.MessageInfo, int</code></td><td><code>*waE2E.Message</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">20</td><td class="function-name">BuildMessageKey</td><td>Creates message key structure for message identification</td><td><code>types.JID, types.JID, types.MessageID</code></td><td><code>*waCommon.MessageKey</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">21</td><td class="function-name">BuildUnavailableMessageRequest</td><td>Creates request for unavailable message content</td><td><code>types.JID, types.JID, string</code></td><td><code>*waE2E.Message</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">22</td><td class="function-name">GenerateMessageID</td><td>Generates a new message ID</td><td><code>-</code></td><td><code>types.MessageID</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">23</td><td class="function-name">SendMediaRetryReceipt</td><td>Sends retry receipt for failed media uploads</td><td><code>*types.MessageInfo, []byte</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 3. Media Operations (12 functions) -->
+    <div class="category" data-category="media">
+        <h2 class="category-header">3. Media Operations (12 functions)<span class="function-count">✅ 1/12 Implemented</span></h2>
+        <table>
+            <thead>
+                <tr>
+                    <th class="no-column">No</th>
+                    <th>Function Name</th>
+                    <th>Description</th>
+                    <th>Parameters</th>
+                    <th>Return</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td class="no-column">24</td><td class="function-name">Upload</td><td>Uploads media to be sent in a message</td><td><code>context.Context, []byte, MediaType</code></td><td><code>UploadResponse, error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">25</td><td class="function-name">UploadReader</td><td>Uploads media from stream reader</td><td><code>context.Context, io.Reader, io.ReadWriteSeeker, ...</code></td><td><code>UploadResponse, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">26</td><td class="function-name">UploadNewsletter</td><td>Uploads media for newsletter/channel messages</td><td><code>context.Context, []byte, MediaType</code></td><td><code>UploadResponse, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">27</td><td class="function-name">UploadNewsletterReader</td><td>Uploads newsletter media from stream</td><td><code>context.Context, io.ReadSeeker, MediaType</code></td><td><code>UploadResponse, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">28</td><td class="function-name">Download</td><td>Downloads media from a message</td><td><code>context.Context, DownloadableMessage</code></td><td><code>[]byte, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">29</td><td class="function-name">DownloadAny</td><td>Downloads any type of media from message</td><td><code>context.Context, *waE2E.Message</code></td><td><code>[]byte, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">30</td><td class="function-name">DownloadFB</td><td>Downloads Facebook Messenger media</td><td><code>context.Context, *waMediaTransport.WAMediaTransport_Integral, ...</code></td><td><code>[]byte, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">31</td><td class="function-name">DownloadFBToFile</td><td>Downloads FB media directly to file</td><td><code>context.Context, *waMediaTransport.WAMediaTransport_Integral, ...</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">32</td><td class="function-name">DownloadHistorySync</td><td>Downloads history synchronization data</td><td><code>context.Context, *waE2E.HistorySyncNotification, ...</code></td><td><code>*waHistorySync.HistorySync, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">33</td><td class="function-name">DownloadMediaWithPath</td><td>Downloads media using direct path</td><td><code>context.Context, string, []byte, []byte, []byte, ...</code></td><td><code>[]byte, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">34</td><td class="function-name">DownloadMediaWithPathToFile</td><td>Downloads media to file using direct path</td><td><code>context.Context, string, []byte, []byte, []byte, ...</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">35</td><td class="function-name">DownloadThumbnail</td><td>Downloads message thumbnail image</td><td><code>context.Context, DownloadableThumbnail</code></td><td><code>[]byte, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">36</td><td class="function-name">DownloadToFile</td><td>Downloads media directly to specified file</td><td><code>context.Context, DownloadableMessage, File</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 4. Group Management (24 functions) -->
+    <div class="category" data-category="groups">
+        <h2 class="category-header">4. Group Management (24 functions)<span class="function-count">✅ 18/24 Implemented</span></h2>
+        <table>
+            <thead>
+                <tr>
+                    <th class="no-column">No</th>
+                    <th>Function Name</th>
+                    <th>Description</th>
+                    <th>Parameters</th>
+                    <th>Return</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td class="no-column">37</td><td class="function-name">GetGroupInfo</td><td>Gets detailed information about a group</td><td><code>types.JID</code></td><td><code>*types.GroupInfo, error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">38</td><td class="function-name">GetGroupInfoFromInvite</td><td>Gets group info using invite details</td><td><code>types.JID, types.JID, string, int64</code></td><td><code>*types.GroupInfo, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">39</td><td class="function-name">GetGroupInfoFromLink</td><td>Gets group info from invite link code</td><td><code>string</code></td><td><code>*types.GroupInfo, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">40</td><td class="function-name">GetGroupInviteLink</td><td>Gets or resets group invitation link</td><td><code>types.JID, bool</code></td><td><code>string, error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">41</td><td class="function-name">GetGroupRequestParticipants</td><td>Gets list of pending join requests</td><td><code>types.JID</code></td><td><code>[]types.GroupParticipantRequest, error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">42</td><td class="function-name">GetJoinedGroups</td><td>Gets list of groups the user is in</td><td><code>context.Context</code></td><td><code>[]*types.GroupInfo, error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">43</td><td class="function-name">GetLinkedGroupsParticipants</td><td>Gets participants of linked community groups</td><td><code>types.JID</code></td><td><code>[]types.JID, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">44</td><td class="function-name">GetSubGroups</td><td>Gets subgroups within a community</td><td><code>types.JID</code></td><td><code>[]*types.GroupLinkTarget, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">45</td><td class="function-name">CreateGroup</td><td>Creates a new WhatsApp group</td><td><code>ReqCreateGroup</code></td><td><code>*types.GroupInfo, error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">46</td><td class="function-name">JoinGroupWithInvite</td><td>Joins group using invite details</td><td><code>types.JID, types.JID, string, int64</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">47</td><td class="function-name">JoinGroupWithLink</td><td>Joins group using invite link</td><td><code>string</code></td><td><code>types.JID, error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">48</td><td class="function-name">LeaveGroup</td><td>Leaves a group</td><td><code>types.JID</code></td><td><code>error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">49</td><td class="function-name">LinkGroup</td><td>Links a subgroup to a community</td><td><code>types.JID, types.JID</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">50</td><td class="function-name">UnlinkGroup</td><td>Unlinks a subgroup from a community</td><td><code>types.JID, types.JID</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">51</td><td class="function-name">SetGroupAnnounce</td><td>Toggles announcement mode (only admins can send messages)</td><td><code>types.JID, bool</code></td><td><code>error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">52</td><td class="function-name">SetGroupDescription</td><td>Updates group description</td><td><code>types.JID, string</code></td><td><code>error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">53</td><td class="function-name">SetGroupJoinApprovalMode</td><td>Enables/disables admin approval for joins</td><td><code>types.JID, bool</code></td><td><code>error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">54</td><td class="function-name">SetGroupLocked</td><td>Locks/unlocks group settings</td><td><code>types.JID, bool</code></td><td><code>error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">55</td><td class="function-name">SetGroupMemberAddMode</td><td>Sets who can add members (all/admin only)</td><td><code>types.JID, types.GroupMemberAddMode</code></td><td><code>error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">56</td><td class="function-name">SetGroupName</td><td>Changes group name</td><td><code>types.JID, string</code></td><td><code>error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">57</td><td class="function-name">SetGroupPhoto</td><td>Updates group profile picture</td><td><code>types.JID, []byte</code></td><td><code>string, error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">58</td><td class="function-name">SetGroupTopic</td><td>Sets or updates group topic</td><td><code>types.JID, string, string, string</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">59</td><td class="function-name">UpdateGroupParticipants</td><td>Adds/removes group participants</td><td><code>types.JID, []types.JID, ParticipantChange</code></td><td><code>[]types.GroupParticipant, error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">60</td><td class="function-name">UpdateGroupRequestParticipants</td><td>Approves/rejects join requests</td><td><code>types.JID, []types.JID, ParticipantRequestChange</code></td><td><code>[]types.GroupParticipant, error</code></td><td><span class="implemented">✅</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        function filterFunctions() {
+            const input = document.getElementById('searchInput');
+            const filter = input.value.toLowerCase();
+            const categories = document.querySelectorAll('.category');
+
+            categories.forEach(category => {
+                const table = category.querySelector('table');
+                const tbody = table.querySelector('tbody');
+                const rows = tbody.querySelectorAll('tr');
+                let categoryVisible = false;
+
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    let rowVisible = false;
+
+                    cells.forEach(cell => {
+                        if (cell.textContent.toLowerCase().includes(filter)) {
+                            rowVisible = true;
+                        }
+                    });
+
+                    if (rowVisible) {
+                        row.style.display = '';
+                        categoryVisible = true;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+
+                if (categoryVisible) {
+                    category.style.display = '';
+                } else {
+                    category.style.display = 'none';
+                }
+            });
+        }
+    </script>
+
+</body>
+</html>
+    <!-- 5. Contact & Profile Operations (10 functions) -->
+    <div class="category" data-category="contacts">
+        <h2 class="category-header">5. Contact & Profile Operations (10 functions)<span class="function-count">✅ 4/10 Implemented</span></h2>
+        <table>
+            <thead>
+                <tr>
+                    <th class="no-column">No</th>
+                    <th>Function Name</th>
+                    <th>Description</th>
+                    <th>Parameters</th>
+                    <th>Return</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td class="no-column">61</td><td class="function-name">GetBusinessProfile</td><td>Gets business account profile information</td><td><code>types.JID</code></td><td><code>*types.BusinessProfile, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">62</td><td class="function-name">GetContactQRLink</td><td>Gets contact QR code link for sharing</td><td><code>bool</code></td><td><code>string, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">63</td><td class="function-name">GetProfilePictureInfo</td><td>Gets profile picture URL and metadata</td><td><code>types.JID, *GetProfilePictureParams</code></td><td><code>*types.ProfilePictureInfo, error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">64</td><td class="function-name">GetUserDevices</td><td>Gets list of user's linked devices</td><td><code>[]types.JID</code></td><td><code>[]types.JID, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">65</td><td class="function-name">GetUserDevicesContext</td><td>Gets user devices with context</td><td><code>context.Context, []types.JID</code></td><td><code>[]types.JID, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">66</td><td class="function-name">GetUserInfo</td><td>Gets detailed user information and status</td><td><code>[]types.JID</code></td><td><code>map[types.JID]types.UserInfo, error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">67</td><td class="function-name">IsOnWhatsApp</td><td>Checks if phone numbers are on WhatsApp</td><td><code>[]string</code></td><td><code>[]types.IsOnWhatsAppResponse, error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">68</td><td class="function-name">SubscribePresence</td><td>Subscribes to real-time presence updates</td><td><code>types.JID</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">69</td><td class="function-name">SetStatusMessage</td><td>Updates profile status/about message</td><td><code>string</code></td><td><code>error</code></td><td><span class="implemented">✅</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 6. Privacy & Security (7 functions) -->
+    <div class="category" data-category="privacy">
+        <h2 class="category-header">6. Privacy & Security (7 functions)<span class="function-count">✅ 4/7 Implemented</span></h2>
+        <table>
+            <thead>
+                <tr>
+                    <th class="no-column">No</th>
+                    <th>Function Name</th>
+                    <th>Description</th>
+                    <th>Parameters</th>
+                    <th>Return</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td class="no-column">70</td><td class="function-name">GetBlocklist</td><td>Gets list of blocked contacts</td><td><code>-</code></td><td><code>*types.Blocklist, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">71</td><td class="function-name">GetPrivacySettings</td><td>Gets all privacy settings</td><td><code>context.Context</code></td><td><code>types.PrivacySettings</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">72</td><td class="function-name">GetStatusPrivacy</td><td>Gets status visibility privacy settings</td><td><code>-</code></td><td><code>[]types.StatusPrivacy, error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">73</td><td class="function-name">SetDefaultDisappearingTimer</td><td>Sets default disappearing messages timer</td><td><code>time.Duration</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">74</td><td class="function-name">SetDisappearingTimer</td><td>Sets disappearing messages for specific chat</td><td><code>types.JID, time.Duration</code></td><td><code>error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">75</td><td class="function-name">SetPrivacySetting</td><td>Updates specific privacy setting</td><td><code>context.Context, types.PrivacySettingType, types.PrivacySetting</code></td><td><code>types.PrivacySettings, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">76</td><td class="function-name">TryFetchPrivacySettings</td><td>Fetches latest privacy settings from server</td><td><code>context.Context, bool</code></td><td><code>*types.PrivacySettings, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">77</td><td class="function-name">UpdateBlocklist</td><td>Blocks or unblocks a contact</td><td><code>types.JID, events.BlocklistChangeAction</code></td><td><code>*types.Blocklist, error</code></td><td><span class="implemented">✅</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 7. Newsletter/Channel Operations (12 functions) -->
+    <div class="category" data-category="newsletters">
+        <h2 class="category-header">7. Newsletter/Channel Operations (12 functions)<span class="function-count">❌ 0/12 Implemented</span></h2>
+        <table>
+            <thead>
+                <tr>
+                    <th class="no-column">No</th>
+                    <th>Function Name</th>
+                    <th>Description</th>
+                    <th>Parameters</th>
+                    <th>Return</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td class="no-column">78</td><td class="function-name">CreateNewsletter</td><td>Creates a new WhatsApp channel/newsletter</td><td><code>CreateNewsletterParams</code></td><td><code>*types.NewsletterMetadata, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">79</td><td class="function-name">FollowNewsletter</td><td>Follows a WhatsApp channel</td><td><code>types.JID</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">80</td><td class="function-name">GetNewsletterInfo</td><td>Gets channel/newsletter information</td><td><code>types.JID</code></td><td><code>*types.NewsletterMetadata, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">81</td><td class="function-name">GetNewsletterInfoWithInvite</td><td>Gets newsletter info using invite key</td><td><code>string</code></td><td><code>*types.NewsletterMetadata, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">82</td><td class="function-name">GetNewsletterMessageUpdates</td><td>Gets recent message updates from channel</td><td><code>types.JID, *GetNewsletterUpdatesParams</code></td><td><code>[]*types.NewsletterMessage, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">83</td><td class="function-name">GetNewsletterMessages</td><td>Gets messages from a newsletter</td><td><code>types.JID, *GetNewsletterMessagesParams</code></td><td><code>[]*types.NewsletterMessage, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">84</td><td class="function-name">GetSubscribedNewsletters</td><td>Gets list of followed newsletters</td><td><code>-</code></td><td><code>[]*types.NewsletterMetadata, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">85</td><td class="function-name">UnfollowNewsletter</td><td>Unfollows a WhatsApp channel</td><td><code>types.JID</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">86</td><td class="function-name">NewsletterMarkViewed</td><td>Marks channel messages as viewed</td><td><code>types.JID, []types.MessageServerID</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">87</td><td class="function-name">NewsletterSendReaction</td><td>Reacts to channel messages</td><td><code>types.JID, types.MessageServerID, string, ...</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">88</td><td class="function-name">NewsletterSubscribeLiveUpdates</td><td>Subscribes to live channel updates</td><td><code>context.Context, types.JID</code></td><td><code>time.Duration, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">89</td><td class="function-name">NewsletterToggleMute</td><td>Mutes/unmutes a newsletter</td><td><code>types.JID, bool</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 8. Event Handlers & Advanced Features (8 functions) -->
+    <div class="category" data-category="events">
+        <h2 class="category-header">8. Event Handlers & Advanced Features (8 functions)<span class="function-count">❌ 0/8 Implemented</span></h2>
+        <table>
+            <thead>
+                <tr>
+                    <th class="no-column">No</th>
+                    <th>Function Name</th>
+                    <th>Description</th>
+                    <th>Parameters</th>
+                    <th>Return</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td class="no-column">90</td><td class="function-name">AddEventHandler</td><td>Adds event handler for incoming events</td><td><code>EventHandler</code></td><td><code>uint32</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">91</td><td class="function-name">AddEventHandlerWithSuccessStatus</td><td>Adds handler with success status tracking</td><td><code>EventHandlerWithSuccessStatus</code></td><td><code>uint32</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">92</td><td class="function-name">RemoveEventHandler</td><td>Removes specific event handler</td><td><code>uint32</code></td><td><code>bool</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">93</td><td class="function-name">RemoveEventHandlers</td><td>Removes all event handlers</td><td><code>-</code></td><td><code>-</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">94</td><td class="function-name">ParseWebMessage</td><td>Parses WhatsApp web message format</td><td><code>types.JID, *waWeb.WebMessageInfo</code></td><td><code>*events.Message, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">95</td><td class="function-name">DecryptComment</td><td>Decrypts comment messages</td><td><code>context.Context, *events.Message</code></td><td><code>*waE2E.Message, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">96</td><td class="function-name">DecryptPollVote</td><td>Decrypts poll vote messages</td><td><code>context.Context, *events.Message</code></td><td><code>*waE2E.PollVoteMessage, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">97</td><td class="function-name">DecryptReaction</td><td>Decrypts reaction messages</td><td><code>context.Context, *events.Message</code></td><td><code>*waE2E.ReactionMessage, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">98</td><td class="function-name">DecryptSecretEncryptedMessage</td><td>Decrypts a secret encrypted message</td><td><code>context.Context, *events.Message</code></td><td><code>*waE2E.Message, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">99</td><td class="function-name">EncryptComment</td><td>Encrypts comment messages</td><td><code>context.Context, *types.MessageInfo, *waE2E.Message</code></td><td><code>*waE2E.Message, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">100</td><td class="function-name">EncryptPollVote</td><td>Encrypts poll vote messages</td><td><code>context.Context, *types.MessageInfo, *waE2E.PollVoteMessage</code></td><td><code>*waE2E.PollUpdateMessage, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">101</td><td class="function-name">EncryptReaction</td><td>Encrypts reaction messages</td><td><code>context.Context, *types.MessageInfo, ...</code></td><td><code>*waE2E.EncReactionMessage, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 7. Newsletter/Channel Operations (12 functions) -->
+    <div class="category" data-category="newsletters">
+        <h2 class="category-header">7. Newsletter/Channel Operations (12 functions)<span class="function-count">❌ 0/12 Implemented</span></h2>
+        <table>
+            <thead>
+                <tr>
+                    <th class="no-column">No</th>
+                    <th>Function Name</th>
+                    <th>Description</th>
+                    <th>Parameters</th>
+                    <th>Return</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td class="no-column">78</td><td class="function-name">CreateNewsletter</td><td>Creates a new WhatsApp channel/newsletter</td><td><code>CreateNewsletterParams</code></td><td><code>*types.NewsletterMetadata, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">79</td><td class="function-name">FollowNewsletter</td><td>Follows a WhatsApp channel</td><td><code>types.JID</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">80</td><td class="function-name">GetNewsletterInfo</td><td>Gets channel/newsletter information</td><td><code>types.JID</code></td><td><code>*types.NewsletterMetadata, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">81</td><td class="function-name">GetNewsletterInfoWithInvite</td><td>Gets newsletter info using invite key</td><td><code>string</code></td><td><code>*types.NewsletterMetadata, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">82</td><td class="function-name">GetNewsletterMessageUpdates</td><td>Gets recent message updates from channel</td><td><code>types.JID, *GetNewsletterUpdatesParams</code></td><td><code>[]*types.NewsletterMessage, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">83</td><td class="function-name">GetNewsletterMessages</td><td>Gets messages from a newsletter</td><td><code>types.JID, *GetNewsletterMessagesParams</code></td><td><code>[]*types.NewsletterMessage, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">84</td><td class="function-name">GetSubscribedNewsletters</td><td>Gets list of followed newsletters</td><td><code>-</code></td><td><code>[]*types.NewsletterMetadata, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">85</td><td class="function-name">UnfollowNewsletter</td><td>Unfollows a WhatsApp channel</td><td><code>types.JID</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">86</td><td class="function-name">NewsletterMarkViewed</td><td>Marks channel messages as viewed</td><td><code>types.JID, []types.MessageServerID</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">87</td><td class="function-name">NewsletterSendReaction</td><td>Reacts to channel messages</td><td><code>types.JID, types.MessageServerID, string, ...</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">88</td><td class="function-name">NewsletterSubscribeLiveUpdates</td><td>Subscribes to live channel updates</td><td><code>context.Context, types.JID</code></td><td><code>time.Duration, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">89</td><td class="function-name">NewsletterToggleMute</td><td>Mutes/unmutes a newsletter</td><td><code>types.JID, bool</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 8. Event Handlers & Advanced Features (8 functions) -->
+    <div class="category" data-category="events">
+        <h2 class="category-header">8. Event Handlers & Advanced Features (8 functions)<span class="function-count">❌ 0/8 Implemented</span></h2>
+        <table>
+            <thead>
+                <tr>
+                    <th class="no-column">No</th>
+                    <th>Function Name</th>
+                    <th>Description</th>
+                    <th>Parameters</th>
+                    <th>Return</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td class="no-column">90</td><td class="function-name">AddEventHandler</td><td>Adds event handler for incoming events</td><td><code>EventHandler</code></td><td><code>uint32</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">91</td><td class="function-name">AddEventHandlerWithSuccessStatus</td><td>Adds handler with success status tracking</td><td><code>EventHandlerWithSuccessStatus</code></td><td><code>uint32</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">92</td><td class="function-name">RemoveEventHandler</td><td>Removes specific event handler</td><td><code>uint32</code></td><td><code>bool</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">93</td><td class="function-name">RemoveEventHandlers</td><td>Removes all event handlers</td><td><code>-</code></td><td><code>-</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">94</td><td class="function-name">ParseWebMessage</td><td>Parses WhatsApp web message format</td><td><code>types.JID, *waWeb.WebMessageInfo</code></td><td><code>*events.Message, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">95</td><td class="function-name">DecryptComment</td><td>Decrypts comment messages</td><td><code>context.Context, *events.Message</code></td><td><code>*waE2E.Message, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">96</td><td class="function-name">DecryptPollVote</td><td>Decrypts poll vote messages</td><td><code>context.Context, *events.Message</code></td><td><code>*waE2E.PollVoteMessage, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">97</td><td class="function-name">DecryptReaction</td><td>Decrypts reaction messages</td><td><code>context.Context, *events.Message</code></td><td><code>*waE2E.ReactionMessage, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">98</td><td class="function-name">DecryptSecretEncryptedMessage</td><td>Decrypts a secret encrypted message</td><td><code>context.Context, *events.Message</code></td><td><code>*waE2E.Message, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">99</td><td class="function-name">EncryptComment</td><td>Encrypts comment messages</td><td><code>context.Context, *types.MessageInfo, *waE2E.Message</code></td><td><code>*waE2E.Message, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">100</td><td class="function-name">EncryptPollVote</td><td>Encrypts poll vote messages</td><td><code>context.Context, *types.MessageInfo, *waE2E.PollVoteMessage</code></td><td><code>*waE2E.PollUpdateMessage, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">101</td><td class="function-name">EncryptReaction</td><td>Encrypts reaction messages</td><td><code>context.Context, *types.MessageInfo, ...</code></td><td><code>*waE2E.EncReactionMessage, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 9. Push Notifications & Business Features (6 functions) -->
+    <div class="category" data-category="push">
+        <h2 class="category-header">9. Push Notifications & Business Features (6 functions)<span class="function-count">❌ 0/6 Implemented</span></h2>
+        <table>
+            <thead>
+                <tr>
+                    <th class="no-column">No</th>
+                    <th>Function Name</th>
+                    <th>Description</th>
+                    <th>Parameters</th>
+                    <th>Return</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td class="no-column">102</td><td class="function-name">RegisterForPushNotifications</td><td>Registers device for push notifications</td><td><code>context.Context, PushConfig</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">103</td><td class="function-name">GetServerPushNotificationConfig</td><td>Gets push notification configuration</td><td><code>context.Context</code></td><td><code>*waBinary.Node, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">104</td><td class="function-name">ResolveBusinessMessageLink</td><td>Resolves business message link to contact</td><td><code>string</code></td><td><code>*types.BusinessMessageLinkTarget, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">105</td><td class="function-name">ResolveContactQRLink</td><td>Resolves contact QR code to user info</td><td><code>string</code></td><td><code>*types.ContactQRLinkTarget, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">106</td><td class="function-name">GetBusinessProfile</td><td>Gets business account profile information</td><td><code>types.JID</code></td><td><code>*types.BusinessProfile, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">107</td><td class="function-name">GetContactQRLink</td><td>Gets contact QR code link for sharing</td><td><code>bool</code></td><td><code>string, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 10. Bot Operations (2 functions) -->
+    <div class="category" data-category="bots">
+        <h2 class="category-header">10. Bot Operations (2 functions)<span class="function-count">❌ 0/2 Implemented</span></h2>
+        <table>
+            <thead>
+                <tr>
+                    <th class="no-column">No</th>
+                    <th>Function Name</th>
+                    <th>Description</th>
+                    <th>Parameters</th>
+                    <th>Return</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td class="no-column">106</td><td class="function-name">GetBotListV2</td><td>Gets list of available WhatsApp bots</td><td><code>-</code></td><td><code>[]types.BotListInfo, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">107</td><td class="function-name">GetBotProfiles</td><td>Gets detailed information about bots</td><td><code>[]types.BotListInfo</code></td><td><code>[]types.BotProfileInfo, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 11. Proxy & Connection Settings (10 functions) -->
+    <div class="category" data-category="proxy">
+        <h2 class="category-header">11. Proxy & Connection Settings (10 functions)<span class="function-count">✅ 1/10 Implemented</span></h2>
+        <table>
+            <thead>
+                <tr>
+                    <th class="no-column">No</th>
+                    <th>Function Name</th>
+                    <th>Description</th>
+                    <th>Parameters</th>
+                    <th>Return</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td class="no-column">108</td><td class="function-name">SetProxy</td><td>Sets HTTP proxy for connections</td><td><code>Proxy, ...SetProxyOptions</code></td><td><code>-</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">109</td><td class="function-name">SetProxyAddress</td><td>Sets HTTP proxy address</td><td><code>string, ...SetProxyOptions</code></td><td><code>error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">110</td><td class="function-name">SetSOCKSProxy</td><td>Sets SOCKS proxy for connections</td><td><code>proxy.Dialer, ...SetProxyOptions</code></td><td><code>-</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">111</td><td class="function-name">SetWSDialer</td><td>Sets custom WebSocket dialer</td><td><code>*websocket.Dialer</code></td><td><code>-</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">112</td><td class="function-name">ToggleProxyOnlyForLogin</td><td>Uses proxy only during login</td><td><code>bool</code></td><td><code>-</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">113</td><td class="function-name">SetPassive</td><td>Sets passive connection mode</td><td><code>context.Context, bool</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">114</td><td class="function-name">SetForceActiveDeliveryReceipts</td><td>Forces active delivery receipts</td><td><code>bool</code></td><td><code>-</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">115</td><td class="function-name">StoreLIDPNMapping</td><td>Stores LID to PN identifier mapping</td><td><code>context.Context, types.JID, types.JID</code></td><td><code>-</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">116</td><td class="function-name">RefreshCAT</td><td>Refreshes client auth token</td><td><code>context.Context</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 12. Miscellaneous (9 functions) -->
+    <div class="category" data-category="misc">
+        <h2 class="category-header">12. Miscellaneous (9 functions)<span class="function-count">✅ 2/9 Implemented</span></h2>
+        <table>
+            <thead>
+                <tr>
+                    <th class="no-column">No</th>
+                    <th>Function Name</th>
+                    <th>Description</th>
+                    <th>Parameters</th>
+                    <th>Return</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td class="no-column">117</td><td class="function-name">AcceptTOSNotice</td><td>Accepts terms of service notices</td><td><code>string, string</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">118</td><td class="function-name">DangerousInternals</td><td>Accesses dangerous internal functions</td><td><code>-</code></td><td><code>*DangerousInternalClient</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">119</td><td class="function-name">FetchAppState</td><td>Fetches application state patches</td><td><code>context.Context, appstate.WAPatchName, bool, bool</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">120</td><td class="function-name">RejectCall</td><td>Rejects incoming voice/video calls</td><td><code>types.JID, string</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">121</td><td class="function-name">MarkRead</td><td>Marks messages as read</td><td><code>[]types.MessageID, time.Time, types.JID, types.JID, ...</code></td><td><code>error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">122</td><td class="function-name">SetStatusMessage</td><td>Updates profile status/about message</td><td><code>string</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">123</td><td class="function-name">SubscribePresence</td><td>Subscribes to real-time presence updates</td><td><code>types.JID</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">124</td><td class="function-name">SetDefaultDisappearingTimer</td><td>Sets default disappearing messages timer</td><td><code>time.Duration</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">125</td><td class="function-name">SetDisappearingTimer</td><td>Sets disappearing messages for specific chat</td><td><code>types.JID, time.Duration, settingTS time.Time</code></td><td><code>error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">126</td><td class="function-name">TryFetchPrivacySettings</td><td>Fetches latest privacy settings from server</td><td><code>context.Context, bool</code></td><td><code>*types.PrivacySettings, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">127</td><td class="function-name">UpdateBlocklist</td><td>Blocks or unblocks a contact</td><td><code>types.JID, events.BlocklistChangeAction</code></td><td><code>*types.Blocklist, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+                <tr><td class="no-column">128</td><td class="function-name">RevokeMessage</td><td>Revokes/deletes a sent message</td><td><code>types.JID, types.MessageID</code></td><td><code>SendResponse, error</code></td><td><span class="implemented">✅</span></td></tr>
+                <tr><td class="no-column">129</td><td class="function-name">SendFBMessage</td><td>Sends Facebook Messenger format messages</td><td><code>context.Context, types.JID, armadillo.RealMessageApplicationSub, ...</code></td><td><code>SendResponse, error</code></td><td><span class="not-implemented">❌</span></td></tr>
+            </tbody>
+        </table>
+    </div>

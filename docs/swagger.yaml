@@ -1,0 +1,1884 @@
+swagger: "2.0"
+info:
+  title: WhatsApp Multi-Device REST API
+  description: |
+    Minimal RESTful API for WhatsApp Multi-Device and Multi-Session implementation.
+
+    **Features 54 endpoints** including:
+    - Device & Session Management
+    - Messaging (Text, Images, Documents)
+    - Message Actions (Read, React, Edit, Delete, Reply)
+    - Group Management (CRUD, Participants, Admins, Settings)
+    - User Profiles & Privacy
+    - App State Synchronization
+    - Presence & Status Management
+    - Webhook Integration
+
+    **Endpoints are organized by usage frequency** - most commonly used endpoints appear first.
+  version: "1.0.0"
+  contact:
+    name: API Support
+    url: https://github.com/gdbrns/go-whatsapp-multi-session-rest-api
+
+host: localhost:3000
+basePath: /
+schemes:
+  - http
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+securityDefinitions:
+  BasicAuth:
+    type: basic
+    description: Basic authentication for device creation (username/password)
+  BearerAuth:
+    type: apiKey
+    name: Authorization
+    in: header
+    description: "JWT Bearer token for authenticated requests. Format: Authorization: Bearer <jwt_token>"
+
+tags:
+  - name: "00 - Root"
+    description: Server status and health check
+  - name: "01 - Documentation"
+    description: API documentation and Swagger UI
+  - name: "02 - Authentication"
+    description: Device registration and JWT token creation (Basic Auth)
+  - name: "03 - Device Management"
+    description: Device login, logout, status, and reconnection
+  - name: "04 - User Management"
+    description: User profiles, privacy settings, and status updates
+  - name: "05 - Messaging"
+    description: Send text, images, documents
+  - name: "06 - Message Actions"
+    description: Read, react, edit, delete, reply to messages
+  - name: "07 - Group Management"
+    description: Create, manage, and administer WhatsApp groups
+  - name: "08 - Presence & Status"
+    description: Typing indicators, online status, disappearing messages
+  - name: "09 - App State"
+    description: App state synchronization
+  - name: "10 - Webhooks"
+    description: Webhook configuration and management
+
+definitions:
+  ErrorResponse:
+    type: object
+    properties:
+      status:
+        type: boolean
+        example: false
+      code:
+        type: integer
+        example: 400
+      message:
+        type: string
+        example: Bad request
+      error:
+        type: string
+        example: "Invalid parameter: chat_jid is required"
+
+  SuccessResponse:
+    type: object
+    properties:
+      status:
+        type: boolean
+        example: true
+      code:
+        type: integer
+        example: 200
+      message:
+        type: string
+        example: Success
+      data:
+        type: object
+
+paths:
+  /:
+    get:
+      tags:
+        - "00 - Root"
+      summary: Server Status
+      description: Get server status and health check
+      responses:
+        200:
+          description: Server is running
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              code:
+                type: integer
+                example: 200
+              message:
+                type: string
+                example: WhatsApp API Server is running
+              data:
+                type: object
+                properties:
+                  version:
+                    type: string
+                    example: "1.0.0"
+                  uptime:
+                    type: string
+                    example: 2h 30m 15s
+
+  /docs/swagger.json:
+    get:
+      tags:
+        - "01 - Documentation"
+      summary: API Documentation (JSON)
+      description: Get OpenAPI/Swagger documentation in JSON format
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Swagger JSON documentation
+
+  /docs/swagger.yaml:
+    get:
+      tags:
+        - "01 - Documentation"
+      summary: API Documentation (YAML)
+      description: Get OpenAPI/Swagger documentation in YAML format
+      produces:
+        - application/yaml
+      responses:
+        200:
+          description: Swagger YAML documentation
+
+  /docs/*:
+    get:
+      tags:
+        - "01 - Documentation"
+      summary: Swagger UI
+      description: Interactive API documentation interface
+      responses:
+        200:
+          description: Swagger UI HTML
+
+  /docs/function:
+    get:
+      tags:
+        - "01 - Documentation"
+      summary: Function Reference
+      description: Helper documentation for API functions
+      responses:
+        200:
+          description: Function documentation HTML
+
+  /device/add:
+    post:
+      security:
+        - BasicAuth: []
+      tags:
+        - "02 - Authentication"
+      summary: Register New Device
+      description: |
+        Creates a new device session and issues JWT token.
+
+        **Authentication:** Basic Auth (username/password)
+
+        **Returns:** JWT token for subsequent API calls
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Device registered successfully
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              code:
+                type: integer
+                example: 200
+              message:
+                type: string
+                example: Device added successfully
+              data:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                  device_id:
+                    type: string
+                    example: 550e8400-e29b-41d4-a716-446655440000
+                  jid:
+                    type: string
+                    example: "6281234567890"
+        401:
+          description: Unauthorized - Invalid credentials
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /devices:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "03 - Device Management"
+      summary: List All Devices
+      description: Get list of all connected devices
+      responses:
+        200:
+          description: Device list retrieved
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              code:
+                type: integer
+                example: 200
+              data:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    device_id:
+                      type: string
+                    whatsmeow_jid:
+                      type: string
+                    is_active:
+                      type: boolean
+                    last_login_at:
+                      type: string
+                    created_at:
+                      type: string
+
+  /devices/{device_id}:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "03 - Device Management"
+      summary: Get Device Details
+      description: Get specific device information
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          type: string
+          description: Device ID
+      responses:
+        200:
+          description: Device details retrieved
+        404:
+          description: Device not found
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /devices/{device_id}/status:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "03 - Device Management"
+      summary: Get Device Status
+      description: Check if device is connected to WhatsApp
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          type: string
+          description: Device ID
+      responses:
+        200:
+          description: Device status retrieved
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              data:
+                type: object
+                properties:
+                  connected:
+                    type: boolean
+                    example: true
+
+  /devices/{device_id}/login:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "03 - Device Management"
+      summary: Login with QR Code
+      description: Generate QR code for WhatsApp login
+      consumes:
+        - application/x-www-form-urlencoded
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          type: string
+        - name: output
+          in: formData
+          type: string
+          enum:
+            - html
+            - json
+          default: html
+          description: Response format
+      responses:
+        200:
+          description: QR code generated
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              data:
+                type: object
+                properties:
+                  qr_code:
+                    type: string
+                    example: "data:image/png;base64,..."
+                  timeout:
+                    type: integer
+                    example: 60
+
+  /devices/{device_id}/login-code:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "03 - Device Management"
+      summary: Login with Pairing Code
+      description: Generate pairing code for WhatsApp login (no QR scan needed)
+      consumes:
+        - application/json
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              phone:
+                type: string
+                example: "6281234567890"
+                description: Phone number to pair (without +)
+      responses:
+        200:
+          description: Pairing code generated
+          schema:
+            type: object
+            properties:
+              data:
+                type: object
+                properties:
+                  pair_code:
+                    type: string
+                    example: ABCD-1234
+                  timeout:
+                    type: integer
+                    example: 120
+
+  /devices/{device_id}/reconnect:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "03 - Device Management"
+      summary: Reconnect Device
+      description: Manually reconnect a disconnected device
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: Device reconnected
+
+  /devices/{device_id}/session:
+    delete:
+      security:
+        - BearerAuth: []
+      tags:
+        - "03 - Device Management"
+      summary: Logout Device
+      description: Logout and remove device session from WhatsApp
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: Device logged out
+
+  /devices/{device_id}/contacts/{phone}/registered:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "03 - Device Management"
+      summary: Check Contact Registration
+      description: Check if a phone number is registered on WhatsApp
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          type: string
+        - name: phone
+          in: path
+          required: true
+          type: string
+          example: "6281234567890"
+      responses:
+        200:
+          description: Registration status checked
+          schema:
+            type: object
+            properties:
+              data:
+                type: object
+                properties:
+                  is_registered:
+                    type: boolean
+                    example: true
+
+  /users/{user_jid}:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "04 - User Management"
+      summary: Get User Info
+      description: Get user profile information
+      parameters:
+        - name: user_jid
+          in: path
+          required: true
+          type: string
+          example: 6281234567890@s.whatsapp.net
+      responses:
+        200:
+          description: User info retrieved
+
+  /users/{user_jid}/profile-picture:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "04 - User Management"
+      summary: Get Profile Picture
+      description: Get user's profile picture URL
+      parameters:
+        - name: user_jid
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: Profile picture retrieved
+
+  /users/{user_jid}/block:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "04 - User Management"
+      summary: Block User
+      description: Block a user on WhatsApp
+      parameters:
+        - name: user_jid
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: User blocked
+    delete:
+      security:
+        - BearerAuth: []
+      tags:
+        - "04 - User Management"
+      summary: Unblock User
+      description: Unblock a previously blocked user
+      parameters:
+        - name: user_jid
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: User unblocked
+
+  /users/me/privacy:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "04 - User Management"
+      summary: Get Privacy Settings
+      description: Get current privacy settings
+      responses:
+        200:
+          description: Privacy settings retrieved
+    patch:
+      security:
+        - BearerAuth: []
+      tags:
+        - "04 - User Management"
+      summary: Update Privacy Settings
+      description: Update specific privacy setting
+      consumes:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - setting
+              - value
+            properties:
+              setting:
+                type: string
+                enum:
+                  - last_seen
+                  - profile_picture
+                  - status
+                  - read_receipts
+                  - groups
+              value:
+                type: string
+                enum:
+                  - all
+                  - contacts
+                  - contact_blacklist
+                  - none
+      responses:
+        200:
+          description: Privacy setting updated
+
+  /users/me/status-privacy:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "04 - User Management"
+      summary: Get Status Privacy
+      description: Get status privacy settings list
+      responses:
+        200:
+          description: Status privacy retrieved
+
+  /users/me/status:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "04 - User Management"
+      summary: Update Status/About
+      description: Update your About status text
+      consumes:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - status
+            properties:
+              status:
+                type: string
+                example: Busy working on awesome projects!
+      responses:
+        200:
+          description: Status updated
+
+  /users/{jid}/devices:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "04 - User Management"
+      summary: Get User's Linked Devices
+      description: Get all devices linked to a WhatsApp account
+      parameters:
+        - name: jid
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: Linked devices retrieved
+
+  /chats/{chat_jid}/messages:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "05 - Messaging"
+      summary: Send Text Message
+      description: Send text message to a chat or group
+      consumes:
+        - application/json
+      parameters:
+        - name: chat_jid
+          in: path
+          required: true
+          type: string
+          example: 6281234567890@s.whatsapp.net
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - text
+            properties:
+              text:
+                type: string
+                example: Hello! How are you?
+              reply_to_message_id:
+                type: string
+                description: Reply to specific message ID
+      responses:
+        200:
+          description: Message sent successfully
+          schema:
+            type: object
+            properties:
+              data:
+                type: object
+                properties:
+                  message_id:
+                    type: string
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "05 - Messaging"
+      summary: Get Chat Messages
+      description: Get message history from a chat
+      parameters:
+        - name: chat_jid
+          in: path
+          required: true
+          type: string
+        - name: limit
+          in: query
+          type: integer
+          default: 50
+        - name: before
+          in: query
+          type: string
+          description: Message ID to fetch messages before
+        - name: after
+          in: query
+          type: string
+          description: Message ID to fetch messages after
+      responses:
+        200:
+          description: Messages retrieved
+
+  /chats/{chat_jid}/images:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "05 - Messaging"
+      summary: Send Image
+      description: Send image with optional caption
+      consumes:
+        - multipart/form-data
+      parameters:
+        - name: chat_jid
+          in: path
+          required: true
+          type: string
+        - name: file
+          in: formData
+          required: true
+          type: file
+          description: Image file (JPEG, PNG, GIF)
+        - name: caption
+          in: formData
+          type: string
+          description: Image caption
+        - name: view_once
+          in: formData
+          type: boolean
+          default: false
+          description: View once mode
+        - name: reply_to_message_id
+          in: formData
+          type: string
+          description: Reply to message ID
+      responses:
+        200:
+          description: Image sent
+
+  /chats/{chat_jid}/documents:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "05 - Messaging"
+      summary: Send Document
+      description: Send document file (PDF, DOC, XLS, etc.)
+      consumes:
+        - multipart/form-data
+      parameters:
+        - name: chat_jid
+          in: path
+          required: true
+          type: string
+        - name: file
+          in: formData
+          required: true
+          type: file
+        - name: filename
+          in: formData
+          type: string
+          description: Custom filename
+        - name: mimetype
+          in: formData
+          type: string
+          description: MIME type
+        - name: reply_to_message_id
+          in: formData
+          type: string
+      responses:
+        200:
+          description: Document sent
+
+  /chats/{chat_jid}/archive:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "05 - Messaging"
+      summary: Archive/Unarchive Chat
+      description: Archive or unarchive a chat
+      consumes:
+        - application/json
+      parameters:
+        - name: chat_jid
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - archive
+            properties:
+              archive:
+                type: boolean
+                example: true
+      responses:
+        200:
+          description: Chat archived/unarchived
+
+  /chats/{chat_jid}/pin:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "05 - Messaging"
+      summary: Pin/Unpin Chat
+      description: Pin or unpin a chat to the top
+      consumes:
+        - application/json
+      parameters:
+        - name: chat_jid
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - pin
+            properties:
+              pin:
+                type: boolean
+                example: true
+      responses:
+        200:
+          description: Chat pinned/unpinned
+
+  /messages/{message_id}/read:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "06 - Message Actions"
+      summary: Mark Message as Read
+      description: Send read receipt for a message
+      consumes:
+        - application/json
+      parameters:
+        - name: message_id
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          schema:
+            type: object
+            properties:
+              sender_jid:
+                type: string
+              chat_jid:
+                type: string
+      responses:
+        200:
+          description: Message marked as read
+
+  /messages/{message_id}/reaction:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "06 - Message Actions"
+      summary: React to Message
+      description: Add emoji reaction to a message. Send empty emoji to remove reaction.
+      consumes:
+        - application/json
+      parameters:
+        - name: message_id
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - emoji
+            properties:
+              emoji:
+                type: string
+                example: "👍"
+      responses:
+        200:
+          description: Reaction added/removed
+
+  /messages/{message_id}:
+    patch:
+      security:
+        - BearerAuth: []
+      tags:
+        - "06 - Message Actions"
+      summary: Edit Message
+      description: Edit text message (within 15 minutes)
+      consumes:
+        - application/json
+      parameters:
+        - name: message_id
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - text
+            properties:
+              text:
+                type: string
+                example: Updated message text
+              chat_jid:
+                type: string
+      responses:
+        200:
+          description: Message edited
+    delete:
+      security:
+        - BearerAuth: []
+      tags:
+        - "06 - Message Actions"
+      summary: Delete Message
+      description: Delete message for everyone
+      parameters:
+        - name: message_id
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: Message deleted
+
+  /messages/{message_id}/reply:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "06 - Message Actions"
+      summary: Reply to Message
+      description: Reply to a specific message
+      consumes:
+        - application/json
+      parameters:
+        - name: message_id
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - chat_jid
+              - text
+            properties:
+              chat_jid:
+                type: string
+                example: 6281234567890@s.whatsapp.net
+              text:
+                type: string
+                example: Thanks for the info!
+      responses:
+        200:
+          description: Reply sent
+
+  /groups:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: List All Groups
+      description: Get list of all joined groups
+      responses:
+        200:
+          description: Groups retrieved
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: Create Group
+      description: Create new WhatsApp group
+      consumes:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - name
+            properties:
+              name:
+                type: string
+                example: My Awesome Group
+              participants:
+                type: array
+                items:
+                  type: string
+                example:
+                  - 6281234567890@s.whatsapp.net
+      responses:
+        200:
+          description: Group created
+
+  /groups/joined:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: Get Joined Groups
+      description: Get list of groups the user has joined
+      responses:
+        200:
+          description: Joined groups retrieved
+
+  /groups/{group_jid}:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: Get Group Details
+      description: Get comprehensive group information
+      parameters:
+        - name: group_jid
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: Group info retrieved
+
+  /groups/{group_jid}/leave:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: Leave Group
+      parameters:
+        - name: group_jid
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: Left group
+
+  /groups/{group_jid}/name:
+    patch:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: Update Group Name
+      consumes:
+        - application/json
+      parameters:
+        - name: group_jid
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - name
+            properties:
+              name:
+                type: string
+      responses:
+        200:
+          description: Group name updated
+
+  /groups/{group_jid}/description:
+    patch:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: Update Group Description
+      consumes:
+        - application/json
+      parameters:
+        - name: group_jid
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - description
+            properties:
+              description:
+                type: string
+      responses:
+        200:
+          description: Description updated
+
+  /groups/{group_jid}/photo:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: Update Group Photo
+      consumes:
+        - multipart/form-data
+      parameters:
+        - name: group_jid
+          in: path
+          required: true
+          type: string
+        - name: photo
+          in: formData
+          required: true
+          type: file
+      responses:
+        200:
+          description: Photo updated
+
+  /groups/{group_jid}/invite-link:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: Get Group Invite Link
+      parameters:
+        - name: group_jid
+          in: path
+          required: true
+          type: string
+        - name: reset
+          in: query
+          type: boolean
+          default: false
+      responses:
+        200:
+          description: Invite link retrieved
+
+  /groups/{group_jid}/settings:
+    patch:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: Update Group Settings
+      consumes:
+        - application/json
+      parameters:
+        - name: group_jid
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          schema:
+            type: object
+            properties:
+              announce:
+                type: boolean
+              locked:
+                type: boolean
+      responses:
+        200:
+          description: Settings updated
+
+  /groups/{group_jid}/participant-requests:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: Get Join Requests
+      parameters:
+        - name: group_jid
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: Join requests retrieved
+
+  /groups/{group_jid}/join-approval:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: Set Join Approval Mode
+      consumes:
+        - application/json
+      parameters:
+        - name: group_jid
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - mode
+            properties:
+              mode:
+                type: boolean
+      responses:
+        200:
+          description: Join approval mode set
+
+  /groups/invite/{invite_code}:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: Preview Group from Invite Link
+      parameters:
+        - name: invite_code
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: Group info from invite
+
+  /groups/{group_jid}/join-invite:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: Join Group via Invite
+      consumes:
+        - application/json
+      parameters:
+        - name: group_jid
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          schema:
+            type: object
+            properties:
+              inviter:
+                type: string
+              invite_code:
+                type: string
+              expiration:
+                type: integer
+      responses:
+        200:
+          description: Joined group
+
+  /groups/{group_jid}/member-add-mode:
+    patch:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: Set Member Add Mode
+      consumes:
+        - application/json
+      parameters:
+        - name: group_jid
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - mode
+            properties:
+              mode:
+                type: string
+      responses:
+        200:
+          description: Member add mode set
+
+  /groups/{group_jid}/topic:
+    patch:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: Update Group Topic
+      consumes:
+        - application/json
+      parameters:
+        - name: group_jid
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          schema:
+            type: object
+            properties:
+              previous_id:
+                type: string
+              new_id:
+                type: string
+              topic:
+                type: string
+      responses:
+        200:
+          description: Topic updated
+
+  /groups/{parent_group_jid}/link/{group_jid}:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: Link Subgroup
+      parameters:
+        - name: parent_group_jid
+          in: path
+          required: true
+          type: string
+        - name: group_jid
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: Groups linked
+
+  /groups/{community_jid}/linked-participants:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: Get Community Members
+      parameters:
+        - name: community_jid
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: Community members retrieved
+
+  /groups/{community_jid}/subgroups:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: List Community Subgroups
+      parameters:
+        - name: community_jid
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: Subgroups retrieved
+
+  /groups/{group_jid}/participants:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: Add Participants
+      consumes:
+        - application/json
+      parameters:
+        - name: group_jid
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - participants
+            properties:
+              participants:
+                type: array
+                items:
+                  type: string
+      responses:
+        200:
+          description: Participants added
+    delete:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: Remove Participants
+      consumes:
+        - application/json
+      parameters:
+        - name: group_jid
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - participants
+            properties:
+              participants:
+                type: array
+                items:
+                  type: string
+      responses:
+        200:
+          description: Participants removed
+
+  /groups/{group_jid}/requests/approve:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: Approve Join Requests
+      consumes:
+        - application/json
+      parameters:
+        - name: group_jid
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - users
+            properties:
+              users:
+                type: array
+                items:
+                  type: string
+      responses:
+        200:
+          description: Requests approved
+
+  /groups/{group_jid}/requests/reject:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: Reject Join Requests
+      consumes:
+        - application/json
+      parameters:
+        - name: group_jid
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - users
+            properties:
+              users:
+                type: array
+                items:
+                  type: string
+      responses:
+        200:
+          description: Requests rejected
+
+  /groups/{group_jid}/admins:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: Promote to Admin
+      consumes:
+        - application/json
+      parameters:
+        - name: group_jid
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - users
+            properties:
+              users:
+                type: array
+                items:
+                  type: string
+      responses:
+        200:
+          description: Promoted to admin
+    delete:
+      security:
+        - BearerAuth: []
+      tags:
+        - "07 - Group Management"
+      summary: Demote from Admin
+      consumes:
+        - application/json
+      parameters:
+        - name: group_jid
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - users
+            properties:
+              users:
+                type: array
+                items:
+                  type: string
+      responses:
+        200:
+          description: Demoted from admin
+
+  /chats/{chat_jid}/presence:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "08 - Presence & Status"
+      summary: Send Typing/Recording Indicator
+      description: Send typing, recording, or paused presence
+      consumes:
+        - application/json
+      parameters:
+        - name: chat_jid
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - presence_type
+            properties:
+              presence_type:
+                type: string
+                enum:
+                  - composing
+                  - paused
+                  - recording
+                example: composing
+              media_type:
+                type: string
+                enum:
+                  - audio
+                  - video
+      responses:
+        200:
+          description: Presence sent
+
+  /presence/status:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "08 - Presence & Status"
+      summary: Update Availability Status
+      description: Set online/offline status
+      consumes:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - status
+            properties:
+              status:
+                type: string
+                enum:
+                  - available
+                  - unavailable
+      responses:
+        200:
+          description: Status updated
+
+  /chats/{chat_jid}/disappearing-timer:
+    patch:
+      security:
+        - BearerAuth: []
+      tags:
+        - "08 - Presence & Status"
+      summary: Set Disappearing Messages Timer
+      description: Enable/disable disappearing messages
+      consumes:
+        - application/json
+      parameters:
+        - name: chat_jid
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - timer
+            properties:
+              timer:
+                type: string
+                enum:
+                  - "off"
+                  - 24h
+                  - 7d
+                  - 90d
+                example: 7d
+      responses:
+        200:
+          description: Timer set
+
+  /app-state/{name}:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "09 - App State"
+      summary: Fetch App State
+      description: Fetch application state patches for synchronization
+      parameters:
+        - name: name
+          in: path
+          required: true
+          type: string
+          description: App state name (e.g., mutation, encryption)
+        - name: full_sync
+          in: query
+          type: boolean
+          default: false
+        - name: only_if_not_synced
+          in: query
+          type: boolean
+          default: false
+      responses:
+        200:
+          description: App state fetched
+
+  /app-state:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "09 - App State"
+      summary: Send App State Patch
+      description: Send application state synchronization patches
+      consumes:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - name
+              - action
+            properties:
+              name:
+                type: string
+                example: chat_settings
+              action:
+                type: string
+                enum:
+                  - mute
+                  - pin
+                example: mute
+              data:
+                type: object
+      responses:
+        200:
+          description: App state patch sent
+
+  /app-state/mark-clean:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "09 - App State"
+      summary: Mark App State as Clean
+      description: Mark application state as clean to avoid unnecessary syncing
+      consumes:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - clean_type
+            properties:
+              clean_type:
+                type: string
+                example: mutation
+              timestamp:
+                type: integer
+      responses:
+        200:
+          description: App state marked as clean
+
+  /webhooks:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "10 - Webhooks"
+      summary: List Webhooks
+      description: Get all configured webhooks for the current device
+      responses:
+        200:
+          description: Webhooks retrieved
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "10 - Webhooks"
+      summary: Create Webhook
+      description: Register a new webhook for receiving WhatsApp events
+      consumes:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - url
+            properties:
+              url:
+                type: string
+                description: Webhook URL
+              secret:
+                type: string
+                description: Webhook secret for signature verification
+              events:
+                type: array
+                items:
+                  type: string
+                example:
+                  - message.received
+                  - connection.connected
+      responses:
+        201:
+          description: Webhook created
+
+  /webhooks/{webhook_id}:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "10 - Webhooks"
+      summary: Get Webhook Details
+      parameters:
+        - name: webhook_id
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: Webhook details retrieved
+    patch:
+      security:
+        - BearerAuth: []
+      tags:
+        - "10 - Webhooks"
+      summary: Update Webhook
+      consumes:
+        - application/json
+      parameters:
+        - name: webhook_id
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          schema:
+            type: object
+            properties:
+              url:
+                type: string
+              events:
+                type: array
+                items:
+                  type: string
+              active:
+                type: boolean
+      responses:
+        200:
+          description: Webhook updated
+    delete:
+      security:
+        - BearerAuth: []
+      tags:
+        - "10 - Webhooks"
+      summary: Delete Webhook
+      parameters:
+        - name: webhook_id
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: Webhook deleted
+
+  /webhooks/{webhook_id}/logs:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "10 - Webhooks"
+      summary: Get Webhook Logs
+      description: Get delivery logs for a webhook
+      parameters:
+        - name: webhook_id
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: Webhook logs retrieved
+
+  /webhooks/{webhook_id}/test:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "10 - Webhooks"
+      summary: Test Webhook
+      description: Send a test event to the webhook
+      parameters:
+        - name: webhook_id
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: Test event sent

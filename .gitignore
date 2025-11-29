@@ -1,0 +1,8 @@
+dist
+vendor
+.bin/
+.env
+*.DS_Store
+!*.gitkeep
+*.exe
+main
