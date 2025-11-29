@@ -337,7 +337,7 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 			})
 		case *events.Message:
 			// Check if this is a message deletion (revoke)
-			if e.Message != nil && e.Message.ProtocolMessage != nil && 
+			if e.Message != nil && e.Message.ProtocolMessage != nil &&
 				e.Message.ProtocolMessage.GetType() == waE2E.ProtocolMessage_REVOKE {
 				// This is a deleted message
 				deletedMsgID := e.Message.ProtocolMessage.GetKey().GetID()
@@ -478,7 +478,7 @@ func WhatsAppLogin(jid string, deviceID string) (string, int, error) {
 	return "WhatsApp Client is Reconnected", 0, nil
 }
 
-func WhatsAppLoginPair(jid string, deviceID string) (string, int, error) {
+func WhatsAppLoginPair(jid string, deviceID string, phone string) (string, int, error) {
 	client, err := currentClient(jid, deviceID)
 	if err != nil {
 		return "", 0, err
@@ -495,7 +495,7 @@ func WhatsAppLoginPair(jid string, deviceID string) (string, int, error) {
 			return "", 0, err
 		}
 
-		code, err := client.PairPhone(ctx, jid, true, whatsmeow.PairClientChrome, "Chrome ("+runtime.GOOS+")")
+		code, err := client.PairPhone(ctx, phone, true, whatsmeow.PairClientChrome, "Chrome ("+runtime.GOOS+")")
 		if err != nil {
 			return "", 0, err
 		}

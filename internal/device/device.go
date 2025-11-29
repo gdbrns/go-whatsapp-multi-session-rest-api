@@ -102,9 +102,14 @@ func LoginWithCode(c *fiber.Ctx) error {
 		return router.ResponseBadRequest(c, "Failed parse body request")
 	}
 
+	phone := strings.TrimSpace(reqLoginCode.Phone)
+	if phone == "" {
+		return router.ResponseBadRequest(c, "Phone is required")
+	}
+
 	pkgWhatsApp.WhatsAppInitClient(nil, jid, deviceID)
 
-	pairCode, timeout, err := pkgWhatsApp.WhatsAppLoginPair(jid, deviceID)
+	pairCode, timeout, err := pkgWhatsApp.WhatsAppLoginPair(jid, deviceID, phone)
 	if err != nil {
 		return router.ResponseInternalError(c, err.Error())
 	}

@@ -7,7 +7,7 @@ type RequestLogin struct {
 }
 
 type RequestLoginCode struct {
-	PhoneNumber string
+	Phone string `json:"phone"`
 }
 
 type RequestCheckPhone struct {
@@ -43,11 +43,11 @@ type RequestStatus struct {
 }
 
 type RequestSendMessage struct {
-	Phone           string
-	Message         string
-	Text            string
-	ReplyMessageID  string
-	ViewOnce        bool
+	Phone          string
+	Message        string
+	Text           string
+	ReplyMessageID string
+	ViewOnce       bool
 }
 
 type RequestSendLink struct {
@@ -153,9 +153,9 @@ type RequestUpdateGroupSettings struct {
 }
 
 type RequestJoinGroupInvite struct {
-	InviteCode  string
-	Inviter     string
-	Expiration  int64
+	InviteCode string
+	Inviter    string
+	Expiration int64
 }
 
 type RequestSetGroupTopic struct {
