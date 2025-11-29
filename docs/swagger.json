@@ -2,42 +2,51 @@
   "swagger": "2.0",
   "info": {
     "title": "WhatsApp Multi-Device REST API",
-    "description": "Minimal RESTful API for WhatsApp Multi-Device and Multi-Session implementation.\n\n**Features 54 endpoints** including:\n- Device & Session Management\n- Messaging (Text, Images, Documents)\n- Message Actions (Read, React, Edit, Delete, Reply)\n- Group Management (CRUD, Participants, Admins, Settings)\n- User Profiles & Privacy\n- App State Synchronization\n- Presence & Status Management\n- Webhook Integration\n\n**Endpoints are organized by usage frequency** - most commonly used endpoints appear first.",
-    "version": "1.0.0",
+    "description": "Enterprise-grade RESTful API for WhatsApp Multi-Device and Multi-Session implementation.\n\n## Authentication\n\nThis API uses a **3-tier authentication system**:\n\n### 1. Admin Authentication (X-Admin-Secret)\nFor managing API keys and system administration.\n```\nX-Admin-Secret: your-admin-secret\n```\n\n### 2. API Key Authentication (X-API-Key)\nFor creating devices. Each API key can create up to `max_devices` devices.\n```\nX-API-Key: ak_xxxxxxxxxxxxxxxx\n```\n\n### 3. JWT Bearer Token (Authorization)\nFor all device operations. Obtained when creating a device.\n```\nAuthorization: Bearer eyJhbGciOiJIUzI1NiIs...\n```\n\n## Quick Start\n\n1. **Admin creates API Key** → `POST /admin/api-keys`\n2. **Customer creates Device** → `POST /devices` (returns JWT)\n3. **Customer uses JWT** → All `/devices/me/*` endpoints\n\n## Features\n\n- 60+ endpoints for complete WhatsApp automation\n- JWT tokens with no expiry (regenerate anytime)\n- Multi-tenant support via API keys\n- Webhook integration for real-time events",
+    "version": "2.0.0",
     "contact": {
       "name": "API Support",
       "url": "https://github.com/gdbrns/go-whatsapp-multi-session-rest-api"
     }
   },
-  "host": "localhost:3000",
+  "host": "localhost:7001",
   "basePath": "/",
   "schemes": ["http", "https"],
   "consumes": ["application/json"],
   "produces": ["application/json"],
   "securityDefinitions": {
-    "BasicAuth": {
-      "type": "basic",
-      "description": "Basic authentication for device creation (username/password)"
+    "AdminAuth": {
+      "type": "apiKey",
+      "name": "X-Admin-Secret",
+      "in": "header",
+      "description": "Admin secret key for managing API keys. Set in .env as ADMIN_SECRET"
+    },
+    "APIKeyAuth": {
+      "type": "apiKey",
+      "name": "X-API-Key",
+      "in": "header",
+      "description": "API key for creating devices. Format: ak_xxxxxxxxxxxxxxxx"
     },
     "BearerAuth": {
       "type": "apiKey",
       "name": "Authorization",
       "in": "header",
-      "description": "JWT Bearer token for authenticated requests. Format: Authorization: Bearer <jwt_token>"
+      "description": "JWT Bearer token for device operations. Format: Bearer <jwt_token>"
     }
   },
   "tags": [
-    {"name": "00 - Root", "description": "Server status and health check"},
+    {"name": "00 - Health", "description": "Server status and health check"},
     {"name": "01 - Documentation", "description": "API documentation and Swagger UI"},
-    {"name": "02 - Authentication", "description": "Device registration and JWT token creation (Basic Auth)"},
-    {"name": "03 - Device Management", "description": "Device login, logout, status, and reconnection"},
-    {"name": "04 - User Management", "description": "User profiles, privacy settings, and status updates"},
-    {"name": "05 - Messaging", "description": "Send text, images, documents"},
-    {"name": "06 - Message Actions", "description": "Read, react, edit, delete, reply to messages"},
-    {"name": "07 - Group Management", "description": "Create, manage, and administer WhatsApp groups"},
-    {"name": "08 - Presence & Status", "description": "Typing indicators, online status, disappearing messages"},
-    {"name": "09 - App State", "description": "App state synchronization"},
-    {"name": "10 - Webhooks", "description": "Webhook configuration and management"}
+    {"name": "02 - Admin", "description": "API key management (Admin only)"},
+    {"name": "03 - Device Registration", "description": "Create devices and manage JWT tokens"},
+    {"name": "04 - Device Operations", "description": "Login, logout, status, and reconnection"},
+    {"name": "05 - User Management", "description": "User profiles, privacy settings, and contacts"},
+    {"name": "06 - Messaging", "description": "Send text, images, documents"},
+    {"name": "07 - Message Actions", "description": "Read, react, edit, delete, reply to messages"},
+    {"name": "08 - Group Management", "description": "Create, manage, and administer WhatsApp groups"},
+    {"name": "09 - Presence & Status", "description": "Typing indicators, online status, disappearing messages"},
+    {"name": "10 - App State", "description": "App state synchronization"},
+    {"name": "11 - Webhooks", "description": "Webhook configuration and management"}
   ],
   "definitions": {
     "ErrorResponse": {
@@ -45,8 +54,7 @@
       "properties": {
         "status": {"type": "boolean", "example": false},
         "code": {"type": "integer", "example": 400},
-        "message": {"type": "string", "example": "Bad request"},
-        "error": {"type": "string", "example": "Invalid parameter: chat_jid is required"}
+        "message": {"type": "string", "example": "Bad request"}
       }
     },
     "SuccessResponse": {
@@ -57,14 +65,45 @@
         "message": {"type": "string", "example": "Success"},
         "data": {"type": "object"}
       }
+    },
+    "APIKey": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "integer", "example": 1},
+        "api_key": {"type": "string", "example": "ak_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"},
+        "customer_name": {"type": "string", "example": "Acme Corp"},
+        "customer_email": {"type": "string", "example": "admin@acme.com"},
+        "max_devices": {"type": "integer", "example": 10},
+        "rate_limit_per_hour": {"type": "integer", "example": 1000},
+        "is_active": {"type": "boolean", "example": true}
+      }
+    },
+    "Device": {
+      "type": "object",
+      "properties": {
+        "device_id": {"type": "string", "example": "550e8400-e29b-41d4-a716-446655440000"},
+        "device_name": {"type": "string", "example": "Production Phone"},
+        "whatsmeow_jid": {"type": "string", "example": "6281234567890@s.whatsapp.net"},
+        "status": {"type": "string", "example": "connected"},
+        "token": {"type": "string", "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}
+      }
+    },
+    "JWTClaims": {
+      "type": "object",
+      "properties": {
+        "device_id": {"type": "string", "example": "550e8400-e29b-41d4-a716-446655440000"},
+        "api_key_id": {"type": "integer", "example": 1},
+        "jid": {"type": "string", "example": "6281234567890@s.whatsapp.net"},
+        "version": {"type": "integer", "example": 1, "description": "JWT version for invalidation"}
+      }
     }
   },
   "paths": {
     "/": {
       "get": {
-        "tags": ["00 - Root"],
+        "tags": ["00 - Health"],
         "summary": "Server Status",
-        "description": "Get server status and health check",
+        "description": "Get server status and health check. No authentication required.",
         "responses": {
           "200": {
             "description": "Server is running",
@@ -73,14 +112,7 @@
               "properties": {
                 "status": {"type": "boolean", "example": true},
                 "code": {"type": "integer", "example": 200},
-                "message": {"type": "string", "example": "WhatsApp API Server is running"},
-                "data": {
-                  "type": "object",
-                  "properties": {
-                    "version": {"type": "string", "example": "1.0.0"},
-                    "uptime": {"type": "string", "example": "2h 30m 15s"}
-                  }
-                }
+                "message": {"type": "string", "example": "Working great!"}
               }
             }
           }
@@ -90,7 +122,7 @@
     "/docs/swagger.json": {
       "get": {
         "tags": ["01 - Documentation"],
-        "summary": "API Documentation (JSON)",
+        "summary": "OpenAPI Specification (JSON)",
         "description": "Get OpenAPI/Swagger documentation in JSON format",
         "produces": ["application/json"],
         "responses": {"200": {"description": "Swagger JSON documentation"}}
@@ -99,7 +131,7 @@
     "/docs/swagger.yaml": {
       "get": {
         "tags": ["01 - Documentation"],
-        "summary": "API Documentation (YAML)",
+        "summary": "OpenAPI Specification (YAML)",
         "description": "Get OpenAPI/Swagger documentation in YAML format",
         "produces": ["application/yaml"],
         "responses": {"200": {"description": "Swagger YAML documentation"}}
@@ -113,70 +145,77 @@
         "responses": {"200": {"description": "Swagger UI HTML"}}
       }
     },
-    "/docs/function": {
-      "get": {
-        "tags": ["01 - Documentation"],
-        "summary": "Function Reference",
-        "description": "Helper documentation for API functions",
-        "responses": {"200": {"description": "Function documentation HTML"}}
-      }
-    },
-    "/device/add": {
+    "/admin/api-keys": {
       "post": {
-        "security": [{"BasicAuth": []}],
-        "tags": ["02 - Authentication"],
-        "summary": "Register New Device",
-        "description": "Creates a new device session and issues JWT token.\n\n**Authentication:** Basic Auth (username/password)\n\n**Returns:** JWT token for subsequent API calls",
+        "security": [{"AdminAuth": []}],
+        "tags": ["02 - Admin"],
+        "summary": "Create API Key",
+        "description": "Create a new API key for a customer. The API key is only shown once in the response - save it securely!",
         "consumes": ["application/json"],
-        "produces": ["application/json"],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["customer_name"],
+              "properties": {
+                "customer_name": {"type": "string", "example": "Acme Corp", "description": "Customer/company name"},
+                "customer_email": {"type": "string", "example": "admin@acme.com", "description": "Contact email (optional)"},
+                "max_devices": {"type": "integer", "example": 10, "default": 5, "description": "Maximum devices this key can create"},
+                "rate_limit_per_hour": {"type": "integer", "example": 5000, "default": 1000, "description": "API rate limit per hour"}
+              }
+            }
+          }
+        ],
         "responses": {
-          "200": {
-            "description": "Device registered successfully",
+          "201": {
+            "description": "API key created successfully",
             "schema": {
               "type": "object",
               "properties": {
                 "status": {"type": "boolean", "example": true},
-                "code": {"type": "integer", "example": 200},
-                "message": {"type": "string", "example": "Device added successfully"},
+                "code": {"type": "integer", "example": 201},
+                "message": {"type": "string", "example": "API key created successfully"},
                 "data": {
                   "type": "object",
                   "properties": {
-                    "token": {"type": "string", "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."},
-                    "device_id": {"type": "string", "example": "550e8400-e29b-41d4-a716-446655440000"},
-                    "jid": {"type": "string", "example": "6281234567890"}
+                    "id": {"type": "integer", "example": 1},
+                    "api_key": {"type": "string", "example": "ak_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6", "description": "Save this! Only shown once"},
+                    "customer_name": {"type": "string", "example": "Acme Corp"},
+                    "max_devices": {"type": "integer", "example": 10}
                   }
                 }
               }
             }
           },
-          "401": {"description": "Unauthorized - Invalid credentials", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "401": {"description": "Unauthorized - Invalid admin secret", "schema": {"$ref": "#/definitions/ErrorResponse"}}
         }
-      }
-    },
-    "/devices": {
+      },
       "get": {
-        "security": [{"BearerAuth": []}],
-        "tags": ["03 - Device Management"],
-        "summary": "List All Devices",
-        "description": "Get list of all connected devices",
+        "security": [{"AdminAuth": []}],
+        "tags": ["02 - Admin"],
+        "summary": "List All API Keys",
+        "description": "Get list of all API keys (keys are masked for security)",
         "responses": {
           "200": {
-            "description": "Device list retrieved",
+            "description": "API keys retrieved",
             "schema": {
               "type": "object",
               "properties": {
                 "status": {"type": "boolean", "example": true},
-                "code": {"type": "integer", "example": 200},
                 "data": {
                   "type": "array",
                   "items": {
                     "type": "object",
                     "properties": {
-                      "device_id": {"type": "string"},
-                      "whatsmeow_jid": {"type": "string"},
-                      "is_active": {"type": "boolean"},
-                      "last_login_at": {"type": "string"},
-                      "created_at": {"type": "string"}
+                      "id": {"type": "integer", "example": 1},
+                      "api_key_masked": {"type": "string", "example": "ak_a1b2...o5p6"},
+                      "customer_name": {"type": "string", "example": "Acme Corp"},
+                      "device_count": {"type": "integer", "example": 3},
+                      "max_devices": {"type": "integer", "example": 10},
+                      "is_active": {"type": "boolean", "example": true}
                     }
                   }
                 }
@@ -186,37 +225,214 @@
         }
       }
     },
-    "/devices/{device_id}": {
+    "/admin/api-keys/{id}": {
       "get": {
-        "security": [{"BearerAuth": []}],
-        "tags": ["03 - Device Management"],
-        "summary": "Get Device Details",
-        "description": "Get specific device information",
+        "security": [{"AdminAuth": []}],
+        "tags": ["02 - Admin"],
+        "summary": "Get API Key Details",
+        "description": "Get detailed information about a specific API key including its devices",
         "parameters": [
-          {"name": "device_id", "in": "path", "required": true, "type": "string", "description": "Device ID"}
+          {"name": "id", "in": "path", "required": true, "type": "integer", "description": "API Key ID"}
         ],
         "responses": {
-          "200": {"description": "Device details retrieved"},
-          "404": {"description": "Device not found", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {"description": "API key details retrieved"},
+          "404": {"description": "API key not found", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      },
+      "patch": {
+        "security": [{"AdminAuth": []}],
+        "tags": ["02 - Admin"],
+        "summary": "Update API Key",
+        "description": "Update API key settings (name, limits, active status)",
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "type": "integer"},
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "customer_name": {"type": "string"},
+                "customer_email": {"type": "string"},
+                "max_devices": {"type": "integer"},
+                "rate_limit_per_hour": {"type": "integer"},
+                "is_active": {"type": "boolean", "description": "Set to false to disable all requests with this key"}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {"description": "API key updated successfully"}
+        }
+      },
+      "delete": {
+        "security": [{"AdminAuth": []}],
+        "tags": ["02 - Admin"],
+        "summary": "Delete API Key",
+        "description": "Delete an API key and ALL its associated devices. This action is irreversible!",
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "type": "integer"}
+        ],
+        "responses": {
+          "200": {"description": "API key deleted successfully"}
         }
       }
     },
-    "/devices/{device_id}/status": {
+    "/admin/api-keys/{id}/devices": {
       "get": {
-        "security": [{"BearerAuth": []}],
-        "tags": ["03 - Device Management"],
-        "summary": "Get Device Status",
-        "description": "Check if device is connected to WhatsApp",
+        "security": [{"AdminAuth": []}],
+        "tags": ["02 - Admin"],
+        "summary": "List Devices by API Key",
+        "description": "Get all devices created with a specific API key",
         "parameters": [
-          {"name": "device_id", "in": "path", "required": true, "type": "string", "description": "Device ID"}
+          {"name": "id", "in": "path", "required": true, "type": "integer", "description": "API Key ID"}
         ],
         "responses": {
-          "200": {
-            "description": "Device status retrieved",
+          "200": {"description": "Devices retrieved"}
+        }
+      }
+    },
+    "/admin/devices/{device_id}": {
+      "delete": {
+        "security": [{"AdminAuth": []}],
+        "tags": ["02 - Admin"],
+        "summary": "Delete Device (Admin)",
+        "description": "Admin can delete any device by ID",
+        "parameters": [
+          {"name": "device_id", "in": "path", "required": true, "type": "string", "description": "Device UUID"}
+        ],
+        "responses": {
+          "200": {"description": "Device deleted successfully"}
+        }
+      }
+    },
+    "/devices": {
+      "post": {
+        "security": [{"APIKeyAuth": []}],
+        "tags": ["03 - Device Registration"],
+        "summary": "Create Device",
+        "description": "Create a new device and receive a JWT token. This token is used for all subsequent device operations.\n\n**Important:** Save the JWT token securely - it provides access to all device operations.",
+        "consumes": ["application/json"],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "device_name": {"type": "string", "example": "Production Phone", "description": "Friendly name for the device"}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Device created successfully",
             "schema": {
               "type": "object",
               "properties": {
                 "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 201},
+                "message": {"type": "string", "example": "Device created successfully"},
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "device_id": {"type": "string", "example": "550e8400-e29b-41d4-a716-446655440000"},
+                    "device_name": {"type": "string", "example": "Production Phone"},
+                    "token": {"type": "string", "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...", "description": "Save this JWT token!"}
+                  }
+                }
+              }
+            }
+          },
+          "400": {"description": "Device limit reached for this API key"},
+          "401": {"description": "Invalid API key"}
+        }
+      }
+    },
+    "/devices/token": {
+      "post": {
+        "tags": ["03 - Device Registration"],
+        "summary": "Regenerate JWT Token",
+        "description": "Regenerate JWT token for a device. This invalidates all previous tokens for this device.\n\n**Use case:** If a token is compromised, regenerate to revoke access.",
+        "consumes": ["application/json"],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["device_id", "api_key"],
+              "properties": {
+                "device_id": {"type": "string", "example": "550e8400-e29b-41d4-a716-446655440000"},
+                "api_key": {"type": "string", "example": "ak_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6", "description": "The API key that created this device"}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Token regenerated successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "boolean", "example": true},
+                "message": {"type": "string", "example": "Token regenerated successfully"},
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "device_id": {"type": "string"},
+                    "token": {"type": "string", "description": "New JWT token (old tokens are now invalid)"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devices/me": {
+      "get": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["04 - Device Operations"],
+        "summary": "Get Current Device Info",
+        "description": "Get information about the current device (from JWT token)",
+        "responses": {
+          "200": {
+            "description": "Device info retrieved",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "boolean", "example": true},
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "device_id": {"type": "string"},
+                    "device_name": {"type": "string"},
+                    "whatsmeow_jid": {"type": "string"},
+                    "status": {"type": "string"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devices/me/status": {
+      "get": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["04 - Device Operations"],
+        "summary": "Get Device Connection Status",
+        "description": "Check if the device is connected to WhatsApp",
+        "responses": {
+          "200": {
+            "description": "Status retrieved",
+            "schema": {
+              "type": "object",
+              "properties": {
                 "data": {
                   "type": "object",
                   "properties": {
@@ -229,16 +445,15 @@
         }
       }
     },
-    "/devices/{device_id}/login": {
+    "/devices/me/login": {
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["03 - Device Management"],
+        "tags": ["04 - Device Operations"],
         "summary": "Login with QR Code",
-        "description": "Generate QR code for WhatsApp login",
+        "description": "Generate QR code for WhatsApp login. Scan with WhatsApp app.",
         "consumes": ["application/x-www-form-urlencoded"],
         "parameters": [
-          {"name": "device_id", "in": "path", "required": true, "type": "string"},
-          {"name": "output", "in": "formData", "type": "string", "enum": ["html", "json"], "default": "html", "description": "Response format"}
+          {"name": "output", "in": "formData", "type": "string", "enum": ["html", "json"], "default": "json", "description": "Response format"}
         ],
         "responses": {
           "200": {
@@ -246,7 +461,6 @@
             "schema": {
               "type": "object",
               "properties": {
-                "status": {"type": "boolean", "example": true},
                 "data": {
                   "type": "object",
                   "properties": {
@@ -260,23 +474,23 @@
         }
       }
     },
-    "/devices/{device_id}/login-code": {
+    "/devices/me/login-code": {
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["03 - Device Management"],
+        "tags": ["04 - Device Operations"],
         "summary": "Login with Pairing Code",
-        "description": "Generate pairing code for WhatsApp login (no QR scan needed)",
+        "description": "Generate pairing code for WhatsApp login (no QR scan needed). Enter the code in WhatsApp > Linked Devices > Link with phone number.",
         "consumes": ["application/json"],
         "parameters": [
-          {"name": "device_id", "in": "path", "required": true, "type": "string"},
           {
             "name": "body",
             "in": "body",
             "required": true,
             "schema": {
               "type": "object",
+              "required": ["phone"],
               "properties": {
-                "phone": {"type": "string", "example": "6281234567890", "description": "Phone number to pair (without +)"}
+                "phone": {"type": "string", "example": "6281234567890", "description": "Phone number without + or spaces"}
               }
             }
           }
@@ -300,54 +514,48 @@
         }
       }
     },
-    "/devices/{device_id}/reconnect": {
+    "/devices/me/reconnect": {
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["03 - Device Management"],
+        "tags": ["04 - Device Operations"],
         "summary": "Reconnect Device",
-        "description": "Manually reconnect a disconnected device",
-        "parameters": [
-          {"name": "device_id", "in": "path", "required": true, "type": "string"}
-        ],
+        "description": "Manually reconnect a disconnected device to WhatsApp",
         "responses": {
           "200": {"description": "Device reconnected"}
         }
       }
     },
-    "/devices/{device_id}/session": {
+    "/devices/me/session": {
       "delete": {
         "security": [{"BearerAuth": []}],
-        "tags": ["03 - Device Management"],
+        "tags": ["04 - Device Operations"],
         "summary": "Logout Device",
-        "description": "Logout and remove device session from WhatsApp",
-        "parameters": [
-          {"name": "device_id", "in": "path", "required": true, "type": "string"}
-        ],
+        "description": "Logout from WhatsApp and remove the session. You'll need to scan QR again.",
         "responses": {
           "200": {"description": "Device logged out"}
         }
       }
     },
-    "/devices/{device_id}/contacts/{phone}/registered": {
+    "/devices/me/contacts/{phone}/registered": {
       "get": {
         "security": [{"BearerAuth": []}],
-        "tags": ["03 - Device Management"],
-        "summary": "Check Contact Registration",
+        "tags": ["04 - Device Operations"],
+        "summary": "Check WhatsApp Registration",
         "description": "Check if a phone number is registered on WhatsApp",
         "parameters": [
-          {"name": "device_id", "in": "path", "required": true, "type": "string"},
           {"name": "phone", "in": "path", "required": true, "type": "string", "example": "6281234567890"}
         ],
         "responses": {
           "200": {
-            "description": "Registration status checked",
+            "description": "Registration status",
             "schema": {
               "type": "object",
               "properties": {
                 "data": {
                   "type": "object",
                   "properties": {
-                    "is_registered": {"type": "boolean", "example": true}
+                    "is_registered": {"type": "boolean", "example": true},
+                    "jid": {"type": "string", "example": "6281234567890@s.whatsapp.net"}
                   }
                 }
               }
@@ -359,9 +567,9 @@
     "/users/{user_jid}": {
       "get": {
         "security": [{"BearerAuth": []}],
-        "tags": ["04 - User Management"],
+        "tags": ["05 - User Management"],
         "summary": "Get User Info",
-        "description": "Get user profile information",
+        "description": "Get user profile information by JID",
         "parameters": [
           {"name": "user_jid", "in": "path", "required": true, "type": "string", "example": "6281234567890@s.whatsapp.net"}
         ],
@@ -371,59 +579,49 @@
     "/users/{user_jid}/profile-picture": {
       "get": {
         "security": [{"BearerAuth": []}],
-        "tags": ["04 - User Management"],
+        "tags": ["05 - User Management"],
         "summary": "Get Profile Picture",
         "description": "Get user's profile picture URL",
         "parameters": [
           {"name": "user_jid", "in": "path", "required": true, "type": "string"}
         ],
-        "responses": {"200": {"description": "Profile picture retrieved"}}
+        "responses": {"200": {"description": "Profile picture URL retrieved"}}
       }
     },
     "/users/{user_jid}/block": {
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["04 - User Management"],
+        "tags": ["05 - User Management"],
         "summary": "Block User",
-        "description": "Block a user on WhatsApp",
-        "parameters": [
-          {"name": "user_jid", "in": "path", "required": true, "type": "string"}
-        ],
+        "parameters": [{"name": "user_jid", "in": "path", "required": true, "type": "string"}],
         "responses": {"200": {"description": "User blocked"}}
       },
       "delete": {
         "security": [{"BearerAuth": []}],
-        "tags": ["04 - User Management"],
+        "tags": ["05 - User Management"],
         "summary": "Unblock User",
-        "description": "Unblock a previously blocked user",
-        "parameters": [
-          {"name": "user_jid", "in": "path", "required": true, "type": "string"}
-        ],
+        "parameters": [{"name": "user_jid", "in": "path", "required": true, "type": "string"}],
         "responses": {"200": {"description": "User unblocked"}}
       }
     },
     "/users/me/privacy": {
       "get": {
         "security": [{"BearerAuth": []}],
-        "tags": ["04 - User Management"],
+        "tags": ["05 - User Management"],
         "summary": "Get Privacy Settings",
-        "description": "Get current privacy settings",
         "responses": {"200": {"description": "Privacy settings retrieved"}}
       },
       "patch": {
         "security": [{"BearerAuth": []}],
-        "tags": ["04 - User Management"],
+        "tags": ["05 - User Management"],
         "summary": "Update Privacy Settings",
-        "description": "Update specific privacy setting",
         "consumes": ["application/json"],
         "parameters": [
           {
             "name": "body",
             "in": "body",
-            "required": true,
             "schema": {
               "type": "object",
-              "required": ["setting", "value"],
               "properties": {
                 "setting": {"type": "string", "enum": ["last_seen", "profile_picture", "status", "read_receipts", "groups"]},
                 "value": {"type": "string", "enum": ["all", "contacts", "contact_blacklist", "none"]}
@@ -431,35 +629,31 @@
             }
           }
         ],
-        "responses": {"200": {"description": "Privacy setting updated"}}
+        "responses": {"200": {"description": "Privacy updated"}}
       }
     },
     "/users/me/status-privacy": {
       "get": {
         "security": [{"BearerAuth": []}],
-        "tags": ["04 - User Management"],
+        "tags": ["05 - User Management"],
         "summary": "Get Status Privacy",
-        "description": "Get status privacy settings list",
         "responses": {"200": {"description": "Status privacy retrieved"}}
       }
     },
     "/users/me/status": {
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["04 - User Management"],
-        "summary": "Update Status/About",
-        "description": "Update your About status text",
+        "tags": ["05 - User Management"],
+        "summary": "Update About Status",
         "consumes": ["application/json"],
         "parameters": [
           {
             "name": "body",
             "in": "body",
-            "required": true,
             "schema": {
               "type": "object",
-              "required": ["status"],
               "properties": {
-                "status": {"type": "string", "example": "Busy working on awesome projects!"}
+                "status": {"type": "string", "example": "Available"}
               }
             }
           }
@@ -470,21 +664,18 @@
     "/users/{jid}/devices": {
       "get": {
         "security": [{"BearerAuth": []}],
-        "tags": ["04 - User Management"],
+        "tags": ["05 - User Management"],
         "summary": "Get User's Linked Devices",
-        "description": "Get all devices linked to a WhatsApp account",
-        "parameters": [
-          {"name": "jid", "in": "path", "required": true, "type": "string"}
-        ],
+        "parameters": [{"name": "jid", "in": "path", "required": true, "type": "string"}],
         "responses": {"200": {"description": "Linked devices retrieved"}}
       }
     },
     "/chats/{chat_jid}/messages": {
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["05 - Messaging"],
+        "tags": ["06 - Messaging"],
         "summary": "Send Text Message",
-        "description": "Send text message to a chat or group",
+        "description": "Send a text message to a chat or group",
         "consumes": ["application/json"],
         "parameters": [
           {"name": "chat_jid", "in": "path", "required": true, "type": "string", "example": "6281234567890@s.whatsapp.net"},
@@ -496,22 +687,22 @@
               "type": "object",
               "required": ["text"],
               "properties": {
-                "text": {"type": "string", "example": "Hello! How are you?"},
-                "reply_to_message_id": {"type": "string", "description": "Reply to specific message ID"}
+                "text": {"type": "string", "example": "Hello, World!"},
+                "reply_to_message_id": {"type": "string", "description": "Message ID to reply to"}
               }
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Message sent successfully",
+            "description": "Message sent",
             "schema": {
               "type": "object",
               "properties": {
                 "data": {
                   "type": "object",
                   "properties": {
-                    "message_id": {"type": "string"}
+                    "message_id": {"type": "string", "example": "BAE1234567890ABCDEF"}
                   }
                 }
               }
@@ -521,14 +712,13 @@
       },
       "get": {
         "security": [{"BearerAuth": []}],
-        "tags": ["05 - Messaging"],
+        "tags": ["06 - Messaging"],
         "summary": "Get Chat Messages",
-        "description": "Get message history from a chat",
         "parameters": [
           {"name": "chat_jid", "in": "path", "required": true, "type": "string"},
           {"name": "limit", "in": "query", "type": "integer", "default": 50},
-          {"name": "before", "in": "query", "type": "string", "description": "Message ID to fetch messages before"},
-          {"name": "after", "in": "query", "type": "string", "description": "Message ID to fetch messages after"}
+          {"name": "before", "in": "query", "type": "string"},
+          {"name": "after", "in": "query", "type": "string"}
         ],
         "responses": {"200": {"description": "Messages retrieved"}}
       }
@@ -536,16 +726,14 @@
     "/chats/{chat_jid}/images": {
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["05 - Messaging"],
+        "tags": ["06 - Messaging"],
         "summary": "Send Image",
-        "description": "Send image with optional caption",
         "consumes": ["multipart/form-data"],
         "parameters": [
           {"name": "chat_jid", "in": "path", "required": true, "type": "string"},
-          {"name": "file", "in": "formData", "required": true, "type": "file", "description": "Image file (JPEG, PNG, GIF)"},
-          {"name": "caption", "in": "formData", "type": "string", "description": "Image caption"},
-          {"name": "view_once", "in": "formData", "type": "boolean", "default": false, "description": "View once mode"},
-          {"name": "reply_to_message_id", "in": "formData", "type": "string", "description": "Reply to message ID"}
+          {"name": "file", "in": "formData", "required": true, "type": "file"},
+          {"name": "caption", "in": "formData", "type": "string"},
+          {"name": "view_once", "in": "formData", "type": "boolean", "default": false}
         ],
         "responses": {"200": {"description": "Image sent"}}
       }
@@ -553,16 +741,13 @@
     "/chats/{chat_jid}/documents": {
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["05 - Messaging"],
+        "tags": ["06 - Messaging"],
         "summary": "Send Document",
-        "description": "Send document file (PDF, DOC, XLS, etc.)",
         "consumes": ["multipart/form-data"],
         "parameters": [
           {"name": "chat_jid", "in": "path", "required": true, "type": "string"},
           {"name": "file", "in": "formData", "required": true, "type": "file"},
-          {"name": "filename", "in": "formData", "type": "string", "description": "Custom filename"},
-          {"name": "mimetype", "in": "formData", "type": "string", "description": "MIME type"},
-          {"name": "reply_to_message_id", "in": "formData", "type": "string"}
+          {"name": "filename", "in": "formData", "type": "string"}
         ],
         "responses": {"200": {"description": "Document sent"}}
       }
@@ -570,24 +755,12 @@
     "/chats/{chat_jid}/archive": {
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["05 - Messaging"],
+        "tags": ["06 - Messaging"],
         "summary": "Archive/Unarchive Chat",
-        "description": "Archive or unarchive a chat",
         "consumes": ["application/json"],
         "parameters": [
           {"name": "chat_jid", "in": "path", "required": true, "type": "string"},
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "required": ["archive"],
-              "properties": {
-                "archive": {"type": "boolean", "example": true}
-              }
-            }
-          }
+          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"archive": {"type": "boolean"}}}}
         ],
         "responses": {"200": {"description": "Chat archived/unarchived"}}
       }
@@ -595,24 +768,12 @@
     "/chats/{chat_jid}/pin": {
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["05 - Messaging"],
+        "tags": ["06 - Messaging"],
         "summary": "Pin/Unpin Chat",
-        "description": "Pin or unpin a chat to the top",
         "consumes": ["application/json"],
         "parameters": [
           {"name": "chat_jid", "in": "path", "required": true, "type": "string"},
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "required": ["pin"],
-              "properties": {
-                "pin": {"type": "boolean", "example": true}
-              }
-            }
-          }
+          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"pin": {"type": "boolean"}}}}
         ],
         "responses": {"200": {"description": "Chat pinned/unpinned"}}
       }
@@ -620,23 +781,12 @@
     "/messages/{message_id}/read": {
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["06 - Message Actions"],
+        "tags": ["07 - Message Actions"],
         "summary": "Mark Message as Read",
-        "description": "Send read receipt for a message",
         "consumes": ["application/json"],
         "parameters": [
           {"name": "message_id", "in": "path", "required": true, "type": "string"},
-          {
-            "name": "body",
-            "in": "body",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "sender_jid": {"type": "string"},
-                "chat_jid": {"type": "string"}
-              }
-            }
-          }
+          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"sender_jid": {"type": "string"}, "chat_jid": {"type": "string"}}}}
         ],
         "responses": {"200": {"description": "Message marked as read"}}
       }
@@ -644,86 +794,48 @@
     "/messages/{message_id}/reaction": {
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["06 - Message Actions"],
+        "tags": ["07 - Message Actions"],
         "summary": "React to Message",
-        "description": "Add emoji reaction to a message. Send empty emoji to remove reaction.",
+        "description": "Add emoji reaction. Send empty string to remove.",
         "consumes": ["application/json"],
         "parameters": [
           {"name": "message_id", "in": "path", "required": true, "type": "string"},
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "required": ["emoji"],
-              "properties": {
-                "emoji": {"type": "string", "example": "👍"}
-              }
-            }
-          }
+          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"emoji": {"type": "string", "example": "👍"}}}}
         ],
-        "responses": {"200": {"description": "Reaction added/removed"}}
+        "responses": {"200": {"description": "Reaction added"}}
       }
     },
     "/messages/{message_id}": {
       "patch": {
         "security": [{"BearerAuth": []}],
-        "tags": ["06 - Message Actions"],
+        "tags": ["07 - Message Actions"],
         "summary": "Edit Message",
         "description": "Edit text message (within 15 minutes)",
         "consumes": ["application/json"],
         "parameters": [
           {"name": "message_id", "in": "path", "required": true, "type": "string"},
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "required": ["text"],
-              "properties": {
-                "text": {"type": "string", "example": "Updated message text"},
-                "chat_jid": {"type": "string"}
-              }
-            }
-          }
+          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"text": {"type": "string"}, "chat_jid": {"type": "string"}}}}
         ],
         "responses": {"200": {"description": "Message edited"}}
       },
       "delete": {
         "security": [{"BearerAuth": []}],
-        "tags": ["06 - Message Actions"],
+        "tags": ["07 - Message Actions"],
         "summary": "Delete Message",
         "description": "Delete message for everyone",
-        "parameters": [
-          {"name": "message_id", "in": "path", "required": true, "type": "string"}
-        ],
+        "parameters": [{"name": "message_id", "in": "path", "required": true, "type": "string"}],
         "responses": {"200": {"description": "Message deleted"}}
       }
     },
     "/messages/{message_id}/reply": {
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["06 - Message Actions"],
+        "tags": ["07 - Message Actions"],
         "summary": "Reply to Message",
-        "description": "Reply to a specific message",
         "consumes": ["application/json"],
         "parameters": [
           {"name": "message_id", "in": "path", "required": true, "type": "string"},
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "required": ["chat_jid", "text"],
-              "properties": {
-                "chat_jid": {"type": "string", "example": "6281234567890@s.whatsapp.net"},
-                "text": {"type": "string", "example": "Thanks for the info!"}
-              }
-            }
-          }
+          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"chat_jid": {"type": "string"}, "text": {"type": "string"}}}}
         ],
         "responses": {"200": {"description": "Reply sent"}}
       }
@@ -731,27 +843,24 @@
     "/groups": {
       "get": {
         "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
+        "tags": ["08 - Group Management"],
         "summary": "List All Groups",
-        "description": "Get list of all joined groups",
         "responses": {"200": {"description": "Groups retrieved"}}
       },
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
+        "tags": ["08 - Group Management"],
         "summary": "Create Group",
-        "description": "Create new WhatsApp group",
         "consumes": ["application/json"],
         "parameters": [
           {
             "name": "body",
             "in": "body",
-            "required": true,
             "schema": {
               "type": "object",
               "required": ["name"],
               "properties": {
-                "name": {"type": "string", "example": "My Awesome Group"},
+                "name": {"type": "string", "example": "My Group"},
                 "participants": {"type": "array", "items": {"type": "string"}, "example": ["6281234567890@s.whatsapp.net"]}
               }
             }
@@ -763,28 +872,24 @@
     "/groups/joined": {
       "get": {
         "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
+        "tags": ["08 - Group Management"],
         "summary": "Get Joined Groups",
-        "description": "Get list of groups the user has joined",
         "responses": {"200": {"description": "Joined groups retrieved"}}
       }
     },
     "/groups/{group_jid}": {
       "get": {
         "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
-        "summary": "Get Group Details",
-        "description": "Get comprehensive group information",
-        "parameters": [
-          {"name": "group_jid", "in": "path", "required": true, "type": "string"}
-        ],
+        "tags": ["08 - Group Management"],
+        "summary": "Get Group Info",
+        "parameters": [{"name": "group_jid", "in": "path", "required": true, "type": "string"}],
         "responses": {"200": {"description": "Group info retrieved"}}
       }
     },
     "/groups/{group_jid}/leave": {
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
+        "tags": ["08 - Group Management"],
         "summary": "Leave Group",
         "parameters": [{"name": "group_jid", "in": "path", "required": true, "type": "string"}],
         "responses": {"200": {"description": "Left group"}}
@@ -793,25 +898,23 @@
     "/groups/{group_jid}/name": {
       "patch": {
         "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
+        "tags": ["08 - Group Management"],
         "summary": "Update Group Name",
-        "consumes": ["application/json"],
         "parameters": [
           {"name": "group_jid", "in": "path", "required": true, "type": "string"},
-          {"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}}}}
+          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"name": {"type": "string"}}}}
         ],
-        "responses": {"200": {"description": "Group name updated"}}
+        "responses": {"200": {"description": "Name updated"}}
       }
     },
     "/groups/{group_jid}/description": {
       "patch": {
         "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
+        "tags": ["08 - Group Management"],
         "summary": "Update Group Description",
-        "consumes": ["application/json"],
         "parameters": [
           {"name": "group_jid", "in": "path", "required": true, "type": "string"},
-          {"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["description"], "properties": {"description": {"type": "string"}}}}
+          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"description": {"type": "string"}}}}
         ],
         "responses": {"200": {"description": "Description updated"}}
       }
@@ -819,7 +922,7 @@
     "/groups/{group_jid}/photo": {
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
+        "tags": ["08 - Group Management"],
         "summary": "Update Group Photo",
         "consumes": ["multipart/form-data"],
         "parameters": [
@@ -832,8 +935,8 @@
     "/groups/{group_jid}/invite-link": {
       "get": {
         "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
-        "summary": "Get Group Invite Link",
+        "tags": ["08 - Group Management"],
+        "summary": "Get Invite Link",
         "parameters": [
           {"name": "group_jid", "in": "path", "required": true, "type": "string"},
           {"name": "reset", "in": "query", "type": "boolean", "default": false}
@@ -844,9 +947,8 @@
     "/groups/{group_jid}/settings": {
       "patch": {
         "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
+        "tags": ["08 - Group Management"],
         "summary": "Update Group Settings",
-        "consumes": ["application/json"],
         "parameters": [
           {"name": "group_jid", "in": "path", "required": true, "type": "string"},
           {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"announce": {"type": "boolean"}, "locked": {"type": "boolean"}}}}
@@ -854,33 +956,100 @@
         "responses": {"200": {"description": "Settings updated"}}
       }
     },
+    "/groups/{group_jid}/participants": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["08 - Group Management"],
+        "summary": "Add Participants",
+        "parameters": [
+          {"name": "group_jid", "in": "path", "required": true, "type": "string"},
+          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"participants": {"type": "array", "items": {"type": "string"}}}}}
+        ],
+        "responses": {"200": {"description": "Participants added"}}
+      },
+      "delete": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["08 - Group Management"],
+        "summary": "Remove Participants",
+        "parameters": [
+          {"name": "group_jid", "in": "path", "required": true, "type": "string"},
+          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"participants": {"type": "array", "items": {"type": "string"}}}}}
+        ],
+        "responses": {"200": {"description": "Participants removed"}}
+      }
+    },
+    "/groups/{group_jid}/admins": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["08 - Group Management"],
+        "summary": "Promote to Admin",
+        "parameters": [
+          {"name": "group_jid", "in": "path", "required": true, "type": "string"},
+          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"users": {"type": "array", "items": {"type": "string"}}}}}
+        ],
+        "responses": {"200": {"description": "Promoted"}}
+      },
+      "delete": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["08 - Group Management"],
+        "summary": "Demote from Admin",
+        "parameters": [
+          {"name": "group_jid", "in": "path", "required": true, "type": "string"},
+          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"users": {"type": "array", "items": {"type": "string"}}}}}
+        ],
+        "responses": {"200": {"description": "Demoted"}}
+      }
+    },
     "/groups/{group_jid}/participant-requests": {
       "get": {
         "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
+        "tags": ["08 - Group Management"],
         "summary": "Get Join Requests",
         "parameters": [{"name": "group_jid", "in": "path", "required": true, "type": "string"}],
-        "responses": {"200": {"description": "Join requests retrieved"}}
+        "responses": {"200": {"description": "Requests retrieved"}}
+      }
+    },
+    "/groups/{group_jid}/requests/approve": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["08 - Group Management"],
+        "summary": "Approve Join Requests",
+        "parameters": [
+          {"name": "group_jid", "in": "path", "required": true, "type": "string"},
+          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"users": {"type": "array", "items": {"type": "string"}}}}}
+        ],
+        "responses": {"200": {"description": "Approved"}}
+      }
+    },
+    "/groups/{group_jid}/requests/reject": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["08 - Group Management"],
+        "summary": "Reject Join Requests",
+        "parameters": [
+          {"name": "group_jid", "in": "path", "required": true, "type": "string"},
+          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"users": {"type": "array", "items": {"type": "string"}}}}}
+        ],
+        "responses": {"200": {"description": "Rejected"}}
       }
     },
     "/groups/{group_jid}/join-approval": {
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
+        "tags": ["08 - Group Management"],
         "summary": "Set Join Approval Mode",
-        "consumes": ["application/json"],
         "parameters": [
           {"name": "group_jid", "in": "path", "required": true, "type": "string"},
-          {"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["mode"], "properties": {"mode": {"type": "boolean"}}}}
+          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"mode": {"type": "boolean"}}}}
         ],
-        "responses": {"200": {"description": "Join approval mode set"}}
+        "responses": {"200": {"description": "Mode set"}}
       }
     },
     "/groups/invite/{invite_code}": {
       "get": {
         "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
-        "summary": "Preview Group from Invite Link",
+        "tags": ["08 - Group Management"],
+        "summary": "Get Info from Invite Link",
         "parameters": [{"name": "invite_code", "in": "path", "required": true, "type": "string"}],
         "responses": {"200": {"description": "Group info from invite"}}
       }
@@ -888,38 +1057,35 @@
     "/groups/{group_jid}/join-invite": {
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
-        "summary": "Join Group via Invite",
-        "consumes": ["application/json"],
+        "tags": ["08 - Group Management"],
+        "summary": "Join via Invite",
         "parameters": [
           {"name": "group_jid", "in": "path", "required": true, "type": "string"},
-          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"inviter": {"type": "string"}, "invite_code": {"type": "string"}, "expiration": {"type": "integer"}}}}
+          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"invite_code": {"type": "string"}}}}
         ],
-        "responses": {"200": {"description": "Joined group"}}
+        "responses": {"200": {"description": "Joined"}}
       }
     },
     "/groups/{group_jid}/member-add-mode": {
       "patch": {
         "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
+        "tags": ["08 - Group Management"],
         "summary": "Set Member Add Mode",
-        "consumes": ["application/json"],
         "parameters": [
           {"name": "group_jid", "in": "path", "required": true, "type": "string"},
-          {"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["mode"], "properties": {"mode": {"type": "string"}}}}
+          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"mode": {"type": "string"}}}}
         ],
-        "responses": {"200": {"description": "Member add mode set"}}
+        "responses": {"200": {"description": "Mode set"}}
       }
     },
     "/groups/{group_jid}/topic": {
       "patch": {
         "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
+        "tags": ["08 - Group Management"],
         "summary": "Update Group Topic",
-        "consumes": ["application/json"],
         "parameters": [
           {"name": "group_jid", "in": "path", "required": true, "type": "string"},
-          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"previous_id": {"type": "string"}, "new_id": {"type": "string"}, "topic": {"type": "string"}}}}
+          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"topic": {"type": "string"}}}}
         ],
         "responses": {"200": {"description": "Topic updated"}}
       }
@@ -927,7 +1093,7 @@
     "/groups/{parent_group_jid}/link/{group_jid}": {
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
+        "tags": ["08 - Group Management"],
         "summary": "Link Subgroup",
         "parameters": [
           {"name": "parent_group_jid", "in": "path", "required": true, "type": "string"},
@@ -939,113 +1105,36 @@
     "/groups/{community_jid}/linked-participants": {
       "get": {
         "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
+        "tags": ["08 - Group Management"],
         "summary": "Get Community Members",
         "parameters": [{"name": "community_jid", "in": "path", "required": true, "type": "string"}],
-        "responses": {"200": {"description": "Community members retrieved"}}
+        "responses": {"200": {"description": "Members retrieved"}}
       }
     },
     "/groups/{community_jid}/subgroups": {
       "get": {
         "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
-        "summary": "List Community Subgroups",
+        "tags": ["08 - Group Management"],
+        "summary": "List Subgroups",
         "parameters": [{"name": "community_jid", "in": "path", "required": true, "type": "string"}],
         "responses": {"200": {"description": "Subgroups retrieved"}}
-      }
-    },
-    "/groups/{group_jid}/participants": {
-      "post": {
-        "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
-        "summary": "Add Participants",
-        "consumes": ["application/json"],
-        "parameters": [
-          {"name": "group_jid", "in": "path", "required": true, "type": "string"},
-          {"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["participants"], "properties": {"participants": {"type": "array", "items": {"type": "string"}}}}}
-        ],
-        "responses": {"200": {"description": "Participants added"}}
-      },
-      "delete": {
-        "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
-        "summary": "Remove Participants",
-        "consumes": ["application/json"],
-        "parameters": [
-          {"name": "group_jid", "in": "path", "required": true, "type": "string"},
-          {"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["participants"], "properties": {"participants": {"type": "array", "items": {"type": "string"}}}}}
-        ],
-        "responses": {"200": {"description": "Participants removed"}}
-      }
-    },
-    "/groups/{group_jid}/requests/approve": {
-      "post": {
-        "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
-        "summary": "Approve Join Requests",
-        "consumes": ["application/json"],
-        "parameters": [
-          {"name": "group_jid", "in": "path", "required": true, "type": "string"},
-          {"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["users"], "properties": {"users": {"type": "array", "items": {"type": "string"}}}}}
-        ],
-        "responses": {"200": {"description": "Requests approved"}}
-      }
-    },
-    "/groups/{group_jid}/requests/reject": {
-      "post": {
-        "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
-        "summary": "Reject Join Requests",
-        "consumes": ["application/json"],
-        "parameters": [
-          {"name": "group_jid", "in": "path", "required": true, "type": "string"},
-          {"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["users"], "properties": {"users": {"type": "array", "items": {"type": "string"}}}}}
-        ],
-        "responses": {"200": {"description": "Requests rejected"}}
-      }
-    },
-    "/groups/{group_jid}/admins": {
-      "post": {
-        "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
-        "summary": "Promote to Admin",
-        "consumes": ["application/json"],
-        "parameters": [
-          {"name": "group_jid", "in": "path", "required": true, "type": "string"},
-          {"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["users"], "properties": {"users": {"type": "array", "items": {"type": "string"}}}}}
-        ],
-        "responses": {"200": {"description": "Promoted to admin"}}
-      },
-      "delete": {
-        "security": [{"BearerAuth": []}],
-        "tags": ["07 - Group Management"],
-        "summary": "Demote from Admin",
-        "consumes": ["application/json"],
-        "parameters": [
-          {"name": "group_jid", "in": "path", "required": true, "type": "string"},
-          {"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["users"], "properties": {"users": {"type": "array", "items": {"type": "string"}}}}}
-        ],
-        "responses": {"200": {"description": "Demoted from admin"}}
       }
     },
     "/chats/{chat_jid}/presence": {
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["08 - Presence & Status"],
+        "tags": ["09 - Presence & Status"],
         "summary": "Send Typing/Recording Indicator",
-        "description": "Send typing, recording, or paused presence",
         "consumes": ["application/json"],
         "parameters": [
           {"name": "chat_jid", "in": "path", "required": true, "type": "string"},
           {
             "name": "body",
             "in": "body",
-            "required": true,
             "schema": {
               "type": "object",
-              "required": ["presence_type"],
               "properties": {
-                "presence_type": {"type": "string", "enum": ["composing", "paused", "recording"], "example": "composing"},
+                "presence_type": {"type": "string", "enum": ["composing", "paused", "recording"]},
                 "media_type": {"type": "string", "enum": ["audio", "video"]}
               }
             }
@@ -1057,18 +1146,15 @@
     "/presence/status": {
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["08 - Presence & Status"],
-        "summary": "Update Availability Status",
-        "description": "Set online/offline status",
+        "tags": ["09 - Presence & Status"],
+        "summary": "Set Online/Offline Status",
         "consumes": ["application/json"],
         "parameters": [
           {
             "name": "body",
             "in": "body",
-            "required": true,
             "schema": {
               "type": "object",
-              "required": ["status"],
               "properties": {
                 "status": {"type": "string", "enum": ["available", "unavailable"]}
               }
@@ -1081,21 +1167,18 @@
     "/chats/{chat_jid}/disappearing-timer": {
       "patch": {
         "security": [{"BearerAuth": []}],
-        "tags": ["08 - Presence & Status"],
+        "tags": ["09 - Presence & Status"],
         "summary": "Set Disappearing Messages Timer",
-        "description": "Enable/disable disappearing messages",
         "consumes": ["application/json"],
         "parameters": [
           {"name": "chat_jid", "in": "path", "required": true, "type": "string"},
           {
             "name": "body",
             "in": "body",
-            "required": true,
             "schema": {
               "type": "object",
-              "required": ["timer"],
               "properties": {
-                "timer": {"type": "string", "enum": ["off", "24h", "7d", "90d"], "example": "7d"}
+                "timer": {"type": "string", "enum": ["off", "24h", "7d", "90d"]}
               }
             }
           }
@@ -1106,11 +1189,10 @@
     "/app-state/{name}": {
       "get": {
         "security": [{"BearerAuth": []}],
-        "tags": ["09 - App State"],
+        "tags": ["10 - App State"],
         "summary": "Fetch App State",
-        "description": "Fetch application state patches for synchronization",
         "parameters": [
-          {"name": "name", "in": "path", "required": true, "type": "string", "description": "App state name (e.g., mutation, encryption)"},
+          {"name": "name", "in": "path", "required": true, "type": "string"},
           {"name": "full_sync", "in": "query", "type": "boolean", "default": false},
           {"name": "only_if_not_synced", "in": "query", "type": "boolean", "default": false}
         ],
@@ -1120,79 +1202,72 @@
     "/app-state": {
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["09 - App State"],
+        "tags": ["10 - App State"],
         "summary": "Send App State Patch",
-        "description": "Send application state synchronization patches",
         "consumes": ["application/json"],
         "parameters": [
           {
             "name": "body",
             "in": "body",
-            "required": true,
             "schema": {
               "type": "object",
-              "required": ["name", "action"],
               "properties": {
-                "name": {"type": "string", "example": "chat_settings"},
-                "action": {"type": "string", "enum": ["mute", "pin"], "example": "mute"},
+                "name": {"type": "string"},
+                "action": {"type": "string"},
                 "data": {"type": "object"}
               }
             }
           }
         ],
-        "responses": {"200": {"description": "App state patch sent"}}
+        "responses": {"200": {"description": "Patch sent"}}
       }
     },
     "/app-state/mark-clean": {
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["09 - App State"],
+        "tags": ["10 - App State"],
         "summary": "Mark App State as Clean",
-        "description": "Mark application state as clean to avoid unnecessary syncing",
         "consumes": ["application/json"],
         "parameters": [
           {
             "name": "body",
             "in": "body",
-            "required": true,
             "schema": {
               "type": "object",
-              "required": ["clean_type"],
               "properties": {
-                "clean_type": {"type": "string", "example": "mutation"},
+                "clean_type": {"type": "string"},
                 "timestamp": {"type": "integer"}
               }
             }
           }
         ],
-        "responses": {"200": {"description": "App state marked as clean"}}
+        "responses": {"200": {"description": "Marked as clean"}}
       }
     },
     "/webhooks": {
       "get": {
         "security": [{"BearerAuth": []}],
-        "tags": ["10 - Webhooks"],
+        "tags": ["11 - Webhooks"],
         "summary": "List Webhooks",
-        "description": "Get all configured webhooks for the current device",
+        "description": "Get all webhooks configured for the current device",
         "responses": {"200": {"description": "Webhooks retrieved"}}
       },
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["10 - Webhooks"],
+        "tags": ["11 - Webhooks"],
         "summary": "Create Webhook",
-        "description": "Register a new webhook for receiving WhatsApp events",
+        "description": "Register a webhook to receive WhatsApp events",
         "consumes": ["application/json"],
         "parameters": [
           {
             "name": "body",
             "in": "body",
-            "required": true,
             "schema": {
               "type": "object",
               "required": ["url"],
               "properties": {
-                "url": {"type": "string", "description": "Webhook URL"},
-                "secret": {"type": "string", "description": "Webhook secret for signature verification"},
+                "url": {"type": "string", "example": "https://your-server.com/webhook"},
+                "secret": {"type": "string", "description": "Secret for HMAC signature verification"},
                 "events": {"type": "array", "items": {"type": "string"}, "example": ["message.received", "connection.connected"]}
               }
             }
@@ -1204,16 +1279,15 @@
     "/webhooks/{webhook_id}": {
       "get": {
         "security": [{"BearerAuth": []}],
-        "tags": ["10 - Webhooks"],
+        "tags": ["11 - Webhooks"],
         "summary": "Get Webhook Details",
         "parameters": [{"name": "webhook_id", "in": "path", "required": true, "type": "string"}],
-        "responses": {"200": {"description": "Webhook details retrieved"}}
+        "responses": {"200": {"description": "Webhook details"}}
       },
       "patch": {
         "security": [{"BearerAuth": []}],
-        "tags": ["10 - Webhooks"],
+        "tags": ["11 - Webhooks"],
         "summary": "Update Webhook",
-        "consumes": ["application/json"],
         "parameters": [
           {"name": "webhook_id", "in": "path", "required": true, "type": "string"},
           {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"url": {"type": "string"}, "events": {"type": "array", "items": {"type": "string"}}, "active": {"type": "boolean"}}}}
@@ -1222,7 +1296,7 @@
       },
       "delete": {
         "security": [{"BearerAuth": []}],
-        "tags": ["10 - Webhooks"],
+        "tags": ["11 - Webhooks"],
         "summary": "Delete Webhook",
         "parameters": [{"name": "webhook_id", "in": "path", "required": true, "type": "string"}],
         "responses": {"200": {"description": "Webhook deleted"}}
@@ -1231,17 +1305,16 @@
     "/webhooks/{webhook_id}/logs": {
       "get": {
         "security": [{"BearerAuth": []}],
-        "tags": ["10 - Webhooks"],
+        "tags": ["11 - Webhooks"],
         "summary": "Get Webhook Logs",
-        "description": "Get delivery logs for a webhook",
         "parameters": [{"name": "webhook_id", "in": "path", "required": true, "type": "string"}],
-        "responses": {"200": {"description": "Webhook logs retrieved"}}
+        "responses": {"200": {"description": "Logs retrieved"}}
       }
     },
     "/webhooks/{webhook_id}/test": {
       "post": {
         "security": [{"BearerAuth": []}],
-        "tags": ["10 - Webhooks"],
+        "tags": ["11 - Webhooks"],
         "summary": "Test Webhook",
         "description": "Send a test event to the webhook",
         "parameters": [{"name": "webhook_id", "in": "path", "required": true, "type": "string"}],
