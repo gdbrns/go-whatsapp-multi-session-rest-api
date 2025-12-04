@@ -50,8 +50,9 @@ func main() {
 
 	// Initialize Fiber
 	app := fiber.New(fiber.Config{
-		ErrorHandler: router.HttpErrorHandler,
-		BodyLimit:    router.BodyLimitBytes(),
+		ErrorHandler:   router.HttpErrorHandler,
+		BodyLimit:      router.BodyLimitBytes(),
+		ReadBufferSize: 8192, // Increase from default 4096 to handle larger headers (JWT tokens)
 	})
 
 	// Router Recovery

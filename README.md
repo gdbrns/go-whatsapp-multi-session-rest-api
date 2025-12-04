@@ -38,6 +38,7 @@
 - 🏗️ **Production Ready** - Docker support, environment configuration, logging
 - 📖 **OpenAPI/Swagger** - Interactive API documentation at `/docs/`
 - 🔑 **Admin Dashboard Ready** - Manage API keys and devices with admin endpoints
+- 📈 **Admin Dashboard APIs** - System stats, health monitoring, device status, batch reconnect
 
 ## 📋 Requirements
 
@@ -274,95 +275,101 @@ curl -X POST "http://localhost:7001/webhooks" \
 
 | # | Method | Endpoint | Auth | Description |
 |---|:------:|----------|:----:|-------------|
+| | | **Admin Dashboard** | | |
+| 1 | GET | `/admin/stats` | Admin | Get system statistics |
+| 2 | GET | `/admin/health` | Admin | Get system health info |
+| 3 | GET | `/admin/devices` | Admin | List all devices (all API keys) |
+| 4 | GET | `/admin/devices/status` | Admin | Get live connection status for all devices |
+| 5 | POST | `/admin/devices/reconnect` | Admin | Reconnect all disconnected devices |
+| 6 | GET | `/admin/webhooks/stats` | Admin | Get webhook delivery statistics |
 | | | **Admin (API Key Management)** | | |
-| 1 | POST | `/admin/api-keys` | Admin | Create API key |
-| 2 | GET | `/admin/api-keys` | Admin | List all API keys |
-| 3 | GET | `/admin/api-keys/{id}` | Admin | Get API key details |
-| 4 | PATCH | `/admin/api-keys/{id}` | Admin | Update API key |
-| 5 | DELETE | `/admin/api-keys/{id}` | Admin | Delete API key |
-| 6 | GET | `/admin/api-keys/{id}/devices` | Admin | List devices for API key |
-| 7 | DELETE | `/admin/devices/{device_id}` | Admin | Delete a device |
+| 7 | POST | `/admin/api-keys` | Admin | Create API key |
+| 8 | GET | `/admin/api-keys` | Admin | List all API keys |
+| 9 | GET | `/admin/api-keys/{id}` | Admin | Get API key details |
+| 10 | PATCH | `/admin/api-keys/{id}` | Admin | Update API key |
+| 11 | DELETE | `/admin/api-keys/{id}` | Admin | Delete API key |
+| 12 | GET | `/admin/api-keys/{id}/devices` | Admin | List devices for API key |
+| 13 | DELETE | `/admin/devices/{device_id}` | Admin | Delete a device |
 | | | **Device Creation & Token** | | |
-| 8 | POST | `/devices` | API-Key | Create device (returns JWT token) |
-| 9 | POST | `/devices/token` | - | Regenerate JWT token |
+| 14 | POST | `/devices` | API-Key | Create device (returns JWT token) |
+| 15 | POST | `/devices/token` | - | Regenerate JWT token |
 | | | **Device Operations (JWT Token)** | | |
-| 10 | GET | `/devices/me` | JWT | Get current device info |
-| 11 | GET | `/devices/me/status` | JWT | Get connection status |
-| 12 | POST | `/devices/me/login` | JWT | Login via QR code |
-| 13 | POST | `/devices/me/login-code` | JWT | Login with pairing code |
-| 14 | POST | `/devices/me/reconnect` | JWT | Reconnect device |
-| 15 | DELETE | `/devices/me/session` | JWT | Logout device |
-| 16 | GET | `/devices/me/contacts/{phone}/registered` | JWT | Check if phone is registered |
+| 16 | GET | `/devices/me` | JWT | Get current device info |
+| 17 | GET | `/devices/me/status` | JWT | Get connection status |
+| 18 | POST | `/devices/me/login` | JWT | Login via QR code |
+| 19 | POST | `/devices/me/login-code` | JWT | Login with pairing code |
+| 20 | POST | `/devices/me/reconnect` | JWT | Reconnect device |
+| 21 | DELETE | `/devices/me/session` | JWT | Logout device |
+| 22 | GET | `/devices/me/contacts/{phone}/registered` | JWT | Check if phone is registered |
 | | | **User Management** | | |
-| 17 | GET | `/users/{user_jid}` | JWT | Get user info |
-| 18 | GET | `/users/{user_jid}/profile-picture` | JWT | Get user profile picture |
-| 19 | POST | `/users/{user_jid}/block` | JWT | Block user |
-| 20 | DELETE | `/users/{user_jid}/block` | JWT | Unblock user |
-| 21 | GET | `/users/me/privacy` | JWT | Get privacy settings |
-| 22 | PATCH | `/users/me/privacy` | JWT | Update privacy settings |
-| 23 | GET | `/users/me/status-privacy` | JWT | Get status privacy |
-| 24 | POST | `/users/me/status` | JWT | Update status/about |
-| 25 | GET | `/users/{jid}/devices` | JWT | Get user's linked devices |
+| 23 | GET | `/users/{user_jid}` | JWT | Get user info |
+| 24 | GET | `/users/{user_jid}/profile-picture` | JWT | Get user profile picture |
+| 25 | POST | `/users/{user_jid}/block` | JWT | Block user |
+| 26 | DELETE | `/users/{user_jid}/block` | JWT | Unblock user |
+| 27 | GET | `/users/me/privacy` | JWT | Get privacy settings |
+| 28 | PATCH | `/users/me/privacy` | JWT | Update privacy settings |
+| 29 | GET | `/users/me/status-privacy` | JWT | Get status privacy |
+| 30 | POST | `/users/me/status` | JWT | Update status/about |
+| 31 | GET | `/users/{jid}/devices` | JWT | Get user's linked devices |
 | | | **Messaging** | | |
-| 26 | POST | `/chats/{chat_jid}/messages` | JWT | Send text message |
-| 27 | GET | `/chats/{chat_jid}/messages` | JWT | Get chat messages |
-| 28 | POST | `/chats/{chat_jid}/images` | JWT | Send image |
-| 29 | POST | `/chats/{chat_jid}/documents` | JWT | Send document |
-| 30 | POST | `/chats/{chat_jid}/archive` | JWT | Archive/unarchive chat |
-| 31 | POST | `/chats/{chat_jid}/pin` | JWT | Pin/unpin chat |
+| 32 | POST | `/chats/{chat_jid}/messages` | JWT | Send text message |
+| 33 | GET | `/chats/{chat_jid}/messages` | JWT | Get chat messages |
+| 34 | POST | `/chats/{chat_jid}/images` | JWT | Send image |
+| 35 | POST | `/chats/{chat_jid}/documents` | JWT | Send document |
+| 36 | POST | `/chats/{chat_jid}/archive` | JWT | Archive/unarchive chat |
+| 37 | POST | `/chats/{chat_jid}/pin` | JWT | Pin/unpin chat |
 | | | **Message Actions** | | |
-| 32 | POST | `/messages/{message_id}/read` | JWT | Mark message as read |
-| 33 | POST | `/messages/{message_id}/reaction` | JWT | React to message |
-| 34 | PATCH | `/messages/{message_id}` | JWT | Edit message |
-| 35 | DELETE | `/messages/{message_id}` | JWT | Delete message |
-| 36 | POST | `/messages/{message_id}/reply` | JWT | Reply to message |
+| 38 | POST | `/messages/{message_id}/read` | JWT | Mark message as read |
+| 39 | POST | `/messages/{message_id}/reaction` | JWT | React to message |
+| 40 | PATCH | `/messages/{message_id}` | JWT | Edit message |
+| 41 | DELETE | `/messages/{message_id}` | JWT | Delete message |
+| 42 | POST | `/messages/{message_id}/reply` | JWT | Reply to message |
 | | | **Group Management** | | |
-| 37 | GET | `/groups` | JWT | List all groups |
-| 38 | POST | `/groups` | JWT | Create group |
-| 39 | GET | `/groups/joined` | JWT | Get joined groups |
-| 40 | GET | `/groups/{group_jid}` | JWT | Get group info |
-| 41 | POST | `/groups/{group_jid}/leave` | JWT | Leave group |
-| 42 | PATCH | `/groups/{group_jid}/name` | JWT | Update group name |
-| 43 | PATCH | `/groups/{group_jid}/description` | JWT | Update group description |
-| 44 | POST | `/groups/{group_jid}/photo` | JWT | Update group photo |
-| 45 | GET | `/groups/{group_jid}/invite-link` | JWT | Get invite link |
-| 46 | PATCH | `/groups/{group_jid}/settings` | JWT | Update group settings |
-| 47 | GET | `/groups/{group_jid}/participant-requests` | JWT | Get join requests |
-| 48 | POST | `/groups/{group_jid}/join-approval` | JWT | Set join approval mode |
-| 49 | GET | `/groups/invite/{invite_code}` | JWT | Preview group from invite |
-| 50 | POST | `/groups/{group_jid}/join-invite` | JWT | Join group via invite |
-| 51 | PATCH | `/groups/{group_jid}/member-add-mode` | JWT | Set member add mode |
-| 52 | PATCH | `/groups/{group_jid}/topic` | JWT | Update group topic |
-| 53 | POST | `/groups/{parent_group_jid}/link/{group_jid}` | JWT | Link subgroup |
-| 54 | GET | `/groups/{community_jid}/linked-participants` | JWT | Get community members |
-| 55 | GET | `/groups/{community_jid}/subgroups` | JWT | List community subgroups |
-| 56 | POST | `/groups/{group_jid}/participants` | JWT | Add participants |
-| 57 | DELETE | `/groups/{group_jid}/participants` | JWT | Remove participants |
-| 58 | POST | `/groups/{group_jid}/requests/approve` | JWT | Approve join requests |
-| 59 | POST | `/groups/{group_jid}/requests/reject` | JWT | Reject join requests |
-| 60 | POST | `/groups/{group_jid}/admins` | JWT | Promote to admin |
-| 61 | DELETE | `/groups/{group_jid}/admins` | JWT | Demote from admin |
+| 43 | GET | `/groups` | JWT | List all groups with members |
+| 44 | POST | `/groups` | JWT | Create group |
+| 45 | GET | `/groups/{group_jid}` | JWT | Get group info |
+| 46 | POST | `/groups/{group_jid}/leave` | JWT | Leave group |
+| 47 | PATCH | `/groups/{group_jid}/name` | JWT | Update group name |
+| 48 | PATCH | `/groups/{group_jid}/description` | JWT | Update group description |
+| 49 | POST | `/groups/{group_jid}/photo` | JWT | Update group photo |
+| 50 | GET | `/groups/{group_jid}/invite-link` | JWT | Get invite link |
+| 51 | PATCH | `/groups/{group_jid}/settings` | JWT | Update group settings |
+| 52 | GET | `/groups/{group_jid}/participant-requests` | JWT | Get join requests |
+| 53 | POST | `/groups/{group_jid}/join-approval` | JWT | Set join approval mode |
+| 54 | GET | `/groups/invite/{invite_code}` | JWT | Preview group from invite |
+| 55 | POST | `/groups/{group_jid}/join-invite` | JWT | Join group via invite |
+| 56 | PATCH | `/groups/{group_jid}/member-add-mode` | JWT | Set member add mode |
+| 57 | PATCH | `/groups/{group_jid}/topic` | JWT | Update group topic |
+| 58 | POST | `/groups/{parent_group_jid}/link/{group_jid}` | JWT | Link subgroup |
+| 59 | GET | `/groups/{community_jid}/linked-participants` | JWT | Get community members |
+| 60 | GET | `/groups/{community_jid}/subgroups` | JWT | List community subgroups |
+| 61 | POST | `/groups/{group_jid}/participants` | JWT | Add participants |
+| 62 | DELETE | `/groups/{group_jid}/participants` | JWT | Remove participants |
+| 63 | POST | `/groups/{group_jid}/requests/approve` | JWT | Approve join requests |
+| 64 | POST | `/groups/{group_jid}/requests/reject` | JWT | Reject join requests |
+| 65 | POST | `/groups/{group_jid}/admins` | JWT | Promote to admin |
+| 66 | DELETE | `/groups/{group_jid}/admins` | JWT | Demote from admin |
 | | | **Presence & Status** | | |
-| 62 | POST | `/chats/{chat_jid}/presence` | JWT | Send typing/recording indicator |
-| 63 | POST | `/presence/status` | JWT | Update availability status |
-| 64 | PATCH | `/chats/{chat_jid}/disappearing-timer` | JWT | Set disappearing messages timer |
+| 67 | POST | `/chats/{chat_jid}/presence` | JWT | Send typing/recording indicator |
+| 68 | POST | `/presence/status` | JWT | Update availability status |
+| 69 | PATCH | `/chats/{chat_jid}/disappearing-timer` | JWT | Set disappearing messages timer |
 | | | **App State** | | |
-| 65 | GET | `/app-state/{name}` | JWT | Fetch app state |
-| 66 | POST | `/app-state` | JWT | Send app state patch |
-| 67 | POST | `/app-state/mark-clean` | JWT | Mark app state as clean |
+| 70 | GET | `/app-state/{name}` | JWT | Fetch app state |
+| 71 | POST | `/app-state` | JWT | Send app state patch |
+| 72 | POST | `/app-state/mark-clean` | JWT | Mark app state as clean |
 | | | **Webhooks** | | |
-| 68 | GET | `/webhooks` | JWT | List webhooks |
-| 69 | POST | `/webhooks` | JWT | Create webhook |
-| 70 | GET | `/webhooks/{webhook_id}` | JWT | Get webhook details |
-| 71 | PATCH | `/webhooks/{webhook_id}` | JWT | Update webhook |
-| 72 | DELETE | `/webhooks/{webhook_id}` | JWT | Delete webhook |
-| 73 | GET | `/webhooks/{webhook_id}/logs` | JWT | Get webhook logs |
-| 74 | POST | `/webhooks/{webhook_id}/test` | JWT | Test webhook |
+| 73 | GET | `/webhooks` | JWT | List webhooks |
+| 74 | POST | `/webhooks` | JWT | Create webhook |
+| 75 | GET | `/webhooks/{webhook_id}` | JWT | Get webhook details |
+| 76 | PATCH | `/webhooks/{webhook_id}` | JWT | Update webhook |
+| 77 | DELETE | `/webhooks/{webhook_id}` | JWT | Delete webhook |
+| 78 | GET | `/webhooks/{webhook_id}/logs` | JWT | Get webhook logs |
+| 79 | POST | `/webhooks/{webhook_id}/test` | JWT | Test webhook |
 | | | **System** | | |
-| 75 | GET | `/` | - | Server status |
-| 76 | GET | `/docs/*` | - | Swagger UI |
-| 77 | GET | `/docs/swagger.json` | - | OpenAPI JSON spec |
-| 78 | GET | `/docs/swagger.yaml` | - | OpenAPI YAML spec |
+| 80 | GET | `/` | - | Server status |
+| 81 | GET | `/docs/*` | - | Swagger UI |
+| 82 | GET | `/docs/swagger.json` | - | OpenAPI JSON spec |
+| 83 | GET | `/docs/swagger.yaml` | - | OpenAPI YAML spec |
 
 **Authentication Types:**
 - **Admin**: `X-Admin-Secret` header
@@ -380,6 +387,12 @@ This API uses a **JWT Token** authentication system optimized for high-volume op
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           ADMIN (X-Admin-Secret)                            │
 ├─────────────────────────────────────────────────────────────────────────────┤
+│  GET  /admin/stats             → System statistics (API keys, devices)      │
+│  GET  /admin/health            → System health (memory, uptime, DB status)  │
+│  GET  /admin/devices           → List all devices (all customers)           │
+│  GET  /admin/devices/status    → Live connection status for all devices     │
+│  POST /admin/devices/reconnect → Batch reconnect all disconnected devices   │
+│  GET  /admin/webhooks/stats    → Webhook delivery statistics                │
 │  POST /admin/api-keys          → Create API Key for customer                │
 │  GET  /admin/api-keys          → List all API keys                          │
 │  PATCH /admin/api-keys/{id}    → Update API key                             │

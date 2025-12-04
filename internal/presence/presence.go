@@ -6,9 +6,10 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
+	typWhatsApp "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/types"
+	"github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/log"
 	"github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/router"
 	pkgWhatsApp "github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/whatsapp"
-	typWhatsApp "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/types"
 )
 
 // getDeviceContext extracts device context from auth middleware
@@ -48,8 +49,11 @@ func SendChatPresence(c *fiber.Ctx) error {
 	var reqPresence typWhatsApp.RequestPresence
 	err := c.BodyParser(&reqPresence)
 	if err != nil {
+		log.SessionWithDevice(deviceID, jid, "SendChatPresence").Warn("Failed to parse body request")
 		return router.ResponseBadRequest(c, "Failed parse body request")
 	}
+
+	log.SessionWithDevice(deviceID, jid, "SendChatPresence").WithField("chat_jid", chatJID).WithField("state", reqPresence.State).WithField("media", reqPresence.Media).Info("Sending chat presence")
 
 	phoneJID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, chatJID)
 
@@ -57,6 +61,8 @@ func SendChatPresence(c *fiber.Ctx) error {
 	isAudio := reqPresence.Media == "audio"
 
 	pkgWhatsApp.WhatsAppComposeStatus(ctx, jid, deviceID, phoneJID, isComposing, isAudio)
+
+	log.SessionWithDevice(deviceID, jid, "SendChatPresence").WithField("chat_jid", chatJID).Info("Chat presence sent successfully")
 
 	return router.ResponseSuccess(c, "Success send presence")
 }
@@ -74,11 +80,16 @@ func UpdateStatus(c *fiber.Ctx) error {
 	}
 	err := c.BodyParser(&req)
 	if err != nil {
+		log.SessionWithDevice(deviceID, jid, "UpdateStatus").Warn("Failed to parse body request")
 		return router.ResponseBadRequest(c, "Failed parse body request")
 	}
 
+	log.SessionWithDevice(deviceID, jid, "UpdateStatus").WithField("status", req.Status).Info("Updating presence status")
+
 	isAvailable := req.Status == "available"
 	pkgWhatsApp.WhatsAppPresence(ctx, jid, deviceID, isAvailable)
+
+	log.SessionWithDevice(deviceID, jid, "UpdateStatus").WithField("status", req.Status).Info("Presence status updated successfully")
 
 	return router.ResponseSuccess(c, "Success update presence status")
 }
@@ -97,18 +108,25 @@ func SetDisappearingTimer(c *fiber.Ctx) error {
 	}
 	err := c.BodyParser(&req)
 	if err != nil {
+		log.SessionWithDevice(deviceID, jid, "SetDisappearingTimer").Warn("Failed to parse body request")
 		return router.ResponseBadRequest(c, "Failed parse body request")
 	}
 
+	log.SessionWithDevice(deviceID, jid, "SetDisappearingTimer").WithField("chat_jid", chatJID).WithField("timer", req.Timer).Info("Setting disappearing timer")
+
 	timer, err := parseTimer(req.Timer)
 	if err != nil {
+		log.SessionWithDevice(deviceID, jid, "SetDisappearingTimer").WithField("timer", req.Timer).Warn("Invalid timer value")
 		return router.ResponseBadRequest(c, "Invalid timer value")
 	}
 
 	err = pkgWhatsApp.WhatsAppSetDisappearingTimer(ctx, jid, deviceID, timer, chatJID)
 	if err != nil {
+		log.SessionWithDevice(deviceID, jid, "SetDisappearingTimer").WithField("chat_jid", chatJID).WithError(err).Error("Failed to set disappearing timer")
 		return router.ResponseInternalError(c, err.Error())
 	}
+
+	log.SessionWithDevice(deviceID, jid, "SetDisappearingTimer").WithField("chat_jid", chatJID).WithField("timer", req.Timer).Info("Disappearing timer set successfully")
 
 	return router.ResponseSuccess(c, "Success set disappearing timer")
 }

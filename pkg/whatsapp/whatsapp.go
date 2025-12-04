@@ -8,7 +8,10 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"os"
 	"runtime"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -35,8 +38,9 @@ import (
 	"github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/log"
 )
 
+// SessionKey uses DeviceID only since it's always known and unique
+// JID may be empty initially and only becomes known after QR scan
 type SessionKey struct {
-	JID      string
 	DeviceID string
 }
 
@@ -70,13 +74,41 @@ var (
 	datastoreDriver          string
 	datastoreDSN             string
 	webhookEngine            *webhook.Engine
+	groupListCacheMu         sync.RWMutex
+	groupListCache           = make(map[groupListCacheKey]groupListCacheEntry)
+	groupListCacheTTL        = 5 * time.Minute // Extended TTL for multi-device efficiency
+	groupListCacheEnabled    = true
+
+	// Request deduplication: prevents multiple simultaneous requests for the same device
+	// from all hitting WhatsApp servers (singleflight pattern)
+	groupListInflight   = make(map[string]*inflightRequest)
+	groupListInflightMu sync.Mutex
 )
+
+// inflightRequest tracks an ongoing group list fetch to deduplicate concurrent requests
+type inflightRequest struct {
+	done   chan struct{}
+	result []EnhancedGroupInfo
+	err    error
+}
+
+type groupListCacheKey struct {
+	DeviceID      string
+	ResolvePhones bool
+}
+
+type groupListCacheEntry struct {
+	data      []EnhancedGroupInfo
+	expiresAt time.Time
+}
 
 const (
 	qrChannelWaitTimeout    = 2 * time.Minute
 	pairPhoneRequestTimeout = 90 * time.Second
 	logoutRequestTimeout    = 30 * time.Second
 	routingCleanupTimeout   = 5 * time.Second
+	groupFetchTimeout       = 60 * time.Second // 60s for accounts with many groups (290+)
+	groupConversionWorkers  = 20               // Number of parallel workers for group conversion
 )
 
 func init() {
@@ -125,6 +157,140 @@ func init() {
 	webhookEngine = webhook.NewEngine(webhookStore)
 
 	log.Print(nil).Info("database is ok")
+
+	configureGroupListCache()
+}
+
+func configureGroupListCache() {
+	if ttlRaw, ok := os.LookupEnv("WHATSAPP_GROUP_LIST_CACHE_TTL"); ok {
+		ttlRaw = strings.TrimSpace(ttlRaw)
+		if ttlRaw != "" {
+			if ttl, err := time.ParseDuration(ttlRaw); err == nil && ttl > 0 {
+				groupListCacheTTL = ttl
+			} else if err != nil {
+				log.Print(nil).WithError(err).Warn("Invalid WHATSAPP_GROUP_LIST_CACHE_TTL value; keeping default")
+			}
+		}
+	} else {
+		// Default to 5 minutes for better performance
+		groupListCacheTTL = 5 * time.Minute
+	}
+
+	if disabledRaw, ok := os.LookupEnv("WHATSAPP_GROUP_LIST_CACHE_DISABLED"); ok {
+		disabledRaw = strings.TrimSpace(disabledRaw)
+		if disabledRaw != "" {
+			if disabled, err := strconv.ParseBool(disabledRaw); err == nil {
+				groupListCacheEnabled = !disabled
+			} else {
+				log.Print(nil).WithError(err).Warn("Invalid WHATSAPP_GROUP_LIST_CACHE_DISABLED value; keeping default")
+			}
+		}
+	}
+
+	if !groupListCacheEnabled {
+		log.Print(nil).Info("WhatsApp group list cache disabled")
+	} else {
+		log.Print(nil).Info(fmt.Sprintf("WhatsApp group list cache enabled (TTL=%s)", groupListCacheTTL))
+	}
+}
+
+func loadGroupListCache(deviceID string, resolvePhones bool) ([]EnhancedGroupInfo, bool) {
+	if !groupListCacheEnabled || groupListCacheTTL <= 0 {
+		return nil, false
+	}
+	key := groupListCacheKey{DeviceID: deviceID, ResolvePhones: resolvePhones}
+	groupListCacheMu.RLock()
+	entry, ok := groupListCache[key]
+	groupListCacheMu.RUnlock()
+	if !ok {
+		return nil, false
+	}
+	if time.Now().After(entry.expiresAt) {
+		groupListCacheMu.Lock()
+		delete(groupListCache, key)
+		groupListCacheMu.Unlock()
+		return nil, false
+	}
+	return entry.data, true
+}
+
+func storeGroupListCache(deviceID string, resolvePhones bool, data []EnhancedGroupInfo) {
+	if !groupListCacheEnabled || groupListCacheTTL <= 0 {
+		return
+	}
+	key := groupListCacheKey{DeviceID: deviceID, ResolvePhones: resolvePhones}
+	groupListCacheMu.Lock()
+	groupListCache[key] = groupListCacheEntry{
+		data:      data,
+		expiresAt: time.Now().Add(groupListCacheTTL),
+	}
+	groupListCacheMu.Unlock()
+}
+
+func invalidateGroupListCache(deviceID string) {
+	if !groupListCacheEnabled {
+		return
+	}
+	groupListCacheMu.Lock()
+	delete(groupListCache, groupListCacheKey{DeviceID: deviceID, ResolvePhones: true})
+	delete(groupListCache, groupListCacheKey{DeviceID: deviceID, ResolvePhones: false})
+	groupListCacheMu.Unlock()
+}
+
+// cleanupExpiredCache removes expired entries from the group list cache
+// This runs periodically to prevent memory growth with many devices
+func cleanupExpiredCache() {
+	groupListCacheMu.Lock()
+	defer groupListCacheMu.Unlock()
+	
+	now := time.Now()
+	for key, entry := range groupListCache {
+		if now.After(entry.expiresAt) {
+			delete(groupListCache, key)
+		}
+	}
+}
+
+// cleanupExpiredJWTVersionCache removes expired JWT version cache entries
+func cleanupExpiredJWTVersionCache() {
+	jwtVersionCacheMu.Lock()
+	defer jwtVersionCacheMu.Unlock()
+
+	now := time.Now()
+	for key, entry := range jwtVersionCache {
+		if now.After(entry.expiresAt) {
+			delete(jwtVersionCache, key)
+		}
+	}
+}
+
+// cleanupExpiredAPIKeyCache removes expired API key cache entries
+func cleanupExpiredAPIKeyCache() {
+	apiKeyCacheMu.Lock()
+	defer apiKeyCacheMu.Unlock()
+
+	now := time.Now()
+	for key, entry := range apiKeyCache {
+		if now.After(entry.expiresAt) {
+			delete(apiKeyCache, key)
+		}
+	}
+}
+
+// StartCacheCleanup starts a background goroutine that periodically cleans expired cache entries
+// Call this once during application startup
+func StartCacheCleanup() {
+	go func() {
+		ticker := time.NewTicker(10 * time.Minute) // Run every 10 minutes
+		defer ticker.Stop()
+		
+		for range ticker.C {
+			cleanupExpiredCache()
+			cleanupExpiredJWTVersionCache()
+			cleanupExpiredAPIKeyCache()
+			log.Print(nil).Info("[CACHE] Cleaned up expired cache entries (groups, JWT versions, API keys)")
+		}
+	}()
 }
 
 func upgradeDatastoreSchema(ctx context.Context) error {
@@ -181,27 +347,33 @@ func normalizeDatastoreDSN(driver string, dsn string) string {
 	return dsn
 }
 
+// clientKey now uses deviceID only - JID parameter kept for compatibility but ignored
 func clientKey(jid string, deviceID string) SessionKey {
-	return SessionKey{JID: jid, DeviceID: deviceID}
+	return SessionKey{DeviceID: deviceID}
 }
 
-func getClient(jid string, deviceID string) *whatsmeow.Client {
-	key := clientKey(jid, deviceID)
+// getClientByDeviceID looks up client by deviceID only (preferred method)
+func getClientByDeviceID(deviceID string) *whatsmeow.Client {
+	key := SessionKey{DeviceID: deviceID}
 	clientsMu.RLock()
 	client := WhatsAppClient[key]
 	clientsMu.RUnlock()
 	return client
 }
 
+func getClient(jid string, deviceID string) *whatsmeow.Client {
+	return getClientByDeviceID(deviceID)
+}
+
 func setClient(jid string, deviceID string, client *whatsmeow.Client) {
-	key := clientKey(jid, deviceID)
+	key := SessionKey{DeviceID: deviceID}
 	clientsMu.Lock()
 	WhatsAppClient[key] = client
 	clientsMu.Unlock()
 }
 
 func deleteClient(jid string, deviceID string) {
-	key := clientKey(jid, deviceID)
+	key := SessionKey{DeviceID: deviceID}
 	clientsMu.Lock()
 	delete(WhatsAppClient, key)
 	clientsMu.Unlock()
@@ -215,7 +387,7 @@ func rangeClients(fn func(SessionKey, *whatsmeow.Client)) {
 	}
 	clientsMu.RUnlock()
 	for _, key := range keys {
-		client := getClient(key.JID, key.DeviceID)
+		client := getClientByDeviceID(key.DeviceID)
 		if client != nil {
 			fn(key, client)
 		}
@@ -232,16 +404,38 @@ func WhatsAppClientsLen() int {
 	return clientsLen()
 }
 
+// maskJIDForLog masks a JID/phone number for secure logging
+// Shows only first 3 and last 2 digits: 628123456789 -> 628*****89
 func maskJIDForLog(jid string) string {
-	if len(jid) < 4 {
-		return jid
+	if len(jid) < 6 {
+		return "***"
 	}
-	return jid[0:len(jid)-4] + "xxxx"
+	// Strip @suffix if present
+	atIdx := len(jid)
+	for i, c := range jid {
+		if c == '@' {
+			atIdx = i
+			break
+		}
+	}
+	numPart := jid[:atIdx]
+	suffix := jid[atIdx:]
+
+	if len(numPart) < 6 {
+		return "***" + suffix
+	}
+	masked := numPart[:3] + strings.Repeat("*", len(numPart)-5) + numPart[len(numPart)-2:]
+	return masked + suffix
 }
 
 func WhatsAppRangeClients(fn func(jid string, deviceID string, client *whatsmeow.Client)) {
 	rangeClients(func(key SessionKey, client *whatsmeow.Client) {
-		fn(key.JID, key.DeviceID, client)
+		// Get JID from client store since it's not in the key anymore
+		jid := ""
+		if client.Store.ID != nil {
+			jid = WhatsAppDecomposeJID(client.Store.ID.User)
+		}
+		fn(jid, key.DeviceID, client)
 	})
 }
 
@@ -256,49 +450,80 @@ func currentClient(jid string, deviceID string) (*whatsmeow.Client, error) {
 func WhatsAppInitClient(device *store.Device, jid string, deviceID string) {
 	var err error
 
-	if getClient(jid, deviceID) == nil {
-		if device == nil {
-			device = WhatsAppDatastore.NewDevice()
-		}
+	existingClient := getClient(jid, deviceID)
+	if existingClient != nil {
+		log.Print(nil).Info(fmt.Sprintf("[WhatsAppInitClient] Client already exists for deviceID=%s, skipping init", deviceID))
+		return
+	}
 
-		store.DeviceProps.Os = proto.String(runtime.GOOS)
-		store.DeviceProps.PlatformType = waCompanionReg.DeviceProps_CHROME.Enum()
-		store.DeviceProps.RequireFullSync = proto.Bool(false)
+	log.Print(nil).Info(fmt.Sprintf("[WhatsAppInitClient] Creating new client for deviceID=%s, jid=%s, device=%v", deviceID, jid, device != nil))
 
-		version.Major, err = env.GetEnvInt("WHATSAPP_VERSION_MAJOR")
-		if err == nil {
-			store.DeviceProps.Version.Primary = proto.Uint32(uint32(version.Major))
-		}
-		version.Minor, err = env.GetEnvInt("WHATSAPP_VERSION_MINOR")
-		if err == nil {
-			store.DeviceProps.Version.Secondary = proto.Uint32(uint32(version.Minor))
-		}
-		version.Patch, err = env.GetEnvInt("WHATSAPP_VERSION_PATCH")
-		if err == nil {
-			store.DeviceProps.Version.Tertiary = proto.Uint32(uint32(version.Patch))
-		}
+	if device == nil {
+		device = WhatsAppDatastore.NewDevice()
+		log.Print(nil).Info(fmt.Sprintf("[WhatsAppInitClient] Created NEW empty device for deviceID=%s", deviceID))
+	} else {
+		log.Print(nil).Info(fmt.Sprintf("[WhatsAppInitClient] Using existing device with ID=%v for deviceID=%s", device.ID, deviceID))
+	}
 
-		client := whatsmeow.NewClient(device, nil)
+	store.DeviceProps.Os = proto.String(runtime.GOOS)
+	store.DeviceProps.PlatformType = waCompanionReg.DeviceProps_CHROME.Enum()
+	store.DeviceProps.RequireFullSync = proto.Bool(false)
 
-		if len(WhatsAppClientProxyURL) > 0 {
-			client.SetProxyAddress(WhatsAppClientProxyURL)
-		}
+	version.Major, err = env.GetEnvInt("WHATSAPP_VERSION_MAJOR")
+	if err == nil {
+		store.DeviceProps.Version.Primary = proto.Uint32(uint32(version.Major))
+	}
+	version.Minor, err = env.GetEnvInt("WHATSAPP_VERSION_MINOR")
+	if err == nil {
+		store.DeviceProps.Version.Secondary = proto.Uint32(uint32(version.Minor))
+	}
+	version.Patch, err = env.GetEnvInt("WHATSAPP_VERSION_PATCH")
+	if err == nil {
+		store.DeviceProps.Version.Tertiary = proto.Uint32(uint32(version.Patch))
+	}
 
-		client.EnableAutoReconnect = true
-		client.AutoTrustIdentity = true
+	client := whatsmeow.NewClient(device, nil)
 
-		client.AddEventHandler(handleWhatsAppEvents(jid, deviceID))
+	log.Print(nil).Info(fmt.Sprintf("[WhatsAppInitClient] Created whatsmeow client for deviceID=%s, client.Store.ID=%v, IsConnected=%v, IsLoggedIn=%v",
+		deviceID, client.Store.ID, client.IsConnected(), client.IsLoggedIn()))
 
-		setClient(jid, deviceID, client)
+	if len(WhatsAppClientProxyURL) > 0 {
+		client.SetProxyAddress(WhatsAppClientProxyURL)
+	}
 
-		if device.ID != nil {
-			_ = SaveDeviceRouting(context.Background(), deviceID, device.ID.String())
+	client.EnableAutoReconnect = true
+	client.AutoTrustIdentity = true
+
+	client.AddEventHandler(handleWhatsAppEvents(jid, deviceID))
+
+	setClient(jid, deviceID, client)
+
+	if device.ID != nil {
+		_ = SaveDeviceRouting(context.Background(), deviceID, device.ID.String())
+	}
+}
+
+// getClientJID retrieves the current JID from the client store, falling back to initialJid if not available
+func getClientJID(initialJid string, deviceID string) string {
+	client := getClient(initialJid, deviceID)
+	if client != nil && client.Store.ID != nil {
+		return WhatsAppDecomposeJID(client.Store.ID.User)
+	}
+	// Try to find client with empty initial JID (new device case)
+	if initialJid == "" {
+		client = getClient("", deviceID)
+		if client != nil && client.Store.ID != nil {
+			return WhatsAppDecomposeJID(client.Store.ID.User)
 		}
 	}
+	return initialJid
 }
 
 func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 	return func(evt interface{}) {
+		// Get the current JID dynamically from client store
+		currentJID := getClientJID(jid, deviceID)
+
 		switch e := evt.(type) {
 		case *events.LoggedOut:
 			client, err := currentClient(jid, deviceID)
@@ -308,9 +533,11 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 			deleteClient(jid, deviceID)
 			routingCtx, routingCancel := context.WithTimeout(context.Background(), routingCleanupTimeout)
 			_ = DeleteDeviceRouting(routingCtx, deviceID)
+			// Update device status to logged_out
+			_ = UpdateDeviceStatus(routingCtx, deviceID, "logged_out")
 			routingCancel()
 			dispatchWebhook(deviceID, webhook.EventConnectionLoggedOut, map[string]interface{}{
-				"jid": jid,
+				"jid": currentJID,
 			})
 		case *events.StreamReplaced:
 			client, err := currentClient(jid, deviceID)
@@ -322,18 +549,25 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 			_ = DeleteDeviceRouting(routingCtx, deviceID)
 			routingCancel()
 		case *events.Connected:
-			log.Print(nil).Info("Client connected: " + maskJIDForLog(jid) + " (" + deviceID + ")")
+			// Get the JID from client store after connection
 			client, err := currentClient(jid, deviceID)
+			connectedJID := currentJID
 			if err == nil && client.Store.ID != nil {
+				connectedJID = WhatsAppDecomposeJID(client.Store.ID.User)
 				_ = SaveDeviceRouting(context.Background(), deviceID, client.Store.ID.String())
+				// Update device status to active and save JID
+				_ = UpdateDeviceJID(context.Background(), deviceID, client.Store.ID.String())
 			}
+			log.Print(nil).Info("Client connected: " + maskJIDForLog(connectedJID) + " (" + deviceID + ")")
 			dispatchWebhook(deviceID, webhook.EventConnectionConnected, map[string]interface{}{
-				"jid": jid,
+				"jid": connectedJID,
 			})
 		case *events.Disconnected:
-			log.Print(nil).Warn("Client disconnected: " + maskJIDForLog(jid) + " (" + deviceID + ")")
+			log.Print(nil).Warn("Client disconnected: " + maskJIDForLog(currentJID) + " (" + deviceID + ")")
+			// Update device status to disconnected
+			_ = UpdateDeviceStatus(context.Background(), deviceID, "disconnected")
 			dispatchWebhook(deviceID, webhook.EventConnectionDisconnected, map[string]interface{}{
-				"jid": jid,
+				"jid": currentJID,
 			})
 		case *events.Message:
 			// Check if this is a message deletion (revoke)
@@ -375,11 +609,11 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 				})
 			}
 		case *events.KeepAliveTimeout:
-			log.Print(nil).Warn(fmt.Sprintf("Client keepalive timeout: %s (%s), errors=%d, lastSuccess=%s", maskJIDForLog(jid), deviceID, e.ErrorCount, e.LastSuccess.Format(time.RFC3339)))
+			log.Print(nil).Warn(fmt.Sprintf("Client keepalive timeout: %s (%s), errors=%d, lastSuccess=%s", maskJIDForLog(currentJID), deviceID, e.ErrorCount, e.LastSuccess.Format(time.RFC3339)))
 		case *events.TemporaryBan:
-			log.Print(nil).Error(fmt.Sprintf("Client temporarily banned: %s (%s), reason=%s, expires=%s", maskJIDForLog(jid), deviceID, e.Code, e.Expire))
+			log.Print(nil).Error(fmt.Sprintf("Client temporarily banned: %s (%s), reason=%s, expires=%s", maskJIDForLog(currentJID), deviceID, e.Code, e.Expire))
 		case *events.ConnectFailure:
-			log.Print(nil).Error(fmt.Sprintf("Client connection failure: %s (%s), reason=%s, message=%s", maskJIDForLog(jid), deviceID, e.Reason, e.Message))
+			log.Print(nil).Error(fmt.Sprintf("Client connection failure: %s (%s), reason=%s, message=%s", maskJIDForLog(currentJID), deviceID, e.Reason, e.Message))
 		}
 	}
 }
@@ -437,6 +671,65 @@ func WhatsAppGenerateQR(ctx context.Context, qrChan <-chan whatsmeow.QRChannelIt
 	}
 }
 
+func consumeQRChannel(ctx context.Context, qrChan <-chan whatsmeow.QRChannelItem, cancel context.CancelFunc, jid string, deviceID string) {
+	go func() {
+		defer cancel()
+		masked := maskJIDForLog(jid)
+		if masked == "" {
+			masked = "unknown"
+		}
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case evt, ok := <-qrChan:
+				if !ok {
+					return
+				}
+				switch evt.Event {
+				case whatsmeow.QRChannelSuccess.Event:
+					// Extract JID from client store after successful pairing
+					client := getClient(jid, deviceID)
+					if client != nil && client.Store.ID != nil {
+						newJID := WhatsAppDecomposeJID(client.Store.ID.User)
+						masked = maskJIDForLog(newJID)
+						// Save the device routing with the new JID
+						_ = SaveDeviceRouting(context.Background(), deviceID, client.Store.ID.String())
+						log.Print(nil).Info(fmt.Sprintf("QR pairing succeeded for %s (%s)", masked, deviceID))
+					} else {
+						log.Print(nil).Info(fmt.Sprintf("QR pairing succeeded for %s (%s)", masked, deviceID))
+					}
+					return
+				case whatsmeow.QRChannelTimeout.Event:
+					log.Print(nil).Warn(fmt.Sprintf("QR pairing timed out for %s (%s)", masked, deviceID))
+					return
+				case whatsmeow.QRChannelErrUnexpectedEvent.Event:
+					log.Print(nil).Error(fmt.Sprintf("QR pairing unexpected event for %s (%s)", masked, deviceID))
+					return
+				case whatsmeow.QRChannelClientOutdated.Event:
+					log.Print(nil).Error(fmt.Sprintf("QR pairing failed: client version outdated for %s (%s)", masked, deviceID))
+					return
+				case whatsmeow.QRChannelScannedWithoutMultidevice.Event:
+					log.Print(nil).Warn(fmt.Sprintf("QR scanned without multi-device enabled for %s (%s)", masked, deviceID))
+					return
+				case "error":
+					if evt.Error != nil {
+						log.Print(nil).WithError(evt.Error).Error(fmt.Sprintf("QR channel reported error for %s (%s)", masked, deviceID))
+					} else {
+						log.Print(nil).Error(fmt.Sprintf("QR channel reported unspecified error for %s (%s)", masked, deviceID))
+					}
+					return
+				case "code":
+					// WhatsApp may rotate QR codes; log and continue consuming events
+					log.Print(nil).Debug(fmt.Sprintf("QR code refreshed for %s (%s)", masked, deviceID))
+				default:
+					log.Print(nil).Debug(fmt.Sprintf("QR channel event %q for %s (%s)", evt.Event, masked, deviceID))
+				}
+			}
+		}
+	}()
+}
+
 func WhatsAppLogin(jid string, deviceID string) (string, int, error) {
 	client, err := currentClient(jid, deviceID)
 	if err != nil {
@@ -447,25 +740,30 @@ func WhatsAppLogin(jid string, deviceID string) (string, int, error) {
 
 	if client.Store.ID == nil {
 		ctx, cancel := context.WithTimeout(context.Background(), qrChannelWaitTimeout)
-		defer cancel()
 
 		qrChanGenerate, err := client.GetQRChannel(ctx)
 		if err != nil {
+			cancel()
 			return "", 0, err
 		}
 
 		err = client.Connect()
 		if err != nil {
+			cancel()
 			return "", 0, err
 		}
 
 		qrImage, qrTimeout, paired, err := WhatsAppGenerateQR(ctx, qrChanGenerate)
 		if err != nil {
+			cancel()
 			return "", 0, err
 		}
 		if paired {
+			cancel()
 			return "WhatsApp Client is already paired", 0, nil
 		}
+
+		consumeQRChannel(ctx, qrChanGenerate, cancel, jid, deviceID)
 
 		return "data:image/png;base64," + qrImage, qrTimeout, nil
 	}
@@ -525,6 +823,12 @@ func WhatsAppReconnect(jid string, deviceID string) error {
 			return err
 		}
 
+		// Save device routing after successful reconnect
+		_ = SaveDeviceRouting(context.Background(), deviceID, client.Store.ID.String())
+
+		newJID := WhatsAppDecomposeJID(client.Store.ID.User)
+		log.Print(nil).Info(fmt.Sprintf("Device reconnected: %s (%s)", maskJIDForLog(newJID), deviceID))
+
 		return nil
 	}
 
@@ -572,8 +876,12 @@ func WhatsAppLogout(jid string, deviceID string) error {
 func WhatsAppIsClientOK(jid string, deviceID string) error {
 	client, err := currentClient(jid, deviceID)
 	if err != nil {
+		log.Print(nil).Info(fmt.Sprintf("[WhatsAppIsClientOK] deviceID=%s - no client in memory: %v", deviceID, err))
 		return err
 	}
+
+	log.Print(nil).Info(fmt.Sprintf("[WhatsAppIsClientOK] deviceID=%s - client found, Store.ID=%v, IsConnected=%v, IsLoggedIn=%v",
+		deviceID, client.Store.ID, client.IsConnected(), client.IsLoggedIn()))
 
 	if !client.IsConnected() {
 		return errors.New("WhatsApp Client is not Connected")
@@ -631,11 +939,18 @@ func WhatsAppCheckJID(ctx context.Context, jid string, deviceID string, id strin
 }
 
 func WhatsAppComposeJID(id string) types.JID {
-	if parsed, err := types.ParseJID(WhatsAppDecomposeJID(id)); err == nil {
-		return parsed
+	// First try to parse the full JID directly (e.g., "xxx@g.us", "xxx@s.whatsapp.net")
+	// This preserves the server type from the input
+	if strings.ContainsRune(id, '@') {
+		if parsed, err := types.ParseJID(id); err == nil && parsed.User != "" {
+			return parsed
+		}
 	}
 
+	// For inputs without @ or failed parsing, extract the user part
 	id = WhatsAppDecomposeJID(id)
+
+	// Group JIDs have a hyphen (regular groups) or are 18+ digits (channels/newsletters)
 	if strings.ContainsRune(id, '-') || len(id) >= 18 {
 		return types.NewJID(id, types.GroupServer)
 	}
@@ -736,6 +1051,149 @@ func WhatsAppGroupGet(jid string, deviceID string) ([]types.GroupInfo, error) {
 	return gids, nil
 }
 
+func WhatsAppGroupGetWithMembers(ctx context.Context, jid string, deviceID string) ([]EnhancedGroupInfo, error) {
+	return WhatsAppGroupList(ctx, jid, deviceID, true, false)
+}
+
+// WhatsAppGroupList provides a tunable group listing helper that supports optional
+// phone-number resolution and caching.
+// OPTIMIZED: Uses parallel processing and skips slow LID resolution by default
+func WhatsAppGroupList(ctx context.Context, jid string, deviceID string, resolvePhoneNumbers bool, forceRefresh bool) ([]EnhancedGroupInfo, error) {
+	log.Print(nil).Info("[DEBUG] WhatsAppGroupList: starting")
+	startTotal := time.Now()
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	// Check cache first (fast path)
+	if !forceRefresh {
+		if cached, ok := loadGroupListCache(deviceID, resolvePhoneNumbers); ok {
+			log.Print(nil).Info(fmt.Sprintf("[DEBUG] WhatsAppGroupList: cache hit, returning %d groups", len(cached)))
+			return cached, nil
+		}
+	}
+
+	// OPTIMIZATION: Singleflight pattern - deduplicate concurrent requests for same device
+	// This prevents 10 simultaneous requests from all hitting WhatsApp servers
+	inflightKey := fmt.Sprintf("%s:%v", deviceID, resolvePhoneNumbers)
+	
+	groupListInflightMu.Lock()
+	if inflight, exists := groupListInflight[inflightKey]; exists {
+		// Another request is already fetching, wait for it
+		groupListInflightMu.Unlock()
+		log.Print(nil).Info(fmt.Sprintf("[DEBUG] WhatsAppGroupList: waiting for inflight request for device %s", deviceID))
+		<-inflight.done
+		if inflight.err != nil {
+			return nil, inflight.err
+		}
+		return inflight.result, nil
+	}
+	
+	// We're the first request, create inflight tracker
+	inflight := &inflightRequest{done: make(chan struct{})}
+	groupListInflight[inflightKey] = inflight
+	groupListInflightMu.Unlock()
+	
+	// Ensure we clean up and notify waiters when done
+	defer func() {
+		groupListInflightMu.Lock()
+		delete(groupListInflight, inflightKey)
+		groupListInflightMu.Unlock()
+		close(inflight.done)
+	}()
+
+	startClient := time.Now()
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		inflight.err = err
+		return nil, err
+	}
+	log.Print(nil).Info(fmt.Sprintf("[DEBUG] WhatsAppGroupList: currentClient took %v", time.Since(startClient)))
+
+	if jid == "" {
+		if client.Store != nil && client.Store.ID != nil {
+			jid = WhatsAppDecomposeJID(client.Store.ID.User)
+			log.Print(nil).Info(fmt.Sprintf("[DEBUG] WhatsAppGroupList: JID retrieved from client store: %s", maskJIDForLog(jid)))
+		} else {
+			log.Print(nil).Error("[DEBUG] WhatsAppGroupList: JID is empty and client store has no JID. Device may not be fully logged in.")
+			inflight.err = errors.New("JID is empty and client store has no JID. Device may not be fully logged in. Please regenerate JWT token after login.")
+			return nil, inflight.err
+		}
+	}
+
+	startCheck := time.Now()
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		inflight.err = err
+		return nil, err
+	}
+	log.Print(nil).Info(fmt.Sprintf("[DEBUG] WhatsAppGroupList: WhatsAppIsClientOK took %v", time.Since(startCheck)))
+
+	// Use shorter timeout with context
+	groupCtx, groupCancel := context.WithTimeout(ctx, groupFetchTimeout)
+	defer groupCancel()
+
+	startJoinedGroups := time.Now()
+	joinedGroups, err := client.GetJoinedGroups(groupCtx)
+	fetchDuration := time.Since(startJoinedGroups)
+	log.Print(nil).Info(fmt.Sprintf("[DEBUG] WhatsAppGroupList: GetJoinedGroups took %v, returned %d groups", fetchDuration, len(joinedGroups)))
+	
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			log.Print(nil).Error(fmt.Sprintf("[DEBUG] WhatsAppGroupList: GetJoinedGroups timed out after %v", groupFetchTimeout))
+			inflight.err = fmt.Errorf("GetJoinedGroups request timed out after %v. WhatsApp connection may be slow or unresponsive: %w", groupFetchTimeout, err)
+			return nil, inflight.err
+		}
+		log.Print(nil).Error(fmt.Sprintf("[DEBUG] WhatsAppGroupList: GetJoinedGroups error: %v", err))
+		inflight.err = fmt.Errorf("GetJoinedGroups failed: %w", err)
+		return nil, inflight.err
+	}
+
+	// OPTIMIZATION: Use parallel processing for group conversion
+	startConvert := time.Now()
+	var result []EnhancedGroupInfo
+
+	if len(joinedGroups) > 5 {
+		// Use parallel processing for more than 5 groups
+		log.Print(nil).Info(fmt.Sprintf("[DEBUG] WhatsAppGroupList: using parallel conversion for %d groups", len(joinedGroups)))
+		result, err = ConvertGroupsInParallelWithContext(ctx, joinedGroups, nil, groupConversionWorkers)
+		if err != nil {
+			log.Print(nil).Error(fmt.Sprintf("[DEBUG] WhatsAppGroupList: parallel conversion error: %v", err))
+			inflight.err = err
+			return nil, err
+		}
+	} else {
+		// Sequential for small number of groups
+		result = make([]EnhancedGroupInfo, 0, len(joinedGroups))
+		for _, group := range joinedGroups {
+			if group == nil {
+				continue
+			}
+			// OPTIMIZATION: Skip LID resolution by default (pass nil resolver)
+			enhanced := ConvertToEnhancedGroupInfo(*group, nil)
+			result = append(result, enhanced)
+		}
+	}
+	
+	log.Print(nil).Info(fmt.Sprintf("[DEBUG] WhatsAppGroupList: conversion phase took %v for %d groups", time.Since(startConvert), len(result)))
+
+	// Sort groups by GroupCreated (newest first)
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].GroupCreated.After(result[j].GroupCreated)
+	})
+
+	// Cache the result
+	storeGroupListCache(deviceID, resolvePhoneNumbers, result)
+	
+	// Store result for waiting goroutines
+	inflight.result = result
+	
+	totalDuration := time.Since(startTotal)
+	log.Print(nil).Info(fmt.Sprintf("[DEBUG] WhatsAppGroupList: total took %v for %d groups", totalDuration, len(result)))
+	
+	return result, nil
+}
+
 func WhatsAppGroupCreate(ctx context.Context, jid string, deviceID string, subject string, participantIDs []string) (*types.GroupInfo, error) {
 	client, err := currentClient(jid, deviceID)
 	if err != nil {
@@ -768,6 +1226,7 @@ func WhatsAppGroupCreate(ctx context.Context, jid string, deviceID string, subje
 	if err != nil {
 		return nil, err
 	}
+	invalidateGroupListCache(deviceID)
 	return group, nil
 }
 
@@ -786,6 +1245,7 @@ func WhatsAppGroupJoin(ctx context.Context, jid string, deviceID string, link st
 	if err != nil {
 		return "", err
 	}
+	invalidateGroupListCache(deviceID)
 	return gid.String(), nil
 }
 
@@ -807,7 +1267,11 @@ func WhatsAppGroupLeave(ctx context.Context, jid string, deviceID string, gjid s
 	if groupJID.Server != types.GroupServer {
 		return ErrInvalidGroupID
 	}
-	return client.LeaveGroup(ctx, groupJID)
+	err = client.LeaveGroup(ctx, groupJID)
+	if err == nil {
+		invalidateGroupListCache(deviceID)
+	}
+	return err
 }
 
 func WhatsAppGroupSetName(ctx context.Context, jid string, deviceID string, gjid string, name string) error {
@@ -828,7 +1292,11 @@ func WhatsAppGroupSetName(ctx context.Context, jid string, deviceID string, gjid
 	if groupJID.Server != types.GroupServer {
 		return ErrInvalidGroupID
 	}
-	return client.SetGroupName(ctx, groupJID, name)
+	err = client.SetGroupName(ctx, groupJID, name)
+	if err == nil {
+		invalidateGroupListCache(deviceID)
+	}
+	return err
 }
 
 func WhatsAppGroupSetDescription(ctx context.Context, jid string, deviceID string, gjid string, description string) error {
@@ -849,7 +1317,11 @@ func WhatsAppGroupSetDescription(ctx context.Context, jid string, deviceID strin
 	if groupJID.Server != types.GroupServer {
 		return ErrInvalidGroupID
 	}
-	return client.SetGroupDescription(ctx, groupJID, description)
+	err = client.SetGroupDescription(ctx, groupJID, description)
+	if err == nil {
+		invalidateGroupListCache(deviceID)
+	}
+	return err
 }
 
 func WhatsAppGroupSetPhoto(ctx context.Context, jid string, deviceID string, gjid string, photo []byte) (string, error) {
@@ -874,6 +1346,7 @@ func WhatsAppGroupSetPhoto(ctx context.Context, jid string, deviceID string, gji
 	if err != nil {
 		return "", err
 	}
+	invalidateGroupListCache(deviceID)
 	return photoID, nil
 }
 
@@ -934,7 +1407,11 @@ func WhatsAppGroupSetLocked(jid string, deviceID string, gjid string, locked boo
 	if groupJID.Server != types.GroupServer {
 		return ErrInvalidGroupID
 	}
-	return client.SetGroupLocked(context.Background(), groupJID, locked)
+	err = client.SetGroupLocked(context.Background(), groupJID, locked)
+	if err == nil {
+		invalidateGroupListCache(deviceID)
+	}
+	return err
 }
 
 func WhatsAppGroupSetAnnounce(jid string, deviceID string, gjid string, announce bool) error {
@@ -952,7 +1429,11 @@ func WhatsAppGroupSetAnnounce(jid string, deviceID string, gjid string, announce
 	if groupJID.Server != types.GroupServer {
 		return ErrInvalidGroupID
 	}
-	return client.SetGroupAnnounce(context.Background(), groupJID, announce)
+	err = client.SetGroupAnnounce(context.Background(), groupJID, announce)
+	if err == nil {
+		invalidateGroupListCache(deviceID)
+	}
+	return err
 }
 
 func WhatsAppGroupSetJoinApprovalMode(jid string, deviceID string, gjid string, mode bool) error {
@@ -970,7 +1451,11 @@ func WhatsAppGroupSetJoinApprovalMode(jid string, deviceID string, gjid string, 
 	if groupJID.Server != types.GroupServer {
 		return ErrInvalidGroupID
 	}
-	return client.SetGroupJoinApprovalMode(context.Background(), groupJID, mode)
+	err = client.SetGroupJoinApprovalMode(context.Background(), groupJID, mode)
+	if err == nil {
+		invalidateGroupListCache(deviceID)
+	}
+	return err
 }
 
 func WhatsAppSendText(ctx context.Context, jid string, deviceID string, rjid string, message string) (string, error) {
@@ -1283,7 +1768,11 @@ func WhatsAppGroupJoinWithInvite(jid string, deviceID string, groupID string, in
 		return err
 	}
 
-	return client.JoinGroupWithInvite(context.Background(), groupJID, inviterJID, code, expiration)
+	err = client.JoinGroupWithInvite(context.Background(), groupJID, inviterJID, code, expiration)
+	if err == nil {
+		invalidateGroupListCache(deviceID)
+	}
+	return err
 }
 
 func WhatsAppGroupGetInfoFromInvite(jid string, deviceID string, groupID string, inviter string, code string, expiration int64) (*types.GroupInfo, error) {
@@ -1347,7 +1836,11 @@ func WhatsAppGroupSetMemberAddMode(jid string, deviceID string, gjid string, mod
 		return errors.New("invalid member add mode")
 	}
 
-	return client.SetGroupMemberAddMode(context.Background(), groupJID, memberAddMode)
+	err = client.SetGroupMemberAddMode(context.Background(), groupJID, memberAddMode)
+	if err == nil {
+		invalidateGroupListCache(deviceID)
+	}
+	return err
 }
 
 func WhatsAppGroupSetTopic(jid string, deviceID string, gjid string, previousID string, newID string, topic string) error {
@@ -1364,7 +1857,11 @@ func WhatsAppGroupSetTopic(jid string, deviceID string, gjid string, previousID 
 		return err
 	}
 
-	return client.SetGroupTopic(context.Background(), groupJID, previousID, newID, topic)
+	err = client.SetGroupTopic(context.Background(), groupJID, previousID, newID, topic)
+	if err == nil {
+		invalidateGroupListCache(deviceID)
+	}
+	return err
 }
 
 func WhatsAppGroupLink(jid string, deviceID string, parent string, child string) error {
@@ -1386,7 +1883,11 @@ func WhatsAppGroupLink(jid string, deviceID string, parent string, child string)
 		return err
 	}
 
-	return client.LinkGroup(context.Background(), parentJID, childJID)
+	err = client.LinkGroup(context.Background(), parentJID, childJID)
+	if err == nil {
+		invalidateGroupListCache(deviceID)
+	}
+	return err
 }
 
 func WhatsAppGroupGetLinkedParticipants(ctx context.Context, jid string, deviceID string, community string) ([]types.JID, error) {
@@ -1785,7 +2286,11 @@ func WhatsAppAddParticipants(ctx context.Context, jid string, deviceID string, g
 		jidList = append(jidList, parsed)
 	}
 
-	return client.UpdateGroupParticipants(ctx, groupJID, jidList, whatsmeow.ParticipantChangeAdd)
+	updated, err := client.UpdateGroupParticipants(ctx, groupJID, jidList, whatsmeow.ParticipantChangeAdd)
+	if err == nil {
+		invalidateGroupListCache(deviceID)
+	}
+	return updated, err
 }
 
 func WhatsAppRemoveParticipants(ctx context.Context, jid string, deviceID string, groupID string, participants []string) ([]types.GroupParticipant, error) {
@@ -1817,7 +2322,11 @@ func WhatsAppRemoveParticipants(ctx context.Context, jid string, deviceID string
 		jidList = append(jidList, parsed)
 	}
 
-	return client.UpdateGroupParticipants(ctx, groupJID, jidList, whatsmeow.ParticipantChangeRemove)
+	updated, err := client.UpdateGroupParticipants(ctx, groupJID, jidList, whatsmeow.ParticipantChangeRemove)
+	if err == nil {
+		invalidateGroupListCache(deviceID)
+	}
+	return updated, err
 }
 
 func WhatsAppApproveJoinRequests(ctx context.Context, jid string, deviceID string, groupID string, userIDs []string) ([]types.GroupParticipant, error) {
@@ -1849,7 +2358,11 @@ func WhatsAppApproveJoinRequests(ctx context.Context, jid string, deviceID strin
 		jidList = append(jidList, parsed)
 	}
 
-	return client.UpdateGroupRequestParticipants(ctx, groupJID, jidList, whatsmeow.ParticipantChangeApprove)
+	updated, err := client.UpdateGroupRequestParticipants(ctx, groupJID, jidList, whatsmeow.ParticipantChangeApprove)
+	if err == nil {
+		invalidateGroupListCache(deviceID)
+	}
+	return updated, err
 }
 
 func WhatsAppRejectJoinRequests(ctx context.Context, jid string, deviceID string, groupID string, userIDs []string) ([]types.GroupParticipant, error) {
@@ -1881,7 +2394,11 @@ func WhatsAppRejectJoinRequests(ctx context.Context, jid string, deviceID string
 		jidList = append(jidList, parsed)
 	}
 
-	return client.UpdateGroupRequestParticipants(ctx, groupJID, jidList, whatsmeow.ParticipantChangeReject)
+	updated, err := client.UpdateGroupRequestParticipants(ctx, groupJID, jidList, whatsmeow.ParticipantChangeReject)
+	if err == nil {
+		invalidateGroupListCache(deviceID)
+	}
+	return updated, err
 }
 
 func WhatsAppPromoteAdmins(ctx context.Context, jid string, deviceID string, groupID string, userIDs []string) ([]types.GroupParticipant, error) {
@@ -1913,7 +2430,11 @@ func WhatsAppPromoteAdmins(ctx context.Context, jid string, deviceID string, gro
 		jidList = append(jidList, parsed)
 	}
 
-	return client.UpdateGroupParticipants(ctx, groupJID, jidList, whatsmeow.ParticipantChangePromote)
+	updated, err := client.UpdateGroupParticipants(ctx, groupJID, jidList, whatsmeow.ParticipantChangePromote)
+	if err == nil {
+		invalidateGroupListCache(deviceID)
+	}
+	return updated, err
 }
 
 func WhatsAppDemoteAdmins(ctx context.Context, jid string, deviceID string, groupID string, userIDs []string) ([]types.GroupParticipant, error) {
@@ -1945,7 +2466,11 @@ func WhatsAppDemoteAdmins(ctx context.Context, jid string, deviceID string, grou
 		jidList = append(jidList, parsed)
 	}
 
-	return client.UpdateGroupParticipants(ctx, groupJID, jidList, whatsmeow.ParticipantChangeDemote)
+	updated, err := client.UpdateGroupParticipants(ctx, groupJID, jidList, whatsmeow.ParticipantChangeDemote)
+	if err == nil {
+		invalidateGroupListCache(deviceID)
+	}
+	return updated, err
 }
 
 func WhatsAppUpdateGroupSettings(jid string, deviceID string, groupID string, announce *bool, locked *bool, memberAddMode string, joinApproval *bool) error {
@@ -1998,6 +2523,7 @@ func WhatsAppUpdateGroupSettings(jid string, deviceID string, groupID string, an
 		}
 	}
 
+	invalidateGroupListCache(deviceID)
 	return nil
 }
 
@@ -2054,7 +2580,7 @@ func WhatsAppCreateGroupEnhanced(ctx context.Context, jid string, deviceID strin
 			return group, err
 		}
 	}
-
+	invalidateGroupListCache(deviceID)
 	return group, nil
 }
 

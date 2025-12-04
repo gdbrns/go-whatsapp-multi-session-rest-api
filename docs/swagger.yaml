@@ -31,9 +31,16 @@ produces:
   - application/json
 
 securityDefinitions:
-  BasicAuth:
-    type: basic
-    description: Basic authentication for device creation (username/password)
+  AdminAuth:
+    type: apiKey
+    name: X-Admin-Secret
+    in: header
+    description: "Admin secret key for managing API keys. Set in .env as ADMIN_SECRET"
+  APIKeyAuth:
+    type: apiKey
+    name: X-API-Key
+    in: header
+    description: "API key for creating devices. Format: ak_xxxxxxxxxxxxxxxx"
   BearerAuth:
     type: apiKey
     name: Authorization
@@ -41,27 +48,29 @@ securityDefinitions:
     description: "JWT Bearer token for authenticated requests. Format: Authorization: Bearer <jwt_token>"
 
 tags:
-  - name: "00 - Root"
+  - name: "00 - Health"
     description: Server status and health check
   - name: "01 - Documentation"
     description: API documentation and Swagger UI
-  - name: "02 - Authentication"
-    description: Device registration and JWT token creation (Basic Auth)
-  - name: "03 - Device Management"
+  - name: "02 - Admin"
+    description: Admin dashboard, API key management, and system monitoring (Admin only)
+  - name: "03 - Device Registration"
+    description: Device registration and JWT token creation
+  - name: "04 - Device Operations"
     description: Device login, logout, status, and reconnection
-  - name: "04 - User Management"
+  - name: "05 - User Management"
     description: User profiles, privacy settings, and status updates
-  - name: "05 - Messaging"
+  - name: "06 - Messaging"
     description: Send text, images, documents
-  - name: "06 - Message Actions"
+  - name: "07 - Message Actions"
     description: Read, react, edit, delete, reply to messages
-  - name: "07 - Group Management"
+  - name: "08 - Group Management"
     description: Create, manage, and administer WhatsApp groups
-  - name: "08 - Presence & Status"
+  - name: "09 - Presence & Status"
     description: Typing indicators, online status, disappearing messages
-  - name: "09 - App State"
+  - name: "10 - App State"
     description: App state synchronization
-  - name: "10 - Webhooks"
+  - name: "11 - Webhooks"
     description: Webhook configuration and management
 
 definitions:
@@ -95,6 +104,74 @@ definitions:
         example: Success
       data:
         type: object
+
+  AdminStats:
+    type: object
+    properties:
+      total_api_keys:
+        type: integer
+        example: 5
+      active_api_keys:
+        type: integer
+        example: 4
+      total_devices:
+        type: integer
+        example: 25
+      connected_devices:
+        type: integer
+        example: 18
+      disconnected_devices:
+        type: integer
+        example: 5
+      pending_devices:
+        type: integer
+        example: 2
+      logged_out_devices:
+        type: integer
+        example: 0
+      total_webhooks:
+        type: integer
+        example: 12
+      active_webhooks:
+        type: integer
+        example: 10
+
+  SystemHealth:
+    type: object
+    properties:
+      status:
+        type: string
+        example: "ok"
+      database:
+        type: string
+        example: "ok"
+      whatsapp_clients:
+        type: integer
+        example: 18
+      total_devices:
+        type: integer
+        example: 25
+      memory_alloc:
+        type: string
+        example: "128.5 MB"
+      memory_sys:
+        type: string
+        example: "256.0 MB"
+      goroutines:
+        type: integer
+        example: 42
+      uptime:
+        type: string
+        example: "5d 12h 30m 15s"
+      uptime_seconds:
+        type: integer
+        example: 475815
+      version:
+        type: string
+        example: "2.0.0"
+      go_version:
+        type: string
+        example: "go1.21.0"
 
 paths:
   /:
@@ -171,6 +248,332 @@ paths:
       responses:
         200:
           description: Function documentation HTML
+
+  # Admin Dashboard Endpoints
+  /admin/stats:
+    get:
+      security:
+        - AdminAuth: []
+      tags:
+        - "02 - Admin"
+      summary: Get Admin Statistics
+      description: Get system-wide statistics for admin dashboard including API keys, devices, and webhook counts
+      responses:
+        200:
+          description: Statistics retrieved successfully
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              code:
+                type: integer
+                example: 200
+              message:
+                type: string
+                example: Statistics retrieved successfully
+              data:
+                $ref: "#/definitions/AdminStats"
+        401:
+          description: Unauthorized - Invalid admin secret
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /admin/health:
+    get:
+      security:
+        - AdminAuth: []
+      tags:
+        - "02 - Admin"
+      summary: Get System Health
+      description: Get comprehensive system health information including database status, memory usage, uptime, and connected WhatsApp clients
+      responses:
+        200:
+          description: Health information retrieved successfully
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              code:
+                type: integer
+                example: 200
+              message:
+                type: string
+                example: System health retrieved successfully
+              data:
+                $ref: "#/definitions/SystemHealth"
+        401:
+          description: Unauthorized - Invalid admin secret
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /admin/devices:
+    get:
+      security:
+        - AdminAuth: []
+      tags:
+        - "02 - Admin"
+      summary: List All Devices
+      description: Get all devices across all API keys with customer information. Useful for admin dashboard overview.
+      responses:
+        200:
+          description: Devices retrieved successfully
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              code:
+                type: integer
+                example: 200
+              message:
+                type: string
+                example: Devices retrieved successfully
+              data:
+                type: object
+                properties:
+                  devices:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        device_id:
+                          type: string
+                          example: "550e8400-e29b-41d4-a716-446655440000"
+                        device_name:
+                          type: string
+                          example: "Production Phone"
+                        api_key_id:
+                          type: integer
+                          example: 1
+                        customer_name:
+                          type: string
+                          example: "Acme Corp"
+                        whatsmeow_jid:
+                          type: string
+                          example: "6281234567890@s.whatsapp.net"
+                        status:
+                          type: string
+                          example: "active"
+                        created_at:
+                          type: string
+                          example: "2025-01-01T00:00:00Z"
+                        last_active_at:
+                          type: string
+                          example: "2025-12-03T10:30:00Z"
+                  summary:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        example: 25
+                      connected:
+                        type: integer
+                        example: 18
+                      disconnected:
+                        type: integer
+                        example: 5
+                      pending:
+                        type: integer
+                        example: 2
+        401:
+          description: Unauthorized - Invalid admin secret
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /admin/devices/status:
+    get:
+      security:
+        - AdminAuth: []
+      tags:
+        - "02 - Admin"
+      summary: Get All Device Statuses
+      description: Get live connection status for all devices across all API keys. Checks actual WhatsApp connection state in real-time.
+      responses:
+        200:
+          description: Device statuses retrieved successfully
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              code:
+                type: integer
+                example: 200
+              message:
+                type: string
+                example: Device statuses retrieved successfully
+              data:
+                type: object
+                properties:
+                  devices:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        device_id:
+                          type: string
+                          example: "550e8400-e29b-41d4-a716-446655440000"
+                        device_name:
+                          type: string
+                          example: "Production Phone"
+                        customer_name:
+                          type: string
+                          example: "Acme Corp"
+                        whatsmeow_jid:
+                          type: string
+                          example: "6281234567890@s.whatsapp.net"
+                        db_status:
+                          type: string
+                          example: "active"
+                        client_loaded:
+                          type: boolean
+                          example: true
+                        connected:
+                          type: boolean
+                          example: true
+                        is_connected:
+                          type: boolean
+                          example: true
+                        is_logged_in:
+                          type: boolean
+                          example: true
+                        error:
+                          type: string
+                          example: ""
+                  summary:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        example: 25
+                      online:
+                        type: integer
+                        example: 18
+                      offline:
+                        type: integer
+                        example: 7
+        401:
+          description: Unauthorized - Invalid admin secret
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /admin/devices/reconnect:
+    post:
+      security:
+        - AdminAuth: []
+      tags:
+        - "02 - Admin"
+      summary: Reconnect All Devices
+      description: Attempt to reconnect all disconnected devices. Useful for batch recovery after server restart or network issues.
+      responses:
+        200:
+          description: Reconnect operation completed
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              code:
+                type: integer
+                example: 200
+              message:
+                type: string
+                example: Reconnect operation completed
+              data:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        device_id:
+                          type: string
+                          example: "550e8400-e29b-41d4-a716-446655440000"
+                        device_name:
+                          type: string
+                          example: "Production Phone"
+                        status:
+                          type: string
+                          enum: [reconnected, failed, skipped, already_connected]
+                        error:
+                          type: string
+                          example: ""
+                  summary:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        example: 25
+                      reconnected:
+                        type: integer
+                        example: 5
+                      failed:
+                        type: integer
+                        example: 2
+                      skipped:
+                        type: integer
+                        example: 18
+        401:
+          description: Unauthorized - Invalid admin secret
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /admin/webhooks/stats:
+    get:
+      security:
+        - AdminAuth: []
+      tags:
+        - "02 - Admin"
+      summary: Get Webhook Statistics
+      description: Get webhook delivery statistics including success/failure rates
+      responses:
+        200:
+          description: Webhook statistics retrieved successfully
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              code:
+                type: integer
+                example: 200
+              message:
+                type: string
+                example: Webhook statistics retrieved successfully
+              data:
+                type: object
+                properties:
+                  total_webhooks:
+                    type: integer
+                    example: 12
+                  active_webhooks:
+                    type: integer
+                    example: 10
+                  total_deliveries:
+                    type: integer
+                    example: 1500
+                  successful_deliveries:
+                    type: integer
+                    example: 1450
+                  failed_deliveries:
+                    type: integer
+                    example: 50
+                  success_rate:
+                    type: number
+                    example: 96.67
+        401:
+          description: Unauthorized - Invalid admin secret
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /device/add:
     post:
@@ -561,17 +964,60 @@ paths:
                   - profile_picture
                   - status
                   - read_receipts
-                  - groups
-              value:
-                type: string
-                enum:
-                  - all
-                  - contacts
-                  - contact_blacklist
-                  - none
-      responses:
-        200:
-          description: Privacy setting updated
+                  /groups:
+                    get:
+                      security:
+                        - BearerAuth: []
+                      tags:
+                        - "07 - Group Management"
+                      summary: List All Groups With Members
+                      description: Fetches all joined groups along with their participants
+                      responses:
+                        200:
+                          description: Groups with members retrieved
+                          schema:
+                            type: object
+                            properties:
+                              status:
+                                type: boolean
+                              message:
+                                type: string
+                              data:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    JID:
+                                      type: string
+                                      example: 12345-678@g.us
+                                    Name:
+                                      type: string
+                                      example: Project Team
+                                    OwnerJID:
+                                      type: string
+                                      example: 6281234567890@s.whatsapp.net
+                                    Topic:
+                                      type: string
+                                      example: Sprint planning
+                                    IsAnnounce:
+                                      type: boolean
+                                    IsLocked:
+                                      type: boolean
+                                    Participants:
+                                      type: array
+                                      items:
+                                        type: object
+                                        properties:
+                                          JID:
+                                            type: string
+                                            example: 6281234567890@s.whatsapp.net
+                                          IsAdmin:
+                                            type: boolean
+                                          IsSuperAdmin:
+                                            type: boolean
+                                          DisplayName:
+                                            type: string
+                                            example: John
 
   /users/me/status-privacy:
     get:
@@ -1008,18 +1454,6 @@ paths:
       responses:
         200:
           description: Group created
-
-  /groups/joined:
-    get:
-      security:
-        - BearerAuth: []
-      tags:
-        - "07 - Group Management"
-      summary: Get Joined Groups
-      description: Get list of groups the user has joined
-      responses:
-        200:
-          description: Joined groups retrieved
 
   /groups/{group_jid}:
     get:

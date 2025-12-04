@@ -53,12 +53,23 @@ func Routes(app *fiber.App) {
 	// ADMIN ROUTES (X-Admin-Secret authentication)
 	// ============================================================
 	adminMiddleware := auth.AdminAuth()
+	
+	// Admin Dashboard APIs
+	app.Get(router.BaseURL+"/admin/stats", adminMiddleware, ctlAdmin.GetStats)
+	app.Get(router.BaseURL+"/admin/health", adminMiddleware, ctlAdmin.GetHealth)
+	app.Get(router.BaseURL+"/admin/devices", adminMiddleware, ctlAdmin.ListAllDevices)
+	app.Get(router.BaseURL+"/admin/devices/status", adminMiddleware, ctlAdmin.GetAllDevicesStatus)
+	app.Post(router.BaseURL+"/admin/devices/reconnect", adminMiddleware, ctlAdmin.ReconnectAllDevices)
+	app.Get(router.BaseURL+"/admin/webhooks/stats", adminMiddleware, ctlAdmin.GetWebhookStats)
+	
+	// API Key Management
 	app.Post(router.BaseURL+"/admin/api-keys", adminMiddleware, ctlAdmin.CreateAPIKey)
 	app.Get(router.BaseURL+"/admin/api-keys", adminMiddleware, ctlAdmin.ListAPIKeys)
 	app.Get(router.BaseURL+"/admin/api-keys/:id", adminMiddleware, ctlAdmin.GetAPIKey)
 	app.Patch(router.BaseURL+"/admin/api-keys/:id", adminMiddleware, ctlAdmin.UpdateAPIKey)
 	app.Delete(router.BaseURL+"/admin/api-keys/:id", adminMiddleware, ctlAdmin.DeleteAPIKey)
 	app.Get(router.BaseURL+"/admin/api-keys/:id/devices", adminMiddleware, ctlAdmin.ListDevicesByAPIKey)
+	app.Get(router.BaseURL+"/admin/api-keys/:id/devices/status", adminMiddleware, ctlAdmin.GetAllDeviceStatuses)
 	app.Delete(router.BaseURL+"/admin/devices/:device_id", adminMiddleware, ctlAdmin.DeleteDevice)
 
 	// ============================================================
@@ -115,7 +126,6 @@ func Routes(app *fiber.App) {
 
 	// Group routes
 	app.Get(router.BaseURL+"/groups", deviceAuthMiddleware, ctlGroups.List)
-	app.Get(router.BaseURL+"/groups/joined", deviceAuthMiddleware, ctlGroups.GetJoined)
 	app.Get(router.BaseURL+"/groups/:group_jid", deviceAuthMiddleware, ctlGroups.GetInfo)
 	app.Post(router.BaseURL+"/groups", deviceAuthMiddleware, ctlGroups.Create)
 	app.Post(router.BaseURL+"/groups/:group_jid/leave", deviceAuthMiddleware, ctlGroups.Leave)

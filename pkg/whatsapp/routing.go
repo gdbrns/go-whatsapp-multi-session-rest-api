@@ -51,7 +51,29 @@ var (
 	routingDB   *sql.DB
 	routingOnce sync.Once
 	routingErr  error
+
+	// JWT Version Cache - prevents DB hit on every request
+	jwtVersionCache    = make(map[string]jwtVersionCacheEntry)
+	jwtVersionCacheMu  sync.RWMutex
+	jwtVersionCacheTTL = 30 * time.Second // Cache JWT version for 30 seconds
+
+	// API Key Cache - prevents DB hit on device creation requests
+	apiKeyCache    = make(map[string]apiKeyCacheEntry)
+	apiKeyCacheMu  sync.RWMutex
+	apiKeyCacheTTL = 5 * time.Minute // Cache API keys for 5 minutes
 )
+
+// jwtVersionCacheEntry caches device JWT version to avoid DB queries on every request
+type jwtVersionCacheEntry struct {
+	version   int
+	expiresAt time.Time
+}
+
+// apiKeyCacheEntry caches API key data to avoid DB queries
+type apiKeyCacheEntry struct {
+	apiKey    *APIKey
+	expiresAt time.Time
+}
 
 func openRoutingDB() (*sql.DB, error) {
 	routingOnce.Do(func() {
@@ -536,8 +558,17 @@ func CreateAPIKey(ctx context.Context, customerName, customerEmail string, maxDe
 	}, nil
 }
 
-// GetAPIKeyByKey retrieves an API key by its key string
+// GetAPIKeyByKey retrieves an API key by its key string (with caching)
 func GetAPIKeyByKey(ctx context.Context, apiKey string) (*APIKey, error) {
+	// Check cache first (fast path)
+	apiKeyCacheMu.RLock()
+	if entry, ok := apiKeyCache[apiKey]; ok && time.Now().Before(entry.expiresAt) {
+		apiKeyCacheMu.RUnlock()
+		return entry.apiKey, nil
+	}
+	apiKeyCacheMu.RUnlock()
+
+	// Cache miss - fetch from DB
 	db, err := openRoutingDB()
 	if err != nil {
 		return nil, err
@@ -562,7 +593,24 @@ func GetAPIKeyByKey(ctx context.Context, apiKey string) (*APIKey, error) {
 	if updatedAt.Valid {
 		ak.UpdatedAt = &updatedAt.Time
 	}
+
+	// Store in cache
+	apiKeyCacheMu.Lock()
+	apiKeyCache[apiKey] = apiKeyCacheEntry{
+		apiKey:    &ak,
+		expiresAt: time.Now().Add(apiKeyCacheTTL),
+	}
+	apiKeyCacheMu.Unlock()
+
 	return &ak, nil
+}
+
+// InvalidateAPIKeyCache removes an API key from cache
+// Call this when API key is updated or deleted
+func InvalidateAPIKeyCache(apiKey string) {
+	apiKeyCacheMu.Lock()
+	delete(apiKeyCache, apiKey)
+	apiKeyCacheMu.Unlock()
 }
 
 // GetAPIKeyByID retrieves an API key by its ID
@@ -636,6 +684,13 @@ func UpdateAPIKey(ctx context.Context, id int64, customerName, customerEmail str
 		return err
 	}
 
+	// Get the API key string first to invalidate cache
+	var apiKeyStr string
+	_ = db.QueryRowContext(ctx, `SELECT api_key FROM api_keys WHERE id = $1`, id).Scan(&apiKeyStr)
+	if apiKeyStr != "" {
+		InvalidateAPIKeyCache(apiKeyStr)
+	}
+
 	_, err = db.ExecContext(ctx, `
 		UPDATE api_keys 
 		SET customer_name = $2, customer_email = $3, max_devices = $4, rate_limit_per_hour = $5, is_active = $6, updated_at = NOW()
@@ -649,6 +704,13 @@ func DeleteAPIKey(ctx context.Context, id int64) error {
 	db, err := openRoutingDB()
 	if err != nil {
 		return err
+	}
+
+	// Get the API key string first to invalidate cache
+	var apiKeyStr string
+	_ = db.QueryRowContext(ctx, `SELECT api_key FROM api_keys WHERE id = $1`, id).Scan(&apiKeyStr)
+	if apiKeyStr != "" {
+		InvalidateAPIKeyCache(apiKeyStr)
 	}
 
 	_, err = db.ExecContext(ctx, `DELETE FROM api_keys WHERE id = $1`, id)
@@ -802,8 +864,18 @@ func ValidateDeviceCredentials(ctx context.Context, deviceID, deviceSecret strin
 	return &d, nil
 }
 
-// GetDeviceJWTVersion gets the current jwt_version for a device
+// GetDeviceJWTVersion gets the current jwt_version for a device (with caching)
+// This is called on EVERY authenticated request, so caching is critical for performance
 func GetDeviceJWTVersion(ctx context.Context, deviceID string) (int, error) {
+	// Check cache first (fast path - no DB hit)
+	jwtVersionCacheMu.RLock()
+	if entry, ok := jwtVersionCache[deviceID]; ok && time.Now().Before(entry.expiresAt) {
+		jwtVersionCacheMu.RUnlock()
+		return entry.version, nil
+	}
+	jwtVersionCacheMu.RUnlock()
+
+	// Cache miss - fetch from DB
 	db, err := openRoutingDB()
 	if err != nil {
 		return 0, err
@@ -814,7 +886,27 @@ func GetDeviceJWTVersion(ctx context.Context, deviceID string) (int, error) {
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, errors.New("device not found")
 	}
-	return version, err
+	if err != nil {
+		return 0, err
+	}
+
+	// Store in cache
+	jwtVersionCacheMu.Lock()
+	jwtVersionCache[deviceID] = jwtVersionCacheEntry{
+		version:   version,
+		expiresAt: time.Now().Add(jwtVersionCacheTTL),
+	}
+	jwtVersionCacheMu.Unlock()
+
+	return version, nil
+}
+
+// InvalidateJWTVersionCache removes a device from the JWT version cache
+// Call this when a token is revoked/regenerated
+func InvalidateJWTVersionCache(deviceID string) {
+	jwtVersionCacheMu.Lock()
+	delete(jwtVersionCache, deviceID)
+	jwtVersionCacheMu.Unlock()
 }
 
 // IncrementDeviceJWTVersion increments the jwt_version and returns the new version
@@ -833,7 +925,14 @@ func IncrementDeviceJWTVersion(ctx context.Context, deviceID string) (int, error
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, errors.New("device not found")
 	}
-	return newVersion, err
+	if err != nil {
+		return newVersion, err
+	}
+
+	// Invalidate cache so next request fetches new version
+	InvalidateJWTVersionCache(deviceID)
+
+	return newVersion, nil
 }
 
 // GetDeviceByID retrieves a device by ID (for admin use)
@@ -993,4 +1092,179 @@ func GetJIDByDeviceID(ctx context.Context, deviceID string) (string, error) {
 func GetDeviceIDByJIDLegacy(ctx context.Context, deviceID string) (string, error) {
 	jid, _, err := GetWhatsMeowJID(ctx, deviceID)
 	return jid, err
+}
+
+// ============================================================================
+// Admin Dashboard Functions
+// ============================================================================
+
+// DeviceWithCustomer represents a device with its customer information
+type DeviceWithCustomer struct {
+	DeviceID     string     `json:"device_id"`
+	DeviceName   string     `json:"device_name"`
+	APIKeyID     int64      `json:"api_key_id"`
+	CustomerName string     `json:"customer_name"`
+	WhatsMeowJID string     `json:"whatsmeow_jid"`
+	Status       string     `json:"status"`
+	CreatedAt    time.Time  `json:"created_at"`
+	LastActiveAt *time.Time `json:"last_active_at"`
+}
+
+// AdminStats represents system-wide statistics for admin dashboard
+type AdminStats struct {
+	TotalAPIKeys       int `json:"total_api_keys"`
+	ActiveAPIKeys      int `json:"active_api_keys"`
+	TotalDevices       int `json:"total_devices"`
+	ConnectedDevices   int `json:"connected_devices"`
+	DisconnectedDevices int `json:"disconnected_devices"`
+	PendingDevices     int `json:"pending_devices"`
+	LoggedOutDevices   int `json:"logged_out_devices"`
+	TotalWebhooks      int `json:"total_webhooks"`
+	ActiveWebhooks     int `json:"active_webhooks"`
+}
+
+// ListAllDevices retrieves all devices across all API keys with customer info
+func ListAllDevices(ctx context.Context) ([]DeviceWithCustomer, error) {
+	db, err := openRoutingDB()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := db.QueryContext(ctx, `
+		SELECT d.device_id, d.device_name, d.api_key_id, a.customer_name, d.whatsmeow_jid, d.status, d.created_at, d.last_active_at
+		FROM devices d
+		LEFT JOIN api_keys a ON d.api_key_id = a.id
+		ORDER BY d.created_at DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var devices []DeviceWithCustomer
+	for rows.Next() {
+		var d DeviceWithCustomer
+		var name sql.NullString
+		var customerName sql.NullString
+		var jid sql.NullString
+		var lastActive sql.NullTime
+		var apiKeyID sql.NullInt64
+
+		if err := rows.Scan(&d.DeviceID, &name, &apiKeyID, &customerName, &jid, &d.Status, &d.CreatedAt, &lastActive); err != nil {
+			return nil, err
+		}
+
+		if name.Valid {
+			d.DeviceName = name.String
+		}
+		if apiKeyID.Valid {
+			d.APIKeyID = apiKeyID.Int64
+		}
+		if customerName.Valid {
+			d.CustomerName = customerName.String
+		}
+		if jid.Valid {
+			d.WhatsMeowJID = jid.String
+		}
+		if lastActive.Valid {
+			d.LastActiveAt = &lastActive.Time
+		}
+
+		devices = append(devices, d)
+	}
+	return devices, rows.Err()
+}
+
+// GetAdminStats retrieves system-wide statistics for admin dashboard
+func GetAdminStats(ctx context.Context) (*AdminStats, error) {
+	db, err := openRoutingDB()
+	if err != nil {
+		return nil, err
+	}
+
+	stats := &AdminStats{}
+
+	// Count API keys
+	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM api_keys`).Scan(&stats.TotalAPIKeys)
+	if err != nil {
+		return nil, err
+	}
+
+	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM api_keys WHERE is_active = TRUE`).Scan(&stats.ActiveAPIKeys)
+	if err != nil {
+		return nil, err
+	}
+
+	// Count devices by status
+	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices`).Scan(&stats.TotalDevices)
+	if err != nil {
+		return nil, err
+	}
+
+	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices WHERE status = 'active'`).Scan(&stats.ConnectedDevices)
+	if err != nil {
+		return nil, err
+	}
+
+	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices WHERE status = 'disconnected'`).Scan(&stats.DisconnectedDevices)
+	if err != nil {
+		return nil, err
+	}
+
+	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices WHERE status = 'pending'`).Scan(&stats.PendingDevices)
+	if err != nil {
+		return nil, err
+	}
+
+	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices WHERE status = 'logged_out'`).Scan(&stats.LoggedOutDevices)
+	if err != nil {
+		return nil, err
+	}
+
+	// Count webhooks
+	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM wa_webhooks`).Scan(&stats.TotalWebhooks)
+	if err != nil {
+		// Table might not exist, set to 0
+		stats.TotalWebhooks = 0
+	}
+
+	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM wa_webhooks WHERE active = TRUE`).Scan(&stats.ActiveWebhooks)
+	if err != nil {
+		stats.ActiveWebhooks = 0
+	}
+
+	return stats, nil
+}
+
+// GetWebhookStats retrieves webhook delivery statistics
+func GetWebhookStats(ctx context.Context) (map[string]interface{}, error) {
+	db, err := openRoutingDB()
+	if err != nil {
+		return nil, err
+	}
+
+	stats := make(map[string]interface{})
+
+	var totalWebhooks, activeWebhooks int
+	_ = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM wa_webhooks`).Scan(&totalWebhooks)
+	_ = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM wa_webhooks WHERE active = TRUE`).Scan(&activeWebhooks)
+
+	var totalDeliveries, successDeliveries, failedDeliveries int
+	_ = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM wa_webhook_deliveries`).Scan(&totalDeliveries)
+	_ = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM wa_webhook_deliveries WHERE status = 'success'`).Scan(&successDeliveries)
+	_ = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM wa_webhook_deliveries WHERE status = 'failed'`).Scan(&failedDeliveries)
+
+	var successRate float64
+	if totalDeliveries > 0 {
+		successRate = float64(successDeliveries) / float64(totalDeliveries) * 100
+	}
+
+	stats["total_webhooks"] = totalWebhooks
+	stats["active_webhooks"] = activeWebhooks
+	stats["total_deliveries"] = totalDeliveries
+	stats["success_deliveries"] = successDeliveries
+	stats["failed_deliveries"] = failedDeliveries
+	stats["success_rate"] = successRate
+
+	return stats, nil
 }

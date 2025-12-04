@@ -12,6 +12,9 @@ func Startup() {
 
 	ctx := context.Background()
 
+	// Start background cache cleanup for multi-device memory management
+	pkgWhatsApp.StartCacheCleanup()
+
 	if err := pkgWhatsApp.SyncDeviceRoutings(ctx); err != nil {
 		log.Print(nil).Error("Failed to sync device routings: " + err.Error())
 	}
