@@ -68,7 +68,8 @@ func GetInfo(c *fiber.Ctx) error {
 
 	log.GroupOp(deviceID, jid, "GetGroupInfo", groupJID).Info("Getting group info")
 
-	groupID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, groupJID)
+	// Use WhatsAppComposeJID for group JIDs - WhatsAppGetJID is only for personal phone numbers
+	groupID := pkgWhatsApp.WhatsAppComposeJID(groupJID)
 
 	groupInfo, err := pkgWhatsApp.WhatsAppGroupInfo(ctx, jid, deviceID, groupID)
 	if err != nil {
@@ -120,9 +121,8 @@ func Leave(c *fiber.Ctx) error {
 
 	log.GroupOp(deviceID, jid, "LeaveGroup", groupJID).Info("Leaving group")
 
-	groupID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, groupJID)
-
-	err := pkgWhatsApp.WhatsAppGroupLeave(ctx, jid, deviceID, groupID.String())
+	// Pass groupJID directly - WhatsAppGroupLeave handles JID parsing internally
+	err := pkgWhatsApp.WhatsAppGroupLeave(ctx, jid, deviceID, groupJID)
 	if err != nil {
 		log.GroupOp(deviceID, jid, "LeaveGroup", groupJID).WithError(err).Error("Failed to leave group")
 		return router.ResponseInternalError(c, err.Error())
@@ -153,7 +153,8 @@ func UpdateName(c *fiber.Ctx) error {
 
 	log.GroupOp(deviceID, jid, "UpdateGroupName", groupJID).WithField("new_name", req.Name).Info("Updating group name")
 
-	groupID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, groupJID)
+	// Use WhatsAppComposeJID for group JIDs - WhatsAppGetJID is only for personal phone numbers
+	groupID := pkgWhatsApp.WhatsAppComposeJID(groupJID)
 
 	err = pkgWhatsApp.WhatsAppGroupUpdateName(ctx, jid, deviceID, groupID, req.Name)
 	if err != nil {
@@ -186,7 +187,8 @@ func UpdateDescription(c *fiber.Ctx) error {
 
 	log.GroupOp(deviceID, jid, "UpdateGroupDescription", groupJID).Info("Updating group description")
 
-	groupID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, groupJID)
+	// Use WhatsAppComposeJID for group JIDs - WhatsAppGetJID is only for personal phone numbers
+	groupID := pkgWhatsApp.WhatsAppComposeJID(groupJID)
 
 	err = pkgWhatsApp.WhatsAppGroupUpdateDescription(ctx, jid, deviceID, groupID, req.Description)
 	if err != nil {
@@ -210,7 +212,8 @@ func UpdatePhoto(c *fiber.Ctx) error {
 
 	log.GroupOp(deviceID, jid, "UpdateGroupPhoto", groupJID).Info("Updating group photo")
 
-	groupID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, groupJID)
+	// Use WhatsAppComposeJID for group JIDs - WhatsAppGetJID is only for personal phone numbers
+	groupID := pkgWhatsApp.WhatsAppComposeJID(groupJID)
 
 	fileHeader, err := c.FormFile("photo")
 	if err != nil {
@@ -249,9 +252,8 @@ func GetInviteLink(c *fiber.Ctx) error {
 
 	log.GroupOp(deviceID, jid, "GetInviteLink", groupJID).WithField("reset", reset).Info("Getting group invite link")
 
-	groupID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, groupJID)
-
-	inviteLink, err := pkgWhatsApp.WhatsAppGroupInviteLink(ctx, jid, deviceID, groupID.String(), reset)
+	// Pass groupJID directly - WhatsAppGroupInviteLink handles JID parsing internally
+	inviteLink, err := pkgWhatsApp.WhatsAppGroupInviteLink(ctx, jid, deviceID, groupJID, reset)
 	if err != nil {
 		log.GroupOp(deviceID, jid, "GetInviteLink", groupJID).WithError(err).Error("Failed to get invite link")
 		return router.ResponseInternalError(c, err.Error())
@@ -280,7 +282,8 @@ func UpdateSettings(c *fiber.Ctx) error {
 		ctx = context.Background()
 	}
 
-	groupID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, groupJID)
+	// Use WhatsAppComposeJID for group JIDs - WhatsAppGetJID is only for personal phone numbers
+	groupID := pkgWhatsApp.WhatsAppComposeJID(groupJID)
 
 	err = pkgWhatsApp.WhatsAppGroupUpdateSettings(jid, deviceID, groupID, req)
 	if err != nil {
@@ -304,7 +307,8 @@ func GetParticipantRequests(c *fiber.Ctx) error {
 		ctx = context.Background()
 	}
 
-	groupID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, groupJID)
+	// Use WhatsAppComposeJID for group JIDs - WhatsAppGetJID is only for personal phone numbers
+	groupID := pkgWhatsApp.WhatsAppComposeJID(groupJID)
 
 	requests, err := pkgWhatsApp.WhatsAppGroupParticipantRequests(ctx, jid, deviceID, groupID)
 	if err != nil {
@@ -342,7 +346,8 @@ func SetJoinApproval(c *fiber.Ctx) error {
 		ctx = context.Background()
 	}
 
-	groupID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, groupJID)
+	// Use WhatsAppComposeJID for group JIDs - WhatsAppGetJID is only for personal phone numbers
+	groupID := pkgWhatsApp.WhatsAppComposeJID(groupJID)
 
 	err = pkgWhatsApp.WhatsAppGroupJoinApprovalMode(jid, deviceID, groupID, req.Mode)
 	if err != nil {
@@ -390,14 +395,8 @@ func JoinWithInvite(c *fiber.Ctx) error {
 
 	log.GroupOp(deviceID, jid, "JoinWithInvite", groupJID).WithField("invite_code", req.InviteCode).Info("Joining group with invite")
 
-	ctx := c.UserContext()
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
-	groupID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, groupJID)
-
-	err = pkgWhatsApp.WhatsAppGroupJoinWithInvite(jid, deviceID, groupID.String(), req.Inviter, req.InviteCode, req.Expiration)
+	// Pass groupJID directly - WhatsAppGroupJoinWithInvite handles JID parsing internally
+	err = pkgWhatsApp.WhatsAppGroupJoinWithInvite(jid, deviceID, groupJID, req.Inviter, req.InviteCode, req.Expiration)
 	if err != nil {
 		log.GroupOp(deviceID, jid, "JoinWithInvite", groupJID).WithError(err).Error("Failed to join group with invite")
 		return router.ResponseInternalError(c, err.Error())
@@ -423,14 +422,8 @@ func SetMemberAddMode(c *fiber.Ctx) error {
 
 	log.GroupOp(deviceID, jid, "SetMemberAddMode", groupJID).WithField("mode", req.Mode).Info("Setting member add mode")
 
-	ctx := c.UserContext()
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
-	groupID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, groupJID)
-
-	err = pkgWhatsApp.WhatsAppGroupSetMemberAddMode(jid, deviceID, groupID.String(), req.Mode)
+	// Pass groupJID directly - WhatsAppGroupSetMemberAddMode handles JID parsing internally
+	err = pkgWhatsApp.WhatsAppGroupSetMemberAddMode(jid, deviceID, groupJID, req.Mode)
 	if err != nil {
 		log.GroupOp(deviceID, jid, "SetMemberAddMode", groupJID).WithError(err).Error("Failed to set member add mode")
 		return router.ResponseInternalError(c, err.Error())
@@ -454,14 +447,8 @@ func SetTopic(c *fiber.Ctx) error {
 
 	log.GroupOp(deviceID, jid, "SetTopic", groupJID).WithField("topic", req.Topic).Info("Setting group topic")
 
-	ctx := c.UserContext()
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
-	groupID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, groupJID)
-
-	err = pkgWhatsApp.WhatsAppGroupSetTopic(jid, deviceID, groupID.String(), req.PreviousID, req.NewID, req.Topic)
+	// Pass groupJID directly - WhatsAppGroupSetTopic handles JID parsing internally
+	err = pkgWhatsApp.WhatsAppGroupSetTopic(jid, deviceID, groupJID, req.PreviousID, req.NewID, req.Topic)
 	if err != nil {
 		log.GroupOp(deviceID, jid, "SetTopic", groupJID).WithError(err).Error("Failed to set group topic")
 		return router.ResponseInternalError(c, err.Error())
@@ -479,15 +466,8 @@ func LinkGroup(c *fiber.Ctx) error {
 
 	log.GroupOp(deviceID, jid, "LinkGroup", parentGroupJID).WithField("child_group", childGroupJID).Info("Linking groups")
 
-	ctx := c.UserContext()
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
-	parentID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, parentGroupJID)
-	childID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, childGroupJID)
-
-	err := pkgWhatsApp.WhatsAppGroupLink(jid, deviceID, parentID.String(), childID.String())
+	// Pass group JIDs directly - WhatsAppGroupLink handles JID parsing internally
+	err := pkgWhatsApp.WhatsAppGroupLink(jid, deviceID, parentGroupJID, childGroupJID)
 	if err != nil {
 		log.GroupOp(deviceID, jid, "LinkGroup", parentGroupJID).WithField("child_group", childGroupJID).WithError(err).Error("Failed to link groups")
 		return router.ResponseInternalError(c, err.Error())
@@ -509,9 +489,8 @@ func GetLinkedParticipants(c *fiber.Ctx) error {
 		ctx = context.Background()
 	}
 
-	communityID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, communityJID)
-
-	participants, err := pkgWhatsApp.WhatsAppGroupGetLinkedParticipants(ctx, jid, deviceID, communityID.String())
+	// Pass communityJID directly - WhatsAppGroupGetLinkedParticipants handles JID parsing internally
+	participants, err := pkgWhatsApp.WhatsAppGroupGetLinkedParticipants(ctx, jid, deviceID, communityJID)
 	if err != nil {
 		log.GroupOp(deviceID, jid, "GetLinkedParticipants", communityJID).WithError(err).Error("Failed to get linked participants")
 		return router.ResponseInternalError(c, err.Error())
@@ -538,9 +517,8 @@ func GetSubGroups(c *fiber.Ctx) error {
 		ctx = context.Background()
 	}
 
-	communityID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, communityJID)
-
-	subGroups, err := pkgWhatsApp.WhatsAppGroupGetSubGroups(ctx, jid, deviceID, communityID.String())
+	// Pass communityJID directly - WhatsAppGroupGetSubGroups handles JID parsing internally
+	subGroups, err := pkgWhatsApp.WhatsAppGroupGetSubGroups(ctx, jid, deviceID, communityJID)
 	if err != nil {
 		log.GroupOp(deviceID, jid, "GetSubGroups", communityJID).WithError(err).Error("Failed to get sub groups")
 		return router.ResponseInternalError(c, err.Error())
@@ -576,9 +554,8 @@ func AddParticipants(c *fiber.Ctx) error {
 		ctx = context.Background()
 	}
 
-	groupID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, groupJID)
-
-	participants, err := pkgWhatsApp.WhatsAppAddParticipants(ctx, jid, deviceID, groupID.String(), req.Participants)
+	// Pass groupJID directly - WhatsAppAddParticipants handles JID parsing internally
+	participants, err := pkgWhatsApp.WhatsAppAddParticipants(ctx, jid, deviceID, groupJID, req.Participants)
 	if err != nil {
 		log.GroupOp(deviceID, jid, "AddParticipants", groupJID).WithError(err).Error("Failed to add participants")
 		return router.ResponseInternalError(c, err.Error())
@@ -609,9 +586,8 @@ func RemoveParticipants(c *fiber.Ctx) error {
 		ctx = context.Background()
 	}
 
-	groupID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, groupJID)
-
-	participants, err := pkgWhatsApp.WhatsAppRemoveParticipants(ctx, jid, deviceID, groupID.String(), req.Participants)
+	// Pass groupJID directly - WhatsAppRemoveParticipants handles JID parsing internally
+	participants, err := pkgWhatsApp.WhatsAppRemoveParticipants(ctx, jid, deviceID, groupJID, req.Participants)
 	if err != nil {
 		log.GroupOp(deviceID, jid, "RemoveParticipants", groupJID).WithError(err).Error("Failed to remove participants")
 		return router.ResponseInternalError(c, err.Error())
@@ -642,9 +618,8 @@ func ApproveRequests(c *fiber.Ctx) error {
 		ctx = context.Background()
 	}
 
-	groupID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, groupJID)
-
-	participants, err := pkgWhatsApp.WhatsAppApproveJoinRequests(ctx, jid, deviceID, groupID.String(), req.Users)
+	// Pass groupJID directly - WhatsAppApproveJoinRequests handles JID parsing internally
+	participants, err := pkgWhatsApp.WhatsAppApproveJoinRequests(ctx, jid, deviceID, groupJID, req.Users)
 	if err != nil {
 		log.GroupOp(deviceID, jid, "ApproveRequests", groupJID).WithError(err).Error("Failed to approve join requests")
 		return router.ResponseInternalError(c, err.Error())
@@ -675,9 +650,8 @@ func RejectRequests(c *fiber.Ctx) error {
 		ctx = context.Background()
 	}
 
-	groupID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, groupJID)
-
-	participants, err := pkgWhatsApp.WhatsAppRejectJoinRequests(ctx, jid, deviceID, groupID.String(), req.Users)
+	// Pass groupJID directly - WhatsAppRejectJoinRequests handles JID parsing internally
+	participants, err := pkgWhatsApp.WhatsAppRejectJoinRequests(ctx, jid, deviceID, groupJID, req.Users)
 	if err != nil {
 		log.GroupOp(deviceID, jid, "RejectRequests", groupJID).WithError(err).Error("Failed to reject join requests")
 		return router.ResponseInternalError(c, err.Error())
@@ -708,9 +682,8 @@ func PromoteAdmins(c *fiber.Ctx) error {
 		ctx = context.Background()
 	}
 
-	groupID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, groupJID)
-
-	participants, err := pkgWhatsApp.WhatsAppPromoteAdmins(ctx, jid, deviceID, groupID.String(), req.Users)
+	// Pass groupJID directly - WhatsAppPromoteAdmins handles JID parsing internally
+	participants, err := pkgWhatsApp.WhatsAppPromoteAdmins(ctx, jid, deviceID, groupJID, req.Users)
 	if err != nil {
 		log.GroupOp(deviceID, jid, "PromoteAdmins", groupJID).WithError(err).Error("Failed to promote admins")
 		return router.ResponseInternalError(c, err.Error())
@@ -741,9 +714,8 @@ func DemoteAdmins(c *fiber.Ctx) error {
 		ctx = context.Background()
 	}
 
-	groupID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, groupJID)
-
-	participants, err := pkgWhatsApp.WhatsAppDemoteAdmins(ctx, jid, deviceID, groupID.String(), req.Users)
+	// Pass groupJID directly - WhatsAppDemoteAdmins handles JID parsing internally
+	participants, err := pkgWhatsApp.WhatsAppDemoteAdmins(ctx, jid, deviceID, groupJID, req.Users)
 	if err != nil {
 		log.GroupOp(deviceID, jid, "DemoteAdmins", groupJID).WithError(err).Error("Failed to demote admins")
 		return router.ResponseInternalError(c, err.Error())

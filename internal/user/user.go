@@ -2,6 +2,8 @@ package user
 
 import (
 	"context"
+	"net/url"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -10,6 +12,41 @@ import (
 	pkgWhatsApp "github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/whatsapp"
 	typWhatsApp "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/types"
 )
+
+// decodeUserJID URL-decodes the user JID parameter from the route
+func decodeUserJID(encoded string) string {
+	decoded, err := url.PathUnescape(encoded)
+	if err != nil {
+		return encoded
+	}
+	return decoded
+}
+
+// normalizeToUserJID converts a device JID (e.g., "6281378887612:74@s.whatsapp.net")
+// to a base user JID (e.g., "6281378887612@s.whatsapp.net") by removing the device part
+func normalizeToUserJID(jidStr string) string {
+	// If there's no @ symbol, it's already a phone number, return as-is
+	if !strings.Contains(jidStr, "@") {
+		return jidStr
+	}
+	
+	// Split at @ to get user part and server
+	parts := strings.SplitN(jidStr, "@", 2)
+	if len(parts) != 2 {
+		return jidStr
+	}
+	
+	userPart := parts[0]
+	server := parts[1]
+	
+	// If user part contains ":" (device ID separator), remove it
+	// e.g., "6281378887612:74" -> "6281378887612"
+	if colonIdx := strings.Index(userPart, ":"); colonIdx != -1 {
+		userPart = userPart[:colonIdx]
+	}
+	
+	return userPart + "@" + server
+}
 
 // getDeviceContext extracts device context from auth middleware
 func getDeviceContext(c *fiber.Ctx) (deviceID string, jid string) {
@@ -28,7 +65,8 @@ func GetInfo(c *fiber.Ctx) error {
 	}
 
 	deviceID, jid := getDeviceContext(c)
-	userJID := c.Params("user_jid")
+	rawJID := decodeUserJID(c.Params("user_jid"))
+	userJID := normalizeToUserJID(rawJID)
 
 	log.Session(c, "GetUserInfo").WithField("target_user", userJID).Info("Getting user info")
 
@@ -59,7 +97,8 @@ func GetProfilePicture(c *fiber.Ctx) error {
 	}
 
 	deviceID, jid := getDeviceContext(c)
-	userJID := c.Params("user_jid")
+	rawJID := decodeUserJID(c.Params("user_jid"))
+	userJID := normalizeToUserJID(rawJID)
 
 	log.Session(c, "GetProfilePicture").WithField("target_user", userJID).Info("Getting user profile picture")
 
@@ -87,7 +126,7 @@ func BlockUser(c *fiber.Ctx) error {
 	}
 
 	deviceID, jid := getDeviceContext(c)
-	userJID := c.Params("user_jid")
+	userJID := decodeUserJID(c.Params("user_jid"))
 
 	log.Session(c, "BlockUser").WithField("target_user", userJID).Info("Blocking user")
 
@@ -109,7 +148,7 @@ func UnblockUser(c *fiber.Ctx) error {
 	}
 
 	deviceID, jid := getDeviceContext(c)
-	userJID := c.Params("user_jid")
+	userJID := decodeUserJID(c.Params("user_jid"))
 
 	log.Session(c, "UnblockUser").WithField("target_user", userJID).Info("Unblocking user")
 
@@ -224,11 +263,13 @@ func GetDevices(c *fiber.Ctx) error {
 	}
 
 	deviceID, jid := getDeviceContext(c)
-	userJID := c.Params("jid")
+	rawJID := decodeUserJID(c.Params("jid"))
+	userJID := normalizeToUserJID(rawJID)
 
 	log.Session(c, "GetDevices").WithField("target_user", userJID).Info("Getting user devices")
 
-	phoneJID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, userJID)
+	// Use WhatsAppComposeJID to parse the normalized JID directly
+	phoneJID := pkgWhatsApp.WhatsAppComposeJID(userJID)
 
 	devices, err := pkgWhatsApp.WhatsAppGetUserDevices(ctx, jid, deviceID, phoneJID)
 	if err != nil {
