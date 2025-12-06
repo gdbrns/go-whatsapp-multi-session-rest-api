@@ -54,7 +54,8 @@
       "properties": {
         "status": {"type": "boolean", "example": false},
         "code": {"type": "integer", "example": 400},
-        "message": {"type": "string", "example": "Bad request"}
+        "message": {"type": "string", "example": "Bad request"},
+        "error": {"type": "string", "example": "Bad request"}
       }
     },
     "SuccessResponse": {
@@ -452,7 +453,8 @@
                     "id": {"type": "integer", "example": 1},
                     "api_key": {"type": "string", "example": "ak_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6", "description": "Save this! Only shown once"},
                     "customer_name": {"type": "string", "example": "Acme Corp"},
-                    "max_devices": {"type": "integer", "example": 10}
+                    "max_devices": {"type": "integer", "example": 10},
+                    "rate_limit_per_hour": {"type": "integer", "example": 1000}
                   }
                 }
               }
@@ -481,8 +483,10 @@
                       "id": {"type": "integer", "example": 1},
                       "api_key_masked": {"type": "string", "example": "ak_a1b2...o5p6"},
                       "customer_name": {"type": "string", "example": "Acme Corp"},
+                      "customer_email": {"type": "string", "example": "admin@acme.com"},
                       "device_count": {"type": "integer", "example": 3},
                       "max_devices": {"type": "integer", "example": 10},
+                      "rate_limit_per_hour": {"type": "integer", "example": 1000},
                       "is_active": {"type": "boolean", "example": true}
                     }
                   }
@@ -503,7 +507,46 @@
           {"name": "id", "in": "path", "required": true, "type": "integer", "description": "API Key ID"}
         ],
         "responses": {
-          "200": {"description": "API key details retrieved"},
+          "200": {
+            "description": "API key details retrieved",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "API key retrieved successfully"},
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "id": {"type": "integer", "example": 1},
+                    "api_key_masked": {"type": "string", "example": "ak_a1b2...z9y8"},
+                    "customer_name": {"type": "string", "example": "Acme Corp"},
+                    "customer_email": {"type": "string", "example": "ops@acme.com"},
+                    "max_devices": {"type": "integer", "example": 10},
+                    "rate_limit_per_hour": {"type": "integer", "example": 1000},
+                    "is_active": {"type": "boolean", "example": true},
+                    "device_count": {"type": "integer", "example": 3},
+                    "devices": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "device_id": {"type": "string", "example": "550e8400-e29b-41d4-a716-446655440000"},
+                          "device_name": {"type": "string", "example": "Bot 1"},
+                          "whatsmeow_jid": {"type": "string", "example": "6281234567890@s.whatsapp.net"},
+                          "status": {"type": "string", "example": "active"},
+                          "created_at": {"type": "string", "example": "2025-01-01T00:00:00Z"},
+                          "last_active_at": {"type": "string", "example": "2025-12-03T10:30:00Z"}
+                        }
+                      }
+                    },
+                    "created_at": {"type": "string", "example": "2025-01-01T00:00:00Z"},
+                    "updated_at": {"type": "string", "example": "2025-12-03T10:30:00Z"}
+                  }
+                }
+              }
+            }
+          },
           "404": {"description": "API key not found", "schema": {"$ref": "#/definitions/ErrorResponse"}}
         }
       },
@@ -556,7 +599,73 @@
           {"name": "id", "in": "path", "required": true, "type": "integer", "description": "API Key ID"}
         ],
         "responses": {
-          "200": {"description": "Devices retrieved"}
+          "200": {
+            "description": "Devices retrieved",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "Devices retrieved successfully"},
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "device_id": {"type": "string", "example": "550e8400-e29b-41d4-a716-446655440000"},
+                      "device_name": {"type": "string", "example": "Production Phone"},
+                      "whatsmeow_jid": {"type": "string", "example": "6281234567890@s.whatsapp.net"},
+                      "status": {"type": "string", "example": "active"},
+                      "created_at": {"type": "string", "example": "2025-01-01T00:00:00Z"},
+                      "last_active_at": {"type": "string", "example": "2025-12-03T10:30:00Z"}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/api-keys/{id}/devices/status": {
+      "get": {
+        "security": [{"AdminAuth": []}],
+        "tags": ["02 - Admin"],
+        "summary": "Get Device Statuses by API Key",
+        "description": "Live connection status for all devices under a specific API key",
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "type": "integer", "description": "API Key ID"}
+        ],
+        "responses": {
+          "200": {
+            "description": "Device statuses retrieved",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "Device statuses retrieved successfully"},
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "device_id": {"type": "string", "example": "550e8400-e29b-41d4-a716-446655440000"},
+                      "device_name": {"type": "string", "example": "Production Phone"},
+                      "whatsmeow_jid": {"type": "string", "example": "6281234567890@s.whatsapp.net"},
+                      "db_status": {"type": "string", "example": "active"},
+                      "client_loaded": {"type": "boolean", "example": true},
+                      "connected": {"type": "boolean", "example": true, "description": "Legacy flag: true only when fully connected"},
+                      "is_connected": {"type": "boolean", "example": true},
+                      "is_logged_in": {"type": "boolean", "example": true},
+                      "error": {"type": "string", "example": ""}
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {"description": "API key not found"}
         }
       }
     },
@@ -585,11 +694,11 @@
           {
             "name": "body",
             "in": "body",
-            "required": true,
+            "required": false,
             "schema": {
               "type": "object",
               "properties": {
-                "device_name": {"type": "string", "example": "Production Phone", "description": "Friendly name for the device"}
+                "device_name": {"type": "string", "example": "Production Phone", "description": "Optional friendly name for the device"}
               }
             }
           }
@@ -607,8 +716,10 @@
                   "type": "object",
                   "properties": {
                     "device_id": {"type": "string", "example": "550e8400-e29b-41d4-a716-446655440000"},
+                    "device_secret": {"type": "string", "example": "a1b2c3d4e5f6g7h8", "description": "Store securely; required to regenerate tokens"},
                     "device_name": {"type": "string", "example": "Production Phone"},
-                    "token": {"type": "string", "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...", "description": "Save this JWT token!"}
+                    "token": {"type": "string", "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...", "description": "JWT for all device operations"},
+                    "message": {"type": "string", "example": "Device created successfully. Save the device_secret securely."}
                   }
                 }
               }
@@ -632,10 +743,10 @@
             "required": true,
             "schema": {
               "type": "object",
-              "required": ["device_id", "api_key"],
+              "required": ["device_id", "device_secret"],
               "properties": {
                 "device_id": {"type": "string", "example": "550e8400-e29b-41d4-a716-446655440000"},
-                "api_key": {"type": "string", "example": "ak_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6", "description": "The API key that created this device"}
+                "device_secret": {"type": "string", "example": "a1b2c3d4e5f6g7h8", "description": "Device secret returned at creation time"}
               }
             }
           }
@@ -647,7 +758,8 @@
               "type": "object",
               "properties": {
                 "status": {"type": "boolean", "example": true},
-                "message": {"type": "string", "example": "Token regenerated successfully"},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "Token regenerated successfully. All previous tokens are now invalid."},
                 "data": {
                   "type": "object",
                   "properties": {
@@ -680,7 +792,9 @@
                     "device_id": {"type": "string"},
                     "device_name": {"type": "string"},
                     "whatsmeow_jid": {"type": "string"},
-                    "status": {"type": "string"}
+                    "status": {"type": "string"},
+                    "created_at": {"type": "string", "example": "2025-01-01T00:00:00Z"},
+                    "last_active": {"type": "string", "example": "2025-12-03T10:30:00Z"}
                   }
                 }
               }
@@ -694,7 +808,7 @@
         "security": [{"BearerAuth": []}],
         "tags": ["04 - Device Operations"],
         "summary": "Get Device Connection Status",
-        "description": "Check if the device is connected to WhatsApp",
+        "description": "Detailed device status including DB status, client load state, connection, and login flags.",
         "responses": {
           "200": {
             "description": "Status retrieved",
@@ -704,7 +818,12 @@
                 "data": {
                   "type": "object",
                   "properties": {
-                    "connected": {"type": "boolean", "example": true}
+                    "db_status": {"type": "string", "example": "active", "description": "Database status: pending | active | disconnected | logged_out"},
+                    "client_loaded": {"type": "boolean", "example": true, "description": "Whether client is loaded in memory"},
+                    "connected": {"type": "boolean", "example": true, "description": "Legacy flag: true only when fully connected and logged in"},
+                    "is_connected": {"type": "boolean", "example": true, "description": "Connected to WhatsApp servers"},
+                    "is_logged_in": {"type": "boolean", "example": true, "description": "Has authenticated session"},
+                    "error": {"type": "string", "example": "", "description": "Error message when not connected/logged in"}
                   }
                 }
               }
@@ -822,8 +941,7 @@
                 "data": {
                   "type": "object",
                   "properties": {
-                    "is_registered": {"type": "boolean", "example": true},
-                    "jid": {"type": "string", "example": "6281234567890@s.whatsapp.net"}
+                    "is_registered": {"type": "boolean", "example": true, "description": "true if the phone is a valid WhatsApp account"}
                   }
                 }
               }

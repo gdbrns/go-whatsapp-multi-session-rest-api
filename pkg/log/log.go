@@ -58,6 +58,12 @@ func Print(c *fiber.Ctx) *logrus.Entry {
 		"uri":       c.OriginalURL(),
 	}
 
+	if reqID := c.Locals("request_id"); reqID != nil {
+		if id, ok := reqID.(string); ok && id != "" {
+			fields["request_id"] = id
+		}
+	}
+
 	// Add device context for B2B multi-device tracing
 	if deviceID := c.Locals("device_id"); deviceID != nil {
 		fields["device_id"] = deviceID
@@ -98,6 +104,12 @@ func Session(c *fiber.Ctx, operation string) *logrus.Entry {
 		fields["remote_ip"] = remoteIP
 		fields["method"] = c.Method()
 		fields["uri"] = c.OriginalURL()
+
+		if reqID := c.Locals("request_id"); reqID != nil {
+			if id, ok := reqID.(string); ok && id != "" {
+				fields["request_id"] = id
+			}
+		}
 
 		// Add device context for multi-session tracing
 		if deviceID := c.Locals("device_id"); deviceID != nil {
@@ -144,6 +156,28 @@ func DeviceOp(deviceID, jid, operation string) *logrus.Entry {
 	return logger.WithFields(fields)
 }
 
+// DeviceOpCtx builds a device-scoped log entry using fiber context locals
+// (device_id, device_jid, request_id).
+func DeviceOpCtx(c *fiber.Ctx, operation string) *logrus.Entry {
+	fields := logrus.Fields{
+		"operation": operation,
+	}
+	if c != nil {
+		if reqID := c.Locals("request_id"); reqID != nil {
+			if id, ok := reqID.(string); ok && id != "" {
+				fields["request_id"] = id
+			}
+		}
+		if deviceID := c.Locals("device_id"); deviceID != nil {
+			fields["device_id"] = deviceID
+		}
+		if jid := c.Locals("device_jid"); jid != nil {
+			fields["device_jid"] = jid
+		}
+	}
+	return logger.WithFields(fields)
+}
+
 // AdminOp creates a log entry for admin operations
 func AdminOp(c *fiber.Ctx, operation string) *logrus.Entry {
 	fields := logrus.Fields{
@@ -161,6 +195,11 @@ func AdminOp(c *fiber.Ctx, operation string) *logrus.Entry {
 		fields["remote_ip"] = remoteIP
 		fields["method"] = c.Method()
 		fields["uri"] = c.OriginalURL()
+		if reqID := c.Locals("request_id"); reqID != nil {
+			if id, ok := reqID.(string); ok && id != "" {
+				fields["request_id"] = id
+			}
+		}
 	}
 
 	return logger.WithFields(fields)
@@ -193,6 +232,31 @@ func MessageOp(deviceID, jid, operation, targetJID string) *logrus.Entry {
 	}
 	if jid != "" {
 		fields["device_jid"] = jid
+	}
+	if targetJID != "" {
+		fields["target_jid"] = targetJID
+	}
+	return logger.WithFields(fields)
+}
+
+// MessageOpCtx builds a messaging log entry with request context.
+func MessageOpCtx(c *fiber.Ctx, operation, targetJID string) *logrus.Entry {
+	fields := logrus.Fields{
+		"operation": operation,
+		"scope":     "messaging",
+	}
+	if c != nil {
+		if reqID := c.Locals("request_id"); reqID != nil {
+			if id, ok := reqID.(string); ok && id != "" {
+				fields["request_id"] = id
+			}
+		}
+		if deviceID := c.Locals("device_id"); deviceID != nil {
+			fields["device_id"] = deviceID
+		}
+		if jid := c.Locals("device_jid"); jid != nil {
+			fields["device_jid"] = jid
+		}
 	}
 	if targetJID != "" {
 		fields["target_jid"] = targetJID

@@ -10,23 +10,12 @@ import (
 	"github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/log"
 )
 
-type ResSuccess struct {
-	Status  bool   `json:"status"`
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}
-
-type ResSuccessWithData struct {
+type Response struct {
 	Status  bool        `json:"status"`
 	Code    int         `json:"code"`
 	Message string      `json:"message"`
-	Data    interface{} `json:"data"`
-}
-
-type ResError struct {
-	Status bool   `json:"status"`
-	Code   int    `json:"code"`
-	Error  string `json:"error"`
+	Data    interface{} `json:"data,omitempty"`
+	Error   string      `json:"error,omitempty"` // kept for backward compatibility
 }
 
 func logSuccess(c *fiber.Ctx, code int, message string) {
@@ -50,10 +39,10 @@ func logError(c *fiber.Ctx, code int, message string) {
 }
 
 func ResponseSuccess(c *fiber.Ctx, message string) error {
-	var response ResSuccess
-
-	response.Status = true
-	response.Code = http.StatusOK
+	response := Response{
+		Status: true,
+		Code:   http.StatusOK,
+	}
 
 	if strings.TrimSpace(message) == "" {
 		message = http.StatusText(response.Code)
@@ -65,16 +54,16 @@ func ResponseSuccess(c *fiber.Ctx, message string) error {
 }
 
 func ResponseSuccessWithData(c *fiber.Ctx, message string, data interface{}) error {
-	var response ResSuccessWithData
-
-	response.Status = true
-	response.Code = http.StatusOK
+	response := Response{
+		Status: true,
+		Code:   http.StatusOK,
+		Data:   data,
+	}
 
 	if strings.TrimSpace(message) == "" {
 		message = http.StatusText(response.Code)
 	}
 	response.Message = message
-	response.Data = data
 
 	logSuccess(c, response.Code, response.Message)
 	return c.Status(response.Code).JSON(response)
@@ -88,10 +77,10 @@ func ResponseSuccessWithHTML(c *fiber.Ctx, html string) error {
 }
 
 func ResponseCreated(c *fiber.Ctx, message string) error {
-	var response ResSuccess
-
-	response.Status = true
-	response.Code = http.StatusCreated
+	response := Response{
+		Status: true,
+		Code:   http.StatusCreated,
+	}
 
 	if strings.TrimSpace(message) == "" {
 		message = http.StatusText(response.Code)
@@ -107,17 +96,18 @@ func ResponseNoContent(c *fiber.Ctx) error {
 }
 
 func ResponseNotFound(c *fiber.Ctx, message string) error {
-	var response ResError
-
-	response.Status = false
-	response.Code = http.StatusNotFound
+	response := Response{
+		Status: false,
+		Code:   http.StatusNotFound,
+	}
 
 	if strings.TrimSpace(message) == "" {
 		message = http.StatusText(response.Code)
 	}
+	response.Message = message
 	response.Error = message
 
-	logError(c, response.Code, response.Error)
+	logError(c, response.Code, response.Message)
 	return c.Status(response.Code).JSON(response)
 }
 
@@ -127,61 +117,65 @@ func ResponseAuthenticate(c *fiber.Ctx) error {
 }
 
 func ResponseUnauthorized(c *fiber.Ctx, message string) error {
-	var response ResError
-
-	response.Status = false
-	response.Code = http.StatusUnauthorized
+	response := Response{
+		Status: false,
+		Code:   http.StatusUnauthorized,
+	}
 
 	if strings.TrimSpace(message) == "" {
 		message = http.StatusText(response.Code)
 	}
+	response.Message = message
 	response.Error = message
 
-	logError(c, response.Code, response.Error)
+	logError(c, response.Code, response.Message)
 	return c.Status(response.Code).JSON(response)
 }
 
 func ResponseBadRequest(c *fiber.Ctx, message string) error {
-	var response ResError
-
-	response.Status = false
-	response.Code = http.StatusBadRequest
+	response := Response{
+		Status: false,
+		Code:   http.StatusBadRequest,
+	}
 
 	if strings.TrimSpace(message) == "" {
 		message = http.StatusText(response.Code)
 	}
+	response.Message = message
 	response.Error = message
 
-	logError(c, response.Code, response.Error)
+	logError(c, response.Code, response.Message)
 	return c.Status(response.Code).JSON(response)
 }
 
 func ResponseInternalError(c *fiber.Ctx, message string) error {
-	var response ResError
-
-	response.Status = false
-	response.Code = http.StatusInternalServerError
+	response := Response{
+		Status: false,
+		Code:   http.StatusInternalServerError,
+	}
 
 	if strings.TrimSpace(message) == "" {
 		message = http.StatusText(response.Code)
 	}
+	response.Message = message
 	response.Error = message
 
-	logError(c, response.Code, response.Error)
+	logError(c, response.Code, response.Message)
 	return c.Status(response.Code).JSON(response)
 }
 
 func ResponseBadGateway(c *fiber.Ctx, message string) error {
-	var response ResError
-
-	response.Status = false
-	response.Code = http.StatusBadGateway
+	response := Response{
+		Status: false,
+		Code:   http.StatusBadGateway,
+	}
 
 	if strings.TrimSpace(message) == "" {
 		message = http.StatusText(response.Code)
 	}
+	response.Message = message
 	response.Error = message
 
-	logError(c, response.Code, response.Error)
+	logError(c, response.Code, response.Message)
 	return c.Status(response.Code).JSON(response)
 }

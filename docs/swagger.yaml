@@ -20,7 +20,7 @@ info:
     name: API Support
     url: https://github.com/gdbrns/go-whatsapp-multi-session-rest-api
 
-host: localhost:3000
+host: localhost:7001
 basePath: /
 schemes:
   - http
@@ -85,7 +85,7 @@ definitions:
         example: 400
       message:
         type: string
-        example: Bad request
+        example: "Invalid parameter: chat_jid is required"
       error:
         type: string
         example: "Invalid parameter: chat_jid is required"
@@ -463,6 +463,331 @@ paths:
           schema:
             $ref: "#/definitions/ErrorResponse"
 
+  /admin/api-keys/{id}/devices:
+    get:
+      security:
+        - AdminAuth: []
+      tags:
+        - "02 - Admin"
+      summary: List Devices by API Key
+      description: Get all devices created with a specific API key
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: integer
+          description: API Key ID
+      responses:
+        200:
+          description: Devices retrieved
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              code:
+                type: integer
+                example: 200
+              message:
+                type: string
+                example: Devices retrieved successfully
+              data:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    device_id:
+                      type: string
+                      example: "550e8400-e29b-41d4-a716-446655440000"
+                    device_name:
+                      type: string
+                      example: "Production Phone"
+                    whatsmeow_jid:
+                      type: string
+                      example: "6281234567890@s.whatsapp.net"
+                    status:
+                      type: string
+                      example: "active"
+                    created_at:
+                      type: string
+                      example: "2025-01-01T00:00:00Z"
+                    last_active_at:
+                      type: string
+                      example: "2025-12-03T10:30:00Z"
+
+  /admin/api-keys/{id}/devices/status:
+    get:
+      security:
+        - AdminAuth: []
+      tags:
+        - "02 - Admin"
+      summary: Get Device Statuses by API Key
+      description: Live connection status for all devices under a specific API key
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: integer
+          description: API Key ID
+      responses:
+        200:
+          description: Device statuses retrieved
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              code:
+                type: integer
+                example: 200
+              message:
+                type: string
+                example: Device statuses retrieved successfully
+              data:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    device_id:
+                      type: string
+                      example: "550e8400-e29b-41d4-a716-446655440000"
+                    device_name:
+                      type: string
+                      example: "Production Phone"
+                    whatsmeow_jid:
+                      type: string
+                      example: "6281234567890@s.whatsapp.net"
+                    db_status:
+                      type: string
+                      example: "active"
+                    client_loaded:
+                      type: boolean
+                      example: true
+                    connected:
+                      type: boolean
+                      example: true
+                      description: Legacy flag: true only when fully connected
+                    is_connected:
+                      type: boolean
+                      example: true
+                    is_logged_in:
+                      type: boolean
+                      example: true
+                    error:
+                      type: string
+                      example: ""
+        404:
+          description: API key not found
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /admin/api-keys:
+    post:
+      security:
+        - AdminAuth: []
+      tags:
+        - "02 - Admin"
+      summary: Create API Key
+      description: Create a new API key for a customer. The API key is only shown once in the response - save it securely!
+      consumes:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - customer_name
+            properties:
+              customer_name:
+                type: string
+                example: Acme Corp
+              customer_email:
+                type: string
+                example: admin@acme.com
+              max_devices:
+                type: integer
+                example: 10
+              rate_limit_per_hour:
+                type: integer
+                example: 1000
+      responses:
+        201:
+          description: API key created successfully
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              code:
+                type: integer
+                example: 201
+              message:
+                type: string
+                example: API key created successfully
+              data:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 1
+                  api_key:
+                    type: string
+                    example: ak_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
+                    description: Save this! Only shown once
+                  customer_name:
+                    type: string
+                    example: Acme Corp
+                  max_devices:
+                    type: integer
+                    example: 10
+                  rate_limit_per_hour:
+                    type: integer
+                    example: 1000
+        401:
+          description: Unauthorized - Invalid admin secret
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+    get:
+      security:
+        - AdminAuth: []
+      tags:
+        - "02 - Admin"
+      summary: List All API Keys
+      description: Get list of all API keys (keys are masked for security)
+      responses:
+        200:
+          description: API keys retrieved
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              data:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      example: 1
+                    api_key_masked:
+                      type: string
+                      example: ak_a1b2...o5p6
+                    customer_name:
+                      type: string
+                      example: Acme Corp
+                    customer_email:
+                      type: string
+                      example: admin@acme.com
+                    device_count:
+                      type: integer
+                      example: 3
+                    max_devices:
+                      type: integer
+                      example: 10
+                    rate_limit_per_hour:
+                      type: integer
+                      example: 1000
+                    is_active:
+                      type: boolean
+                      example: true
+
+  /admin/api-keys/{id}:
+    get:
+      security:
+        - AdminAuth: []
+      tags:
+        - "02 - Admin"
+      summary: Get API Key Details
+      description: Get detailed information about a specific API key including its devices
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: integer
+          description: API Key ID
+      responses:
+        200:
+          description: API key details retrieved
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              code:
+                type: integer
+                example: 200
+              message:
+                type: string
+                example: API key retrieved successfully
+              data:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 1
+                  api_key_masked:
+                    type: string
+                    example: ak_a1b2...z9y8
+                  customer_name:
+                    type: string
+                    example: Acme Corp
+                  customer_email:
+                    type: string
+                    example: ops@acme.com
+                  max_devices:
+                    type: integer
+                    example: 10
+                  rate_limit_per_hour:
+                    type: integer
+                    example: 1000
+                  is_active:
+                    type: boolean
+                    example: true
+                  device_count:
+                    type: integer
+                    example: 3
+                  devices:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        device_id:
+                          type: string
+                          example: "550e8400-e29b-41d4-a716-446655440000"
+                        device_name:
+                          type: string
+                          example: Bot 1
+                        whatsmeow_jid:
+                          type: string
+                          example: "6281234567890@s.whatsapp.net"
+                        status:
+                          type: string
+                          example: active
+                        created_at:
+                          type: string
+                          example: "2025-01-01T00:00:00Z"
+                        last_active_at:
+                          type: string
+                          example: "2025-12-03T10:30:00Z"
+                  created_at:
+                    type: string
+                    example: "2025-01-01T00:00:00Z"
+                  updated_at:
+                    type: string
+                    example: "2025-12-03T10:30:00Z"
+        404:
+          description: API key not found
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
   /admin/devices/reconnect:
     post:
       security:
@@ -625,16 +950,94 @@ paths:
             $ref: "#/definitions/ErrorResponse"
 
   /devices:
-    get:
+    post:
       security:
-        - BearerAuth: []
+        - APIKeyAuth: []
       tags:
-        - "03 - Device Management"
-      summary: List All Devices
-      description: Get list of all connected devices
+        - "03 - Device Registration"
+      summary: Create Device
+      description: Create a new device and receive a JWT token. Save both the device_secret and token securely.
+      consumes:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          required: false
+          schema:
+            type: object
+            properties:
+              device_name:
+                type: string
+                example: Production Phone
+                description: Optional friendly name for the device
+      responses:
+        201:
+          description: Device created successfully
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              code:
+                type: integer
+                example: 201
+              message:
+                type: string
+                example: Device created successfully
+              data:
+                type: object
+                properties:
+                  device_id:
+                    type: string
+                    example: "550e8400-e29b-41d4-a716-446655440000"
+                  device_secret:
+                    type: string
+                    example: a1b2c3d4e5f6g7h8
+                    description: Store securely; required to regenerate tokens
+                  device_name:
+                    type: string
+                    example: Production Phone
+                  token:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                    description: JWT for all device operations
+                  message:
+                    type: string
+                    example: Device created successfully. Save the device_secret securely.
+        400:
+          description: Device limit reached for this API key
+        401:
+          description: Invalid API key
+
+  /devices/token:
+    post:
+      tags:
+        - "03 - Device Registration"
+      summary: Regenerate JWT Token
+      description: Regenerate JWT token for a device. Invalidates all previous tokens for this device.
+      consumes:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - device_id
+              - device_secret
+            properties:
+              device_id:
+                type: string
+                example: "550e8400-e29b-41d4-a716-446655440000"
+              device_secret:
+                type: string
+                example: a1b2c3d4e5f6g7h8
+                description: Device secret returned at creation time
       responses:
         200:
-          description: Device list retrieved
+          description: Token regenerated successfully
           schema:
             type: object
             properties:
@@ -644,61 +1047,29 @@ paths:
               code:
                 type: integer
                 example: 200
+              message:
+                type: string
+                example: Token regenerated successfully. All previous tokens are now invalid.
               data:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    device_id:
-                      type: string
-                    whatsmeow_jid:
-                      type: string
-                    is_active:
-                      type: boolean
-                    last_login_at:
-                      type: string
-                    created_at:
-                      type: string
+                type: object
+                properties:
+                  device_id:
+                    type: string
+                  token:
+                    type: string
+                    description: New JWT token (old tokens are now invalid)
 
-  /devices/{device_id}:
+  /devices/me:
     get:
       security:
         - BearerAuth: []
       tags:
-        - "03 - Device Management"
-      summary: Get Device Details
-      description: Get specific device information
-      parameters:
-        - name: device_id
-          in: path
-          required: true
-          type: string
-          description: Device ID
+        - "04 - Device Operations"
+      summary: Get Current Device Info
+      description: Get information about the current device (from JWT token)
       responses:
         200:
-          description: Device details retrieved
-        404:
-          description: Device not found
-          schema:
-            $ref: "#/definitions/ErrorResponse"
-
-  /devices/{device_id}/status:
-    get:
-      security:
-        - BearerAuth: []
-      tags:
-        - "03 - Device Management"
-      summary: Get Device Status
-      description: Check if device is connected to WhatsApp
-      parameters:
-        - name: device_id
-          in: path
-          required: true
-          type: string
-          description: Device ID
-      responses:
-        200:
-          description: Device status retrieved
+          description: Device info retrieved
           schema:
             type: object
             properties:
@@ -708,25 +1079,72 @@ paths:
               data:
                 type: object
                 properties:
+                  device_id:
+                    type: string
+                  device_name:
+                    type: string
+                  whatsmeow_jid:
+                    type: string
+                  status:
+                    type: string
+                  created_at:
+                    type: string
+                    example: "2025-01-01T00:00:00Z"
+                  last_active:
+                    type: string
+                    example: "2025-12-03T10:30:00Z"
+
+  /devices/me/status:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "04 - Device Operations"
+      summary: Get Device Connection Status
+      description: Detailed device status including DB status, client load state, connection, and login flags.
+      responses:
+        200:
+          description: Status retrieved
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              data:
+                type: object
+                properties:
+                  db_status:
+                    type: string
+                    example: active
+                  client_loaded:
+                    type: boolean
+                    example: true
                   connected:
                     type: boolean
                     example: true
+                    description: Legacy flag: true only when fully connected and logged in
+                  is_connected:
+                    type: boolean
+                    example: true
+                  is_logged_in:
+                    type: boolean
+                    example: true
+                  error:
+                    type: string
+                    example: ""
 
-  /devices/{device_id}/login:
+  /devices/me/login:
     post:
       security:
         - BearerAuth: []
       tags:
-        - "03 - Device Management"
+        - "04 - Device Operations"
       summary: Login with QR Code
       description: Generate QR code for WhatsApp login
       consumes:
         - application/x-www-form-urlencoded
       parameters:
-        - name: device_id
-          in: path
-          required: true
-          type: string
         - name: output
           in: formData
           type: string
@@ -754,21 +1172,17 @@ paths:
                     type: integer
                     example: 60
 
-  /devices/{device_id}/login-code:
+  /devices/me/login-code:
     post:
       security:
         - BearerAuth: []
       tags:
-        - "03 - Device Management"
+        - "04 - Device Operations"
       summary: Login with Pairing Code
       description: Generate pairing code for WhatsApp login (no QR scan needed)
       consumes:
         - application/json
       parameters:
-        - name: device_id
-          in: path
-          required: true
-          type: string
         - name: body
           in: body
           required: true
@@ -795,53 +1209,39 @@ paths:
                     type: integer
                     example: 120
 
-  /devices/{device_id}/reconnect:
+  /devices/me/reconnect:
     post:
       security:
         - BearerAuth: []
       tags:
-        - "03 - Device Management"
+        - "04 - Device Operations"
       summary: Reconnect Device
       description: Manually reconnect a disconnected device
-      parameters:
-        - name: device_id
-          in: path
-          required: true
-          type: string
       responses:
         200:
           description: Device reconnected
 
-  /devices/{device_id}/session:
+  /devices/me/session:
     delete:
       security:
         - BearerAuth: []
       tags:
-        - "03 - Device Management"
+        - "04 - Device Operations"
       summary: Logout Device
       description: Logout and remove device session from WhatsApp
-      parameters:
-        - name: device_id
-          in: path
-          required: true
-          type: string
       responses:
         200:
           description: Device logged out
 
-  /devices/{device_id}/contacts/{phone}/registered:
+  /devices/me/contacts/{phone}/registered:
     get:
       security:
         - BearerAuth: []
       tags:
-        - "03 - Device Management"
+        - "04 - Device Operations"
       summary: Check Contact Registration
       description: Check if a phone number is registered on WhatsApp
       parameters:
-        - name: device_id
-          in: path
-          required: true
-          type: string
         - name: phone
           in: path
           required: true

@@ -3,9 +3,9 @@
 [![release version](https://img.shields.io/github/v/release/gdbrns/go-whatsapp-multi-session-rest-api)](https://github.com/gdbrns/go-whatsapp-multi-session-rest-api/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gdbrns/go-whatsapp-multi-session-rest-api)](https://goreportcard.com/report/github.com/gdbrns/go-whatsapp-multi-session-rest-api)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![whatsmeow](https://img.shields.io/badge/whatsmeow-v0.0.0--20251127-brightgreen.svg)](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20251127132918-b9ac3d51d746)
+[![whatsmeow](https://img.shields.io/badge/whatsmeow-v0.0.0--20251203-brightgreen.svg)](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20251203093714-fc1c13d40a7d)
 
-> A minimal REST API for WhatsApp Multi-Device and Multi-Session implementation built with Go and **[whatsmeow v0.0.0-20251127](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20251127132918-b9ac3d51d746)**. Supports multiple accounts and devices simultaneously with efficient memory use and production-ready deployments.
+> A minimal REST API for WhatsApp Multi-Device and Multi-Session implementation built with Go and **[whatsmeow v0.0.0-20251203093714-fc1c13d40a7d](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20251203093714-fc1c13d40a7d)**. Supports multiple accounts and devices simultaneously with efficient memory use and production-ready deployments.
 
 **📚 API Documentation:** Interactive Swagger UI at `/docs/` when running
 
@@ -28,6 +28,7 @@
 - 🔐 **Multi-Session Support** - Handle multiple WhatsApp accounts simultaneously
 - 📱 **Multi-Device Support** - Up to 4 devices per WhatsApp account
 - 🎫 **JWT Token Authentication** - Stateless, high-performance authentication for 1000+ sessions
+- 🚀 **84 Production-Ready Endpoints** - Admin, messaging, groups, webhooks, docs
 - 📨 **Core Messaging** - Text messages, images, and documents
 - 🌳 **RESTful Architecture** - Hierarchical resource-based routes
 - 👥 **Group Management** - Full CRUD for groups, participants, admins, and settings
@@ -40,11 +41,20 @@
 - 🔑 **Admin Dashboard Ready** - Manage API keys and devices with admin endpoints
 - 📈 **Admin Dashboard APIs** - System stats, health monitoring, device status, batch reconnect
 
+## 💡 Why Teams Choose This API
+
+- **Stateless speed**: JWT-first flow eliminates per-request database lookups for messaging throughput.
+- **Auto-resilience**: Devices restore and reconnect on startup with health checks for steady uptime.
+- **Operational control**: Admin endpoints manage API keys, devices, and webhook delivery visibility.
+- **Webhook reliability**: Built-in workers, retries, and per-device quotas keep downstream systems in sync.
+- **Deployment-ready**: Docker-compose defaults, environment-first config, and structured logging out of the box.
+- **Developer experience**: Full Swagger (JSON/YAML) at `/docs/`, with consistent JSON error envelopes and request IDs for tracing.
+
 ## 📋 Requirements
 
 ### System Requirements
 
-- **Go**: 1.19 or higher (for building from source)
+- **Go**: 1.24 or higher (matches `go.mod` 1.24.5; use the latest stable toolchain)
 - **PostgreSQL**: Primary datastore for sessions and app metadata
 - **FFmpeg**: For media processing (optional but recommended)
 
@@ -271,7 +281,13 @@ curl -X POST "http://localhost:7001/webhooks" \
 
 ### All Endpoints
 
-**Organized by category** with most commonly used endpoints first.
+**Organized by category** with most commonly used endpoints first. All paths honor optional `HTTP_BASE_URL` (prefix not shown below). Total: **84 endpoints** (85 when `HTTP_BASE_URL` is set because the index path is registered with and without a trailing slash).
+
+**Input & validation notes**
+- Phone numbers must be in international format (no leading `0`, digits only, 6-16 chars). Requests with invalid/unknown numbers return 4xx.
+- `chat_jid`/`sender_jid` must be provided for message operations; missing values return 4xx.
+- All errors are JSON with `{status, code, message, data?}` (and `error` for compatibility).
+- Every response carries `X-Request-ID`; you can supply your own header to correlate logs.
 
 | # | Method | Endpoint | Auth | Description |
 |---|:------:|----------|:----:|-------------|
@@ -289,87 +305,88 @@ curl -X POST "http://localhost:7001/webhooks" \
 | 10 | PATCH | `/admin/api-keys/{id}` | Admin | Update API key |
 | 11 | DELETE | `/admin/api-keys/{id}` | Admin | Delete API key |
 | 12 | GET | `/admin/api-keys/{id}/devices` | Admin | List devices for API key |
-| 13 | DELETE | `/admin/devices/{device_id}` | Admin | Delete a device |
+| 13 | GET | `/admin/api-keys/{id}/devices/status` | Admin | Get live connection status for API key devices |
+| 14 | DELETE | `/admin/devices/{device_id}` | Admin | Delete a device |
 | | | **Device Creation & Token** | | |
-| 14 | POST | `/devices` | API-Key | Create device (returns JWT token) |
-| 15 | POST | `/devices/token` | - | Regenerate JWT token |
+| 15 | POST | `/devices` | API-Key | Create device (returns JWT token) |
+| 16 | POST | `/devices/token` | - | Regenerate JWT token |
 | | | **Device Operations (JWT Token)** | | |
-| 16 | GET | `/devices/me` | JWT | Get current device info |
-| 17 | GET | `/devices/me/status` | JWT | Get connection status |
-| 18 | POST | `/devices/me/login` | JWT | Login via QR code |
-| 19 | POST | `/devices/me/login-code` | JWT | Login with pairing code |
-| 20 | POST | `/devices/me/reconnect` | JWT | Reconnect device |
-| 21 | DELETE | `/devices/me/session` | JWT | Logout device |
-| 22 | GET | `/devices/me/contacts/{phone}/registered` | JWT | Check if phone is registered |
+| 17 | GET | `/devices/me` | JWT | Get current device info |
+| 18 | GET | `/devices/me/status` | JWT | Get connection status |
+| 19 | POST | `/devices/me/login` | JWT | Login via QR code |
+| 20 | POST | `/devices/me/login-code` | JWT | Login with pairing code |
+| 21 | POST | `/devices/me/reconnect` | JWT | Reconnect device |
+| 22 | DELETE | `/devices/me/session` | JWT | Logout device |
+| 23 | GET | `/devices/me/contacts/{phone}/registered` | JWT | Check if phone is registered |
 | | | **User Management** | | |
-| 23 | GET | `/users/{user_jid}` | JWT | Get user info |
-| 24 | GET | `/users/{user_jid}/profile-picture` | JWT | Get user profile picture |
-| 25 | POST | `/users/{user_jid}/block` | JWT | Block user |
-| 26 | DELETE | `/users/{user_jid}/block` | JWT | Unblock user |
-| 27 | GET | `/users/me/privacy` | JWT | Get privacy settings |
-| 28 | PATCH | `/users/me/privacy` | JWT | Update privacy settings |
-| 29 | GET | `/users/me/status-privacy` | JWT | Get status privacy |
-| 30 | POST | `/users/me/status` | JWT | Update status/about |
-| 31 | GET | `/users/{jid}/devices` | JWT | Get user's linked devices |
+| 24 | GET | `/users/{user_jid}` | JWT | Get user info |
+| 25 | GET | `/users/{user_jid}/profile-picture` | JWT | Get user profile picture |
+| 26 | POST | `/users/{user_jid}/block` | JWT | Block user |
+| 27 | DELETE | `/users/{user_jid}/block` | JWT | Unblock user |
+| 28 | GET | `/users/me/privacy` | JWT | Get privacy settings |
+| 29 | PATCH | `/users/me/privacy` | JWT | Update privacy settings |
+| 30 | GET | `/users/me/status-privacy` | JWT | Get status privacy |
+| 31 | POST | `/users/me/status` | JWT | Update status/about |
+| 32 | GET | `/users/{jid}/devices` | JWT | Get user's linked devices |
 | | | **Messaging** | | |
-| 32 | POST | `/chats/{chat_jid}/messages` | JWT | Send text message |
-| 33 | GET | `/chats/{chat_jid}/messages` | JWT | Get chat messages |
-| 34 | POST | `/chats/{chat_jid}/images` | JWT | Send image |
-| 35 | POST | `/chats/{chat_jid}/documents` | JWT | Send document |
-| 36 | POST | `/chats/{chat_jid}/archive` | JWT | Archive/unarchive chat |
-| 37 | POST | `/chats/{chat_jid}/pin` | JWT | Pin/unpin chat |
+| 33 | POST | `/chats/{chat_jid}/messages` | JWT | Send text message |
+| 34 | GET | `/chats/{chat_jid}/messages` | JWT | Get chat messages |
+| 35 | POST | `/chats/{chat_jid}/images` | JWT | Send image |
+| 36 | POST | `/chats/{chat_jid}/documents` | JWT | Send document |
+| 37 | POST | `/chats/{chat_jid}/archive` | JWT | Archive/unarchive chat |
+| 38 | POST | `/chats/{chat_jid}/pin` | JWT | Pin/unpin chat |
 | | | **Message Actions** | | |
-| 38 | POST | `/messages/{message_id}/read` | JWT | Mark message as read |
-| 39 | POST | `/messages/{message_id}/reaction` | JWT | React to message |
-| 40 | PATCH | `/messages/{message_id}` | JWT | Edit message |
-| 41 | DELETE | `/messages/{message_id}` | JWT | Delete message |
-| 42 | POST | `/messages/{message_id}/reply` | JWT | Reply to message |
+| 39 | POST | `/messages/{message_id}/read` | JWT | Mark message as read |
+| 40 | POST | `/messages/{message_id}/reaction` | JWT | React to message |
+| 41 | PATCH | `/messages/{message_id}` | JWT | Edit message |
+| 42 | DELETE | `/messages/{message_id}` | JWT | Delete message |
+| 43 | POST | `/messages/{message_id}/reply` | JWT | Reply to message |
 | | | **Group Management** | | |
-| 43 | GET | `/groups` | JWT | List all groups with members |
-| 44 | POST | `/groups` | JWT | Create group |
-| 45 | GET | `/groups/{group_jid}` | JWT | Get group info |
-| 46 | POST | `/groups/{group_jid}/leave` | JWT | Leave group |
-| 47 | PATCH | `/groups/{group_jid}/name` | JWT | Update group name |
-| 48 | PATCH | `/groups/{group_jid}/description` | JWT | Update group description |
-| 49 | POST | `/groups/{group_jid}/photo` | JWT | Update group photo |
-| 50 | GET | `/groups/{group_jid}/invite-link` | JWT | Get invite link |
-| 51 | PATCH | `/groups/{group_jid}/settings` | JWT | Update group settings |
-| 52 | GET | `/groups/{group_jid}/participant-requests` | JWT | Get join requests |
-| 53 | POST | `/groups/{group_jid}/join-approval` | JWT | Set join approval mode |
-| 54 | GET | `/groups/invite/{invite_code}` | JWT | Preview group from invite |
-| 55 | POST | `/groups/{group_jid}/join-invite` | JWT | Join group via invite |
-| 56 | PATCH | `/groups/{group_jid}/member-add-mode` | JWT | Set member add mode |
-| 57 | PATCH | `/groups/{group_jid}/topic` | JWT | Update group topic |
-| 58 | POST | `/groups/{parent_group_jid}/link/{group_jid}` | JWT | Link subgroup |
-| 59 | GET | `/groups/{community_jid}/linked-participants` | JWT | Get community members |
-| 60 | GET | `/groups/{community_jid}/subgroups` | JWT | List community subgroups |
-| 61 | POST | `/groups/{group_jid}/participants` | JWT | Add participants |
-| 62 | DELETE | `/groups/{group_jid}/participants` | JWT | Remove participants |
-| 63 | POST | `/groups/{group_jid}/requests/approve` | JWT | Approve join requests |
-| 64 | POST | `/groups/{group_jid}/requests/reject` | JWT | Reject join requests |
-| 65 | POST | `/groups/{group_jid}/admins` | JWT | Promote to admin |
-| 66 | DELETE | `/groups/{group_jid}/admins` | JWT | Demote from admin |
+| 44 | GET | `/groups` | JWT | List all groups with members |
+| 45 | POST | `/groups` | JWT | Create group |
+| 46 | GET | `/groups/{group_jid}` | JWT | Get group info |
+| 47 | POST | `/groups/{group_jid}/leave` | JWT | Leave group |
+| 48 | PATCH | `/groups/{group_jid}/name` | JWT | Update group name |
+| 49 | PATCH | `/groups/{group_jid}/description` | JWT | Update group description |
+| 50 | POST | `/groups/{group_jid}/photo` | JWT | Update group photo |
+| 51 | GET | `/groups/{group_jid}/invite-link` | JWT | Get invite link |
+| 52 | PATCH | `/groups/{group_jid}/settings` | JWT | Update group settings |
+| 53 | GET | `/groups/{group_jid}/participant-requests` | JWT | Get join requests |
+| 54 | POST | `/groups/{group_jid}/join-approval` | JWT | Set join approval mode |
+| 55 | GET | `/groups/invite/{invite_code}` | JWT | Preview group from invite |
+| 56 | POST | `/groups/{group_jid}/join-invite` | JWT | Join group via invite |
+| 57 | PATCH | `/groups/{group_jid}/member-add-mode` | JWT | Set member add mode |
+| 58 | PATCH | `/groups/{group_jid}/topic` | JWT | Update group topic |
+| 59 | POST | `/groups/{parent_group_jid}/link/{group_jid}` | JWT | Link subgroup |
+| 60 | GET | `/groups/{community_jid}/linked-participants` | JWT | Get community members |
+| 61 | GET | `/groups/{community_jid}/subgroups` | JWT | List community subgroups |
+| 62 | POST | `/groups/{group_jid}/participants` | JWT | Add participants |
+| 63 | DELETE | `/groups/{group_jid}/participants` | JWT | Remove participants |
+| 64 | POST | `/groups/{group_jid}/requests/approve` | JWT | Approve join requests |
+| 65 | POST | `/groups/{group_jid}/requests/reject` | JWT | Reject join requests |
+| 66 | POST | `/groups/{group_jid}/admins` | JWT | Promote to admin |
+| 67 | DELETE | `/groups/{group_jid}/admins` | JWT | Demote from admin |
 | | | **Presence & Status** | | |
-| 67 | POST | `/chats/{chat_jid}/presence` | JWT | Send typing/recording indicator |
-| 68 | POST | `/presence/status` | JWT | Update availability status |
-| 69 | PATCH | `/chats/{chat_jid}/disappearing-timer` | JWT | Set disappearing messages timer |
+| 68 | POST | `/chats/{chat_jid}/presence` | JWT | Send typing/recording indicator |
+| 69 | POST | `/presence/status` | JWT | Update availability status |
+| 70 | PATCH | `/chats/{chat_jid}/disappearing-timer` | JWT | Set disappearing messages timer |
 | | | **App State** | | |
-| 70 | GET | `/app-state/{name}` | JWT | Fetch app state |
-| 71 | POST | `/app-state` | JWT | Send app state patch |
-| 72 | POST | `/app-state/mark-clean` | JWT | Mark app state as clean |
+| 71 | GET | `/app-state/{name}` | JWT | Fetch app state |
+| 72 | POST | `/app-state` | JWT | Send app state patch |
+| 73 | POST | `/app-state/mark-clean` | JWT | Mark app state as clean |
 | | | **Webhooks** | | |
-| 73 | GET | `/webhooks` | JWT | List webhooks |
-| 74 | POST | `/webhooks` | JWT | Create webhook |
-| 75 | GET | `/webhooks/{webhook_id}` | JWT | Get webhook details |
-| 76 | PATCH | `/webhooks/{webhook_id}` | JWT | Update webhook |
-| 77 | DELETE | `/webhooks/{webhook_id}` | JWT | Delete webhook |
-| 78 | GET | `/webhooks/{webhook_id}/logs` | JWT | Get webhook logs |
-| 79 | POST | `/webhooks/{webhook_id}/test` | JWT | Test webhook |
+| 74 | GET | `/webhooks` | JWT | List webhooks |
+| 75 | POST | `/webhooks` | JWT | Create webhook |
+| 76 | GET | `/webhooks/{webhook_id}` | JWT | Get webhook details |
+| 77 | PATCH | `/webhooks/{webhook_id}` | JWT | Update webhook |
+| 78 | DELETE | `/webhooks/{webhook_id}` | JWT | Delete webhook |
+| 79 | GET | `/webhooks/{webhook_id}/logs` | JWT | Get webhook logs |
+| 80 | POST | `/webhooks/{webhook_id}/test` | JWT | Test webhook |
 | | | **System** | | |
-| 80 | GET | `/` | - | Server status |
-| 81 | GET | `/docs/*` | - | Swagger UI |
-| 82 | GET | `/docs/swagger.json` | - | OpenAPI JSON spec |
-| 83 | GET | `/docs/swagger.yaml` | - | OpenAPI YAML spec |
+| 81 | GET | `/` | - | Server status |
+| 82 | GET | `/docs/*` | - | Swagger UI |
+| 83 | GET | `/docs/swagger.json` | - | OpenAPI JSON spec |
+| 84 | GET | `/docs/swagger.yaml` | - | OpenAPI YAML spec |
 
 **Authentication Types:**
 - **Admin**: `X-Admin-Secret` header
@@ -491,6 +508,10 @@ curl -X POST "http://localhost:7001/devices/token" \
 | **Regenerate Token** | Old tokens invalidated, new token issued |
 | **Delete Device** | All tokens for that device become invalid |
 
+### Stability & health
+- Startup automatically restores devices from the datastore and attempts reconnect; see logs for `restored/reconnected/failed` summary.
+- Enable periodic health logging with `WHATSAPP_ENABLE_HEALTH_CHECK_CRON=true` (runs every 5 minutes).
+
 ## 🔧 Environment Variables
 
 | Variable | Description | Default | Example |
@@ -502,18 +523,33 @@ curl -X POST "http://localhost:7001/devices/token" \
 | `SERVER_ADDRESS` | Server listening address | `127.0.0.1` | `0.0.0.0` |
 | `SERVER_PORT` | Server listening port | `7001` | `3000` |
 | **HTTP Configuration** | | | |
-| `HTTP_BASE_URL` | Base URL path for API | `` | `/api/v1` |
+| `HTTP_BASE_URL` | Base URL path for API | `` | `` |
 | `HTTP_CORS_ORIGIN` | CORS allowed origins | `*` | `https://example.com` |
-| `HTTP_BODY_LIMIT_SIZE` | Max request body size | `8M` | `50M` |
+| `HTTP_BODY_LIMIT_SIZE` | Max request body size | `8M` | `8M` |
 | `HTTP_GZIP_LEVEL` | GZIP compression level (1-9) | `1` | `6` |
 | `HTTP_CACHE_CAPACITY` | In-memory cache capacity | `100` | `500` |
 | `HTTP_CACHE_TTL_SECONDS` | Cache TTL in seconds | `5` | `300` |
+| **Logging** | | | |
+| `LOG_LEVEL` | Log verbosity (`debug`, `info`, `warn`, `error`) | `info` | `debug` |
+| `LOG_FORMAT` | Log format (`json` for structured) | `text` | `json` |
 | **WhatsApp** | | | |
 | `WHATSAPP_DATASTORE_TYPE` | Database type | - | `postgres` |
 | `WHATSAPP_DATASTORE_URI` | Database connection URI | - | `postgres://user:pass@host:5432/db` |
-| `WHATSAPP_CLIENT_PROXY_URL` | HTTP proxy for WhatsApp | - | `http://proxy:8080` |
-| `WHATSAPP_MEDIA_IMAGE_CONVERT_WEBP` | Convert images to WebP | `false` | `true` |
+| `WHATSAPP_CLIENT_PROXY_URL` | HTTP proxy for WhatsApp | `""` | `http://proxy:8080` |
+| `WHATSAPP_MEDIA_IMAGE_CONVERT_WEBP` | Convert images to WebP uploads to PNG | `false` | `true` |
 | `WHATSAPP_MEDIA_IMAGE_COMPRESSION` | Enable image compression | `false` | `true` |
+| `WHATSAPP_DEVICE_OS_NAME` | Advertised device OS name | `Chrome` | `Linux` |
+| `WHATSAPP_LOG_LEVEL` | whatsmeow client log level | `ERROR` | `DEBUG` |
+| `WHATSAPP_VERSION_MAJOR` | Override client version (major) | unset | `2` |
+| `WHATSAPP_VERSION_MINOR` | Override client version (minor) | unset | `3000` |
+| `WHATSAPP_VERSION_PATCH` | Override client version (patch) | unset | `1019175440` |
+| `WHATSAPP_GROUP_LIST_CACHE_TTL` | Cache TTL for group list | `5m` | `10m` |
+| `WHATSAPP_GROUP_LIST_CACHE_DISABLED` | Disable group list cache | `false` | `true` |
+| `WHATSAPP_AUTO_MARK_READ` | Auto mark messages as read | `false` | `true` |
+| `WHATSAPP_AUTO_DOWNLOAD_MEDIA` | Auto download media | `false` | `true` |
+| `WHATSAPP_AUTO_REPLY_ENABLED` | Enable auto-reply hook | `false` | `true` |
+| `WHATSAPP_ENABLE_HEALTH_CHECK_CRON` | Enable 5-min health check cron | `false` | `true` |
+| `X-Request-ID` | (Header) Correlate logs per request | - | `123e4567-e89b-12d3-a456-426614174000` |
 | **Webhooks** | | | |
 | `WEBHOOKS_ENABLED` | Enable webhook system | `true` | `true` |
 | `WEBHOOK_WORKERS` | Number of webhook workers | `4` | `8` |
@@ -530,7 +566,14 @@ SERVER_PORT=7001
 # HTTP
 HTTP_BASE_URL=
 HTTP_CORS_ORIGIN=*
-HTTP_BODY_LIMIT_SIZE=50M
+HTTP_BODY_LIMIT_SIZE=8M
+# HTTP_GZIP_LEVEL=1
+# HTTP_CACHE_CAPACITY=100
+# HTTP_CACHE_TTL_SECONDS=5
+
+# Logging
+# LOG_LEVEL=info
+# LOG_FORMAT=text
 
 # Authentication
 ADMIN_SECRET_KEY=your-super-secret-admin-key-change-this
@@ -539,7 +582,20 @@ JWT_SECRET_KEY=your-jwt-secret-key-at-least-32-characters-long
 # WhatsApp
 WHATSAPP_DATASTORE_TYPE=postgres
 WHATSAPP_DATASTORE_URI=postgres://whatsapp:secret@localhost:5432/whatsapp?sslmode=disable
+WHATSAPP_CLIENT_PROXY_URL=""
 WHATSAPP_MEDIA_IMAGE_COMPRESSION=true
+WHATSAPP_MEDIA_IMAGE_CONVERT_WEBP=true
+# WHATSAPP_DEVICE_OS_NAME=Chrome
+# WHATSAPP_LOG_LEVEL=ERROR
+# WHATSAPP_VERSION_MAJOR=2
+# WHATSAPP_VERSION_MINOR=3000
+# WHATSAPP_VERSION_PATCH=1019175440
+# WHATSAPP_GROUP_LIST_CACHE_TTL=5m
+# WHATSAPP_GROUP_LIST_CACHE_DISABLED=false
+# WHATSAPP_AUTO_MARK_READ=false
+# WHATSAPP_AUTO_DOWNLOAD_MEDIA=false
+# WHATSAPP_AUTO_REPLY_ENABLED=false
+# WHATSAPP_ENABLE_HEALTH_CHECK_CRON=false
 
 # Webhooks
 WEBHOOKS_ENABLED=true

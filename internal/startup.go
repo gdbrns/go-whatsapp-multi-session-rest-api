@@ -25,6 +25,8 @@ func Startup() {
 		return
 	}
 
+	var restored, reconnected, failed int
+
 	for _, device := range devices {
 		if device.ID == nil {
 			continue
@@ -41,11 +43,18 @@ func Startup() {
 		maskJID := jid[0:len(jid)-4] + "xxxx"
 		log.Print(nil).Info("Restoring WhatsApp Client for " + maskJID + " (" + deviceID + ")")
 		pkgWhatsApp.WhatsAppInitClient(device, jid, deviceID)
+		restored++
 		err = pkgWhatsApp.WhatsAppReconnect(jid, deviceID)
 		if err != nil {
 			log.Print(nil).Warn("Failed to reconnect " + maskJID + ": " + err.Error())
+			failed++
+		}
+		if err == nil {
+			reconnected++
 		}
 	}
+
+	log.Print(nil).WithField("restored", restored).WithField("reconnected", reconnected).WithField("failed", failed).Info("Startup reconnect pass complete")
 }
 
 func getDeviceID(storeDeviceID string) (string, error) {

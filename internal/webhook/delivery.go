@@ -20,16 +20,16 @@ import (
 )
 
 type Engine struct {
-	store       *Store
-	httpClient  *http.Client
-	queue       chan *deliveryTask
-	workers     int
-	retryLimit  int
+	store        *Store
+	httpClient   *http.Client
+	queue        chan *deliveryTask
+	workers      int
+	retryLimit   int
 	maxPerDevice int
-	enabled     bool
-	wg          sync.WaitGroup
-	ctx         context.Context
-	cancel      context.CancelFunc
+	enabled      bool
+	wg           sync.WaitGroup
+	ctx          context.Context
+	cancel       context.CancelFunc
 }
 
 type deliveryTask struct {
@@ -58,15 +58,15 @@ func NewEngine(store *Store) *Engine {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	engine := &Engine{
-		store:       store,
-		httpClient:  &http.Client{Timeout: 10 * time.Second},
-		queue:       make(chan *deliveryTask, 1000),
-		workers:     workers,
-		retryLimit:  retryLimit,
+		store:        store,
+		httpClient:   &http.Client{Timeout: 10 * time.Second},
+		queue:        make(chan *deliveryTask, 1000),
+		workers:      workers,
+		retryLimit:   retryLimit,
 		maxPerDevice: maxPerDevice,
-		enabled:     enabled,
-		ctx:         ctx,
-		cancel:      cancel,
+		enabled:      enabled,
+		ctx:          ctx,
+		cancel:       cancel,
 	}
 
 	if enabled {
@@ -163,6 +163,7 @@ func (e *Engine) deliver(task *deliveryTask) {
 
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("X-Webhook-Signature", signature)
+		req.Header.Set("X-Hub-Signature-256", signature)
 		req.Header.Set("X-Webhook-Event", string(task.event.EventType))
 		req.Header.Set("User-Agent", "WhatsApp-API-MultiSession/1.0")
 

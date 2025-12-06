@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 )
 
 func HttpRealIP() fiber.Handler {
@@ -21,6 +22,21 @@ func HttpRealIP() fiber.Handler {
 				c.Locals("remote_ip", strings.TrimSpace(xRealIP))
 			}
 		}
+		return c.Next()
+	}
+}
+
+// HttpRequestID injects a request ID into context and response headers.
+// It preserves an incoming X-Request-ID when present; otherwise it generates
+// a UUIDv4. The ID is stored in Locals("request_id") for logging.
+func HttpRequestID() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		reqID := strings.TrimSpace(c.Get("X-Request-ID"))
+		if reqID == "" {
+			reqID = uuid.NewString()
+		}
+		c.Locals("request_id", reqID)
+		c.Set("X-Request-ID", reqID)
 		return c.Next()
 	}
 }

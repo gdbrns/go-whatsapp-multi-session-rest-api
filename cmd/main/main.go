@@ -26,7 +26,6 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/helmet"
-	"github.com/gofiber/fiber/v2/middleware/recover"
 
 	"github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/env"
 	"github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/log"
@@ -55,8 +54,9 @@ func main() {
 		ReadBufferSize: 8192, // Increase from default 4096 to handle larger headers (JWT tokens)
 	})
 
-	// Router Recovery
-	app.Use(recover.New())
+	// Request ID + panic recovery (structured JSON)
+	app.Use(router.HttpRequestID())
+	app.Use(router.RecoveryMiddleware())
 
 	// Router Compression
 	app.Use(compress.New(compress.Config{
@@ -86,7 +86,7 @@ func main() {
 		router.CacheTTLSeconds,
 	))
 
-	// Router RealIP
+	// Router RealIP + request context enrichment
 	app.Use(router.HttpRealIP())
 
 	// Router Default Handler

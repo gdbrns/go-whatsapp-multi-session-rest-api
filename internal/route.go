@@ -45,9 +45,6 @@ func Routes(app *fiber.App) {
 		return c.SendFile("docs/swagger.yaml")
 	})
 	app.Get(router.BaseURL+"/docs/*", swaggerHandler)
-	app.Get(router.BaseURL+"/docs/function", func(c *fiber.Ctx) error {
-		return c.SendFile("docs/function.html")
-	})
 
 	// ============================================================
 	// ADMIN ROUTES (X-Admin-Secret authentication)

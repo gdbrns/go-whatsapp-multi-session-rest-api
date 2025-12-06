@@ -10,6 +10,7 @@ import (
 	typWhatsApp "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/types"
 	"github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/log"
 	"github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/router"
+	"github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/validation"
 	pkgWhatsApp "github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/whatsapp"
 )
 
@@ -52,7 +53,7 @@ func Login(c *fiber.Ctx) error {
 
 	deviceID, jid := getDeviceContext(c)
 
-	log.DeviceOp(deviceID, jid, "Login").Info("Initiating QR code login")
+	log.DeviceOpCtx(c, "Login").Info("Initiating QR code login")
 
 	var reqLogin typWhatsApp.RequestLogin
 	reqLogin.Output = strings.TrimSpace(c.FormValue("output"))
@@ -64,12 +65,12 @@ func Login(c *fiber.Ctx) error {
 
 	qrCodeImage, qrCodeTimeout, err := pkgWhatsApp.WhatsAppLogin(jid, deviceID)
 	if err != nil {
-		log.DeviceOp(deviceID, jid, "Login").WithError(err).Error("Failed to generate QR code")
+			log.DeviceOpCtx(c, "Login").WithError(err).Error("Failed to generate QR code")
 		return router.ResponseInternalError(c, err.Error())
 	}
 
 	if qrCodeImage == "WhatsApp Client is Reconnected" {
-		log.DeviceOp(deviceID, jid, "Login").Info("WhatsApp client reconnected successfully")
+			log.DeviceOpCtx(c, "Login").Info("WhatsApp client reconnected successfully")
 		return router.ResponseSuccess(c, qrCodeImage)
 	}
 
@@ -77,7 +78,7 @@ func Login(c *fiber.Ctx) error {
 	resLogin.QRCode = qrCodeImage
 	resLogin.Timeout = qrCodeTimeout
 
-	log.DeviceOp(deviceID, jid, "Login").WithField("timeout", qrCodeTimeout).WithField("output", reqLogin.Output).Info("QR code generated successfully")
+	log.DeviceOpCtx(c, "Login").WithField("timeout", qrCodeTimeout).WithField("output", reqLogin.Output).Info("QR code generated successfully")
 
 	if reqLogin.Output == "html" {
 		htmlContent := `
@@ -111,23 +112,27 @@ func LoginWithCode(c *fiber.Ctx) error {
 	var reqLoginCode typWhatsApp.RequestLoginCode
 	err := c.BodyParser(&reqLoginCode)
 	if err != nil {
-		log.DeviceOp(deviceID, jid, "LoginWithCode").Warn("Failed to parse body request")
+		log.DeviceOpCtx(c, "LoginWithCode").Warn("Failed to parse body request")
 		return router.ResponseBadRequest(c, "Failed parse body request")
 	}
 
 	phone := strings.TrimSpace(reqLoginCode.Phone)
 	if phone == "" {
-		log.DeviceOp(deviceID, jid, "LoginWithCode").Warn("Phone number not provided")
+		log.DeviceOpCtx(c, "LoginWithCode").Warn("Phone number not provided")
 		return router.ResponseBadRequest(c, "Phone is required")
 	}
+	if err := validation.ValidatePhone(phone); err != nil {
+		log.DeviceOpCtx(c, "LoginWithCode").WithField("phone", phone).Warn("Invalid phone format")
+		return router.ResponseBadRequest(c, err.Error())
+	}
 
-	log.DeviceOp(deviceID, jid, "LoginWithCode").WithField("phone", phone).Info("Initiating pairing code login")
+	log.DeviceOpCtx(c, "LoginWithCode").WithField("phone", phone).Info("Initiating pairing code login")
 
 	pkgWhatsApp.WhatsAppInitClient(nil, jid, deviceID)
 
 	pairCode, timeout, err := pkgWhatsApp.WhatsAppLoginPair(jid, deviceID, phone)
 	if err != nil {
-		log.DeviceOp(deviceID, jid, "LoginWithCode").WithField("phone", phone).WithError(err).Error("Failed to generate pairing code")
+		log.DeviceOpCtx(c, "LoginWithCode").WithField("phone", phone).WithError(err).Error("Failed to generate pairing code")
 		return router.ResponseInternalError(c, err.Error())
 	}
 
@@ -135,7 +140,7 @@ func LoginWithCode(c *fiber.Ctx) error {
 	resLoginCode.PairCode = pairCode
 	resLoginCode.Timeout = timeout
 
-	log.DeviceOp(deviceID, jid, "LoginWithCode").WithField("phone", phone).WithField("timeout", timeout).Info("Pairing code generated successfully")
+	log.DeviceOpCtx(c, "LoginWithCode").WithField("phone", phone).WithField("timeout", timeout).Info("Pairing code generated successfully")
 
 	return router.ResponseSuccessWithData(c, "Success Generate Pairing Code", resLoginCode)
 }
@@ -144,15 +149,15 @@ func LoginWithCode(c *fiber.Ctx) error {
 func Logout(c *fiber.Ctx) error {
 	deviceID, jid := getDeviceContext(c)
 
-	log.DeviceOp(deviceID, jid, "Logout").Info("Logging out device")
+	log.DeviceOpCtx(c, "Logout").Info("Logging out device")
 
 	err := pkgWhatsApp.WhatsAppLogout(jid, deviceID)
 	if err != nil {
-		log.DeviceOp(deviceID, jid, "Logout").WithError(err).Error("Failed to logout device")
+		log.DeviceOpCtx(c, "Logout").WithError(err).Error("Failed to logout device")
 		return router.ResponseInternalError(c, err.Error())
 	}
 
-	log.DeviceOp(deviceID, jid, "Logout").Info("Device logged out successfully")
+	log.DeviceOpCtx(c, "Logout").Info("Device logged out successfully")
 
 	return router.ResponseSuccess(c, "Success logout device")
 }
@@ -167,7 +172,12 @@ func CheckRegistered(c *fiber.Ctx) error {
 	deviceID, jid := getDeviceContext(c)
 	phone := c.Params("phone")
 
-	log.DeviceOp(deviceID, jid, "CheckRegistered").WithField("phone", phone).Info("Checking if phone is registered")
+	if err := validation.ValidatePhone(phone); err != nil {
+		log.DeviceOpCtx(c, "CheckRegistered").WithField("phone", phone).Warn("Invalid phone format")
+		return router.ResponseBadRequest(c, err.Error())
+	}
+
+	log.DeviceOpCtx(c, "CheckRegistered").WithField("phone", phone).Info("Checking if phone is registered")
 
 	var reqCheckPhone typWhatsApp.RequestCheckPhone
 	reqCheckPhone.Phone = phone
@@ -177,7 +187,7 @@ func CheckRegistered(c *fiber.Ctx) error {
 	var resCheckPhone typWhatsApp.ResponseCheckPhone
 	resCheckPhone.IsRegistered = err == nil
 
-	log.DeviceOp(deviceID, jid, "CheckRegistered").WithField("phone", phone).WithField("is_registered", resCheckPhone.IsRegistered).Info("Phone registration check complete")
+	log.DeviceOpCtx(c, "CheckRegistered").WithField("phone", phone).WithField("is_registered", resCheckPhone.IsRegistered).Info("Phone registration check complete")
 
 	return router.ResponseSuccessWithData(c, "Success check registered phone", resCheckPhone)
 }
@@ -196,16 +206,16 @@ func GetStatus(c *fiber.Ctx) error {
 
 	deviceID, jid := getDeviceContext(c)
 
-	log.DeviceOp(deviceID, jid, "GetStatus").Debug("Getting device status")
+	log.DeviceOpCtx(c, "GetStatus").Debug("Getting device status")
 
 	// Get device info from DB first
 	device, dbErr := pkgWhatsApp.GetDeviceByID(ctx, deviceID)
 	dbStatus := "unknown"
 	if dbErr == nil {
 		dbStatus = device.Status
-		log.DeviceOp(deviceID, jid, "GetStatus").WithField("db_status", dbStatus).WithField("device_name", device.DeviceName).Debug("Device found in database")
+		log.DeviceOpCtx(c, "GetStatus").WithField("db_status", dbStatus).WithField("device_name", device.DeviceName).Debug("Device found in database")
 	} else {
-		log.DeviceOp(deviceID, jid, "GetStatus").WithError(dbErr).Warn("Device not found in database")
+		log.DeviceOpCtx(c, "GetStatus").WithError(dbErr).Warn("Device not found in database")
 	}
 
 	// Check if client is loaded in memory
@@ -239,7 +249,7 @@ func GetStatus(c *fiber.Ctx) error {
 		isLoggedIn = true
 	}
 
-	log.DeviceOp(deviceID, jid, "GetStatus").WithField("db_status", dbStatus).WithField("client_loaded", clientLoaded).WithField("is_connected", isConnected).WithField("is_logged_in", isLoggedIn).Info("Device status retrieved")
+	log.DeviceOpCtx(c, "GetStatus").WithField("db_status", dbStatus).WithField("client_loaded", clientLoaded).WithField("is_connected", isConnected).WithField("is_logged_in", isLoggedIn).Info("Device status retrieved")
 
 	data := map[string]interface{}{
 		"db_status":     dbStatus,      // Status from database
@@ -300,14 +310,14 @@ func GetDevice(c *fiber.Ctx) error {
 func Reconnect(c *fiber.Ctx) error {
 	deviceID, jid := getDeviceContext(c)
 
-	log.DeviceOp(deviceID, jid, "Reconnect").Info("Reconnecting device to WhatsApp")
+	log.DeviceOpCtx(c, "Reconnect").Info("Reconnecting device to WhatsApp")
 
 	if err := pkgWhatsApp.WhatsAppReconnect(jid, deviceID); err != nil {
-		log.DeviceOp(deviceID, jid, "Reconnect").WithError(err).Error("Failed to reconnect device")
+		log.DeviceOpCtx(c, "Reconnect").WithError(err).Error("Failed to reconnect device")
 		return router.ResponseInternalError(c, err.Error())
 	}
 
-	log.DeviceOp(deviceID, jid, "Reconnect").Info("Device reconnected successfully")
+	log.DeviceOpCtx(c, "Reconnect").Info("Device reconnected successfully")
 
 	return router.ResponseSuccess(c, "Success reconnect device")
 }
@@ -321,15 +331,15 @@ func GetDeviceMe(c *fiber.Ctx) error {
 
 	deviceID, jid := getDeviceContext(c)
 
-	log.DeviceOp(deviceID, jid, "GetDeviceMe").Info("Getting current device details")
+	log.DeviceOpCtx(c, "GetDeviceMe").Info("Getting current device details")
 
 	device, err := pkgWhatsApp.GetDeviceByID(ctx, deviceID)
 	if err != nil {
-		log.DeviceOp(deviceID, jid, "GetDeviceMe").WithError(err).Warn("Device not found")
+		log.DeviceOpCtx(c, "GetDeviceMe").WithError(err).Warn("Device not found")
 		return router.ResponseNotFound(c, "Device not found")
 	}
 
-	log.DeviceOp(deviceID, jid, "GetDeviceMe").WithField("device_name", device.DeviceName).WithField("status", device.Status).Info("Current device details retrieved")
+	log.DeviceOpCtx(c, "GetDeviceMe").WithField("device_name", device.DeviceName).WithField("status", device.Status).Info("Current device details retrieved")
 
 	return router.ResponseSuccessWithData(c, "Success get device details", fiber.Map{
 		"device_id":     device.DeviceID,
