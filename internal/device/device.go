@@ -329,7 +329,7 @@ func GetDeviceMe(c *fiber.Ctx) error {
 		ctx = context.Background()
 	}
 
-	deviceID, jid := getDeviceContext(c)
+	deviceID, _ := getDeviceContext(c)
 
 	log.DeviceOpCtx(c, "GetDeviceMe").Info("Getting current device details")
 

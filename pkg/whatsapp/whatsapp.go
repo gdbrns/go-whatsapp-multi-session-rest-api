@@ -757,7 +757,7 @@ func autoMarkMessageAsRead(jid string, deviceID string, evt *events.Message) {
 	if !autoMarkReadEnabled || evt == nil {
 		return
 	}
-	if evt.Info.IsFromMe || evt.Info.Chat.Server == types.StatusServer || strings.HasSuffix(evt.Info.Chat.String(), "@broadcast") {
+	if evt.Info.IsFromMe || evt.Info.Chat == types.StatusBroadcastJID || strings.HasSuffix(evt.Info.Chat.String(), "@broadcast") {
 		return
 	}
 	client, err := currentClient(jid, deviceID)
