@@ -105,6 +105,10 @@ func Routes(app *fiber.App) {
 	app.Get(router.BaseURL+"/users/me/status-privacy", deviceAuthMiddleware, ctlUser.GetStatusPrivacy)
 	app.Post(router.BaseURL+"/users/me/status", deviceAuthMiddleware, ctlUser.UpdateStatus)
 	app.Get(router.BaseURL+"/users/:jid/devices", deviceAuthMiddleware, ctlUser.GetDevices)
+	app.Post(router.BaseURL+"/users/me/profile-photo", deviceAuthMiddleware, ctlUser.SetProfilePhoto)
+	app.Get(router.BaseURL+"/users/me/contacts", deviceAuthMiddleware, ctlUser.GetContacts)
+	app.Post(router.BaseURL+"/users/me/contacts/sync", deviceAuthMiddleware, ctlUser.ContactSync)
+	app.Get(router.BaseURL+"/users/me/blocklist", deviceAuthMiddleware, ctlUser.GetBlocklist)
 
 	// Chat/Messaging routes
 	app.Post(router.BaseURL+"/chats/:chat_jid/messages", deviceAuthMiddleware, ctlMessaging.SendText)
@@ -120,6 +124,7 @@ func Routes(app *fiber.App) {
 	app.Patch(router.BaseURL+"/messages/:message_id", deviceAuthMiddleware, ctlMessage.Edit)
 	app.Delete(router.BaseURL+"/messages/:message_id", deviceAuthMiddleware, ctlMessage.Delete)
 	app.Post(router.BaseURL+"/messages/:message_id/reply", deviceAuthMiddleware, ctlMessage.Reply)
+	app.Post(router.BaseURL+"/messages/:message_id/forward", deviceAuthMiddleware, ctlMessage.Forward)
 
 	// Group routes
 	app.Get(router.BaseURL+"/groups", deviceAuthMiddleware, ctlGroups.List)

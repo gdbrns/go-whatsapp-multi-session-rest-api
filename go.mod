@@ -7,6 +7,7 @@ require (
 	github.com/gofiber/fiber/v2 v2.52.9
 	github.com/gofiber/swagger v1.1.1
 	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.3
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
@@ -16,6 +17,8 @@ require (
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/sunshineplan/imgconv v1.1.14
 	go.mau.fi/whatsmeow v0.0.0-20251203093714-fc1c13d40a7d
+	golang.org/x/sync v0.18.0
+	golang.org/x/time v0.14.0
 	google.golang.org/protobuf v1.36.10
 )
 
@@ -35,7 +38,6 @@ require (
 	github.com/go-openapi/jsonreference v0.19.6 // indirect
 	github.com/go-openapi/spec v0.20.4 // indirect
 	github.com/go-openapi/swag v0.19.15 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/hhrutter/lzw v1.0.0 // indirect
 	github.com/hhrutter/tiff v1.0.1 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -68,7 +70,6 @@ require (
 	golang.org/x/image v0.25.0 // indirect
 	golang.org/x/mod v0.30.0 // indirect
 	golang.org/x/net v0.47.0 // indirect
-	golang.org/x/sync v0.18.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
 	golang.org/x/tools v0.39.0 // indirect

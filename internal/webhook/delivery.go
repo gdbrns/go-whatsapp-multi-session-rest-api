@@ -96,18 +96,25 @@ func (e *Engine) Dispatch(ctx context.Context, deviceID string, event WebhookEve
 
 	webhooks, err := e.store.GetActiveWebhooks(ctx, deviceID)
 	if err != nil {
-		log.Print(nil).Error(fmt.Sprintf("Failed to get webhooks for device %s: %v", deviceID, err))
+		log.SysErr("wh-fetch", err)
 		return
 	}
 
+	dispatched := 0
 	for _, webhook := range webhooks {
 		if e.shouldDispatch(webhook, event.EventType) {
 			select {
 			case e.queue <- &deliveryTask{webhook: webhook, event: event}:
+				dispatched++
 			default:
-				log.Print(nil).Warn(fmt.Sprintf("Webhook queue full, dropping event %s for device %s", event.EventType, deviceID))
+				log.Evt("wh", "queue-full", deviceID, string(event.EventType))
 			}
 		}
+	}
+
+	// Log dispatch with count
+	if dispatched > 0 {
+		log.WH(string(event.EventType), deviceID, dispatched)
 	}
 }
 
@@ -140,14 +147,14 @@ func (e *Engine) worker() {
 
 func (e *Engine) deliver(task *deliveryTask) {
 	if err := e.validateURL(task.webhook.URL); err != nil {
-		log.Print(nil).Error(fmt.Sprintf("Invalid webhook URL %s: %v", task.webhook.URL, err))
+		log.WHACK(string(task.event.EventType), task.event.DeviceID, task.webhook.ID, false, 0)
 		_ = e.store.LogDelivery(context.Background(), task.webhook.ID, task.event.EventType, DeliveryFailed, 0, err.Error())
 		return
 	}
 
 	payload, err := json.Marshal(task.event)
 	if err != nil {
-		log.Print(nil).Error(fmt.Sprintf("Failed to marshal webhook event: %v", err))
+		log.SysErr("wh-marshal", err)
 		return
 	}
 
@@ -181,6 +188,7 @@ func (e *Engine) deliver(task *deliveryTask) {
 
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			_ = e.store.LogDelivery(context.Background(), task.webhook.ID, task.event.EventType, DeliverySuccess, attempt, "")
+			log.WHACK(string(task.event.EventType), task.event.DeviceID, task.webhook.ID, true, attempt)
 			return
 		}
 
@@ -195,6 +203,7 @@ func (e *Engine) deliver(task *deliveryTask) {
 		errorMsg = lastErr.Error()
 	}
 	_ = e.store.LogDelivery(context.Background(), task.webhook.ID, task.event.EventType, DeliveryFailed, e.retryLimit, errorMsg)
+	log.WHACK(string(task.event.EventType), task.event.DeviceID, task.webhook.ID, false, e.retryLimit)
 }
 
 func (e *Engine) generateSignature(payload []byte, secret string) string {

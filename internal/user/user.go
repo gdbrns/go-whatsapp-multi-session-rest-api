@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"encoding/base64"
 	"net/url"
 	"strings"
 
@@ -280,4 +281,172 @@ func GetDevices(c *fiber.Ctx) error {
 	log.Session(c, "GetDevices").WithField("target_user", userJID).WithField("device_count", len(devices)).Info("User devices retrieved successfully")
 
 	return router.ResponseSuccessWithData(c, "Success get user devices", devices)
+}
+
+// SetProfilePhoto sets the current user's profile photo
+func SetProfilePhoto(c *fiber.Ctx) error {
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	deviceID, jid := getDeviceContext(c)
+
+	log.Session(c, "SetProfilePhoto").Info("Setting profile photo")
+
+	// Try to get photo from form file first
+	fileHeader, err := c.FormFile("file")
+	var photoBytes []byte
+
+	if err == nil && fileHeader != nil {
+		file, err := fileHeader.Open()
+		if err != nil {
+			log.Session(c, "SetProfilePhoto").WithError(err).Error("Failed to open file")
+			return router.ResponseInternalError(c, "Failed to open file")
+		}
+		defer file.Close()
+
+		photoBytes = make([]byte, fileHeader.Size)
+		_, err = file.Read(photoBytes)
+		if err != nil {
+			log.Session(c, "SetProfilePhoto").WithError(err).Error("Failed to read file")
+			return router.ResponseInternalError(c, "Failed to read file")
+		}
+	} else {
+		// Try to get photo from JSON body (base64 encoded)
+		var reqPhoto typWhatsApp.RequestSetProfilePhoto
+		if err := c.BodyParser(&reqPhoto); err == nil && reqPhoto.PhotoBase64 != "" {
+			// Decode base64
+			photoBytes, err = base64.StdEncoding.DecodeString(reqPhoto.PhotoBase64)
+			if err != nil {
+				log.Session(c, "SetProfilePhoto").WithError(err).Error("Failed to decode base64 photo")
+				return router.ResponseBadRequest(c, "Invalid base64 photo data")
+			}
+		} else {
+			log.Session(c, "SetProfilePhoto").Warn("No photo provided")
+			return router.ResponseBadRequest(c, "Photo file or photo_base64 is required")
+		}
+	}
+
+	if len(photoBytes) == 0 {
+		log.Session(c, "SetProfilePhoto").Warn("Empty photo data")
+		return router.ResponseBadRequest(c, "Photo data cannot be empty")
+	}
+
+	pictureID, err := pkgWhatsApp.WhatsAppSetProfilePhoto(ctx, jid, deviceID, photoBytes)
+	if err != nil {
+		log.Session(c, "SetProfilePhoto").WithError(err).Error("Failed to set profile photo")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.Session(c, "SetProfilePhoto").WithField("picture_id", pictureID).Info("Profile photo set successfully")
+
+	return router.ResponseSuccessWithData(c, "Success set profile photo", map[string]interface{}{
+		"picture_id": pictureID,
+	})
+}
+
+// ContactSync checks which phone numbers are registered on WhatsApp
+func ContactSync(c *fiber.Ctx) error {
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	deviceID, jid := getDeviceContext(c)
+
+	log.Session(c, "ContactSync").Info("Syncing contacts")
+
+	var reqSync typWhatsApp.RequestContactSync
+	if err := c.BodyParser(&reqSync); err != nil {
+		log.Session(c, "ContactSync").Warn("Failed to parse body request")
+		return router.ResponseBadRequest(c, "Failed parse body request")
+	}
+
+	if len(reqSync.Phones) == 0 {
+		log.Session(c, "ContactSync").Warn("Empty phones list")
+		return router.ResponseBadRequest(c, "phones list is required and cannot be empty")
+	}
+
+	results, err := pkgWhatsApp.WhatsAppContactSync(ctx, jid, deviceID, reqSync.Phones)
+	if err != nil {
+		log.Session(c, "ContactSync").WithError(err).Error("Failed to sync contacts")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.Session(c, "ContactSync").WithField("count", len(results)).Info("Contacts synced successfully")
+
+	return router.ResponseSuccessWithData(c, "Success sync contacts", results)
+}
+
+// GetContacts retrieves all saved contacts
+func GetContacts(c *fiber.Ctx) error {
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	deviceID, jid := getDeviceContext(c)
+
+	log.Session(c, "GetContacts").Info("Getting contacts")
+
+	contacts, err := pkgWhatsApp.WhatsAppGetContacts(ctx, jid, deviceID)
+	if err != nil {
+		log.Session(c, "GetContacts").WithError(err).Error("Failed to get contacts")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	// Convert to a more usable format
+	type contactResponse struct {
+		JID          string `json:"jid"`
+		PushName     string `json:"push_name"`
+		BusinessName string `json:"business_name"`
+		FullName     string `json:"full_name"`
+		FirstName    string `json:"first_name"`
+	}
+
+	result := make([]contactResponse, 0, len(contacts))
+	for jidKey, info := range contacts {
+		result = append(result, contactResponse{
+			JID:          jidKey.String(),
+			PushName:     info.PushName,
+			BusinessName: info.BusinessName,
+			FullName:     info.FullName,
+			FirstName:    info.FirstName,
+		})
+	}
+
+	log.Session(c, "GetContacts").WithField("count", len(result)).Info("Contacts retrieved successfully")
+
+	return router.ResponseSuccessWithData(c, "Success get contacts", result)
+}
+
+// GetBlocklist retrieves the current user's blocklist
+func GetBlocklist(c *fiber.Ctx) error {
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	deviceID, jid := getDeviceContext(c)
+
+	log.Session(c, "GetBlocklist").Info("Getting blocklist")
+
+	blocklist, err := pkgWhatsApp.WhatsAppGetBlocklist(ctx, jid, deviceID)
+	if err != nil {
+		log.Session(c, "GetBlocklist").WithError(err).Error("Failed to get blocklist")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	// Convert to string array
+	blockedJIDs := make([]string, len(blocklist))
+	for i, jidVal := range blocklist {
+		blockedJIDs[i] = jidVal.String()
+	}
+
+	log.Session(c, "GetBlocklist").WithField("count", len(blockedJIDs)).Info("Blocklist retrieved successfully")
+
+	return router.ResponseSuccessWithData(c, "Success get blocklist", map[string]interface{}{
+		"blocked": blockedJIDs,
+	})
 }

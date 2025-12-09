@@ -87,12 +87,7 @@ func CreateDevice(c *fiber.Ctx) error {
 
 	log.AuthOp(c, "CreateDevice", device.DeviceID).WithField("api_key_id", apiKey.ID).WithField("customer", apiKey.CustomerName).Info("Device created successfully with token")
 
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-		"status":  true,
-		"code":    fiber.StatusCreated,
-		"message": "Device created successfully",
-		"data":    response,
-	})
+	return router.ResponseCreatedWithData(c, "Device created successfully", response)
 }
 
 // RegenerateToken regenerates a JWT token for a device using device credentials
@@ -155,10 +150,5 @@ func RegenerateToken(c *fiber.Ctx) error {
 
 	log.AuthOp(c, "RegenerateToken", req.DeviceID).WithField("jwt_version", newVersion).Info("Token regenerated successfully, old tokens invalidated")
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"status":  true,
-		"code":    fiber.StatusOK,
-		"message": "Token regenerated successfully",
-		"data":    response,
-	})
+	return router.ResponseSuccessWithData(c, "Token regenerated successfully", response)
 }

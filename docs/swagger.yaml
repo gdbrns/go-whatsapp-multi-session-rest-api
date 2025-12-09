@@ -1220,6 +1220,16 @@ paths:
       responses:
         200:
           description: Device reconnected
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /devices/me/session:
     delete:
@@ -1232,6 +1242,16 @@ paths:
       responses:
         200:
           description: Device logged out
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /devices/me/contacts/{phone}/registered:
     get:
@@ -1277,6 +1297,20 @@ paths:
       responses:
         200:
           description: User info retrieved
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        404:
+          description: User not found
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /users/{user_jid}/profile-picture:
     get:
@@ -1294,6 +1328,20 @@ paths:
       responses:
         200:
           description: Profile picture retrieved
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        404:
+          description: Profile picture not found
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /users/{user_jid}/block:
     post:
@@ -1311,6 +1359,16 @@ paths:
       responses:
         200:
           description: User blocked
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
     delete:
       security:
         - BearerAuth: []
@@ -1326,6 +1384,16 @@ paths:
       responses:
         200:
           description: User unblocked
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /users/me/privacy:
     get:
@@ -1338,6 +1406,16 @@ paths:
       responses:
         200:
           description: Privacy settings retrieved
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
     patch:
       security:
         - BearerAuth: []
@@ -1364,60 +1442,31 @@ paths:
                   - profile_picture
                   - status
                   - read_receipts
-                  /groups:
-                    get:
-                      security:
-                        - BearerAuth: []
-                      tags:
-                        - "07 - Group Management"
-                      summary: List All Groups With Members
-                      description: Fetches all joined groups along with their participants
-                      responses:
-                        200:
-                          description: Groups with members retrieved
-                          schema:
-                            type: object
-                            properties:
-                              status:
-                                type: boolean
-                              message:
-                                type: string
-                              data:
-                                type: array
-                                items:
-                                  type: object
-                                  properties:
-                                    JID:
-                                      type: string
-                                      example: 12345-678@g.us
-                                    Name:
-                                      type: string
-                                      example: Project Team
-                                    OwnerJID:
-                                      type: string
-                                      example: 6281234567890@s.whatsapp.net
-                                    Topic:
-                                      type: string
-                                      example: Sprint planning
-                                    IsAnnounce:
-                                      type: boolean
-                                    IsLocked:
-                                      type: boolean
-                                    Participants:
-                                      type: array
-                                      items:
-                                        type: object
-                                        properties:
-                                          JID:
-                                            type: string
-                                            example: 6281234567890@s.whatsapp.net
-                                          IsAdmin:
-                                            type: boolean
-                                          IsSuperAdmin:
-                                            type: boolean
-                                          DisplayName:
-                                            type: string
-                                            example: John
+                  - groups
+              value:
+                type: string
+                enum:
+                  - all
+                  - contacts
+                  - contact_blacklist
+                  - none
+      responses:
+        200:
+          description: Privacy updated
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        400:
+          description: Bad request
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /users/me/status-privacy:
     get:
@@ -1430,6 +1479,16 @@ paths:
       responses:
         200:
           description: Status privacy retrieved
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /users/me/status:
     post:
@@ -1456,6 +1515,20 @@ paths:
       responses:
         200:
           description: Status updated
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        400:
+          description: Bad request
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /users/{jid}/devices:
     get:
@@ -1473,6 +1546,184 @@ paths:
       responses:
         200:
           description: Linked devices retrieved
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /users/me/profile-photo:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "04 - User Management"
+      summary: Set Profile Photo
+      description: Set your WhatsApp profile photo. Upload as multipart form or base64 JSON.
+      consumes:
+        - multipart/form-data
+        - application/json
+      parameters:
+        - name: file
+          in: formData
+          type: file
+          description: Profile photo image file (JPEG/PNG)
+        - name: body
+          in: body
+          schema:
+            type: object
+            properties:
+              photo_base64:
+                type: string
+                description: Base64 encoded image data (alternative to file upload)
+      responses:
+        200:
+          description: Profile photo set successfully
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        400:
+          description: Bad request
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /users/me/contacts:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "04 - User Management"
+      summary: Get Contacts
+      description: Retrieve all saved contacts from WhatsApp
+      responses:
+        200:
+          description: Contacts retrieved successfully
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /users/me/contacts/sync:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "04 - User Management"
+      summary: Sync Contacts
+      description: Check which phone numbers are registered on WhatsApp
+      consumes:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - phones
+            properties:
+              phones:
+                type: array
+                items:
+                  type: string
+                example: ["6281234567890", "6289876543210"]
+                description: List of phone numbers to check (with or without + prefix)
+      responses:
+        200:
+          description: Contacts sync results
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              code:
+                type: integer
+                example: 200
+              message:
+                type: string
+              data:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    phone:
+                      type: string
+                    is_registered:
+                      type: boolean
+                    jid:
+                      type: string
+                    verified_name:
+                      type: string
+        400:
+          description: Bad request
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /users/me/blocklist:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - "04 - User Management"
+      summary: Get Blocklist
+      description: Retrieve list of blocked contacts
+      responses:
+        200:
+          description: Blocklist retrieved successfully
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              code:
+                type: integer
+                example: 200
+              message:
+                type: string
+              data:
+                type: object
+                properties:
+                  blocked:
+                    type: array
+                    items:
+                      type: string
+                    example: ["6281234567890@s.whatsapp.net"]
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /chats/{chat_jid}/messages:
     post:
@@ -1504,17 +1755,29 @@ paths:
               reply_to_message_id:
                 type: string
                 description: Reply to specific message ID
+              typing_simulation:
+                type: boolean
+                description: Override typing simulation for this message (default: enabled)
+              presence_simulation:
+                type: boolean
+                description: Override presence wrapping for this message (default: enabled)
       responses:
         200:
-          description: Message sent successfully
+          description: OK
           schema:
-            type: object
-            properties:
-              data:
-                type: object
-                properties:
-                  message_id:
-                    type: string
+            $ref: "#/definitions/SuccessResponse"
+        400:
+          description: Bad request
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
     get:
       security:
         - BearerAuth: []
@@ -1576,9 +1839,31 @@ paths:
           in: formData
           type: string
           description: Reply to message ID
+        - name: typing_simulation
+          in: formData
+          type: boolean
+          description: Override typing simulation for this message (default: enabled)
+        - name: presence_simulation
+          in: formData
+          type: boolean
+          description: Override presence wrapping for this message (default: enabled)
       responses:
         200:
-          description: Image sent
+          description: OK
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        400:
+          description: Bad request
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /chats/{chat_jid}/documents:
     post:
@@ -1610,9 +1895,31 @@ paths:
         - name: reply_to_message_id
           in: formData
           type: string
+        - name: typing_simulation
+          in: formData
+          type: boolean
+          description: Override typing simulation for this message (default: enabled)
+        - name: presence_simulation
+          in: formData
+          type: boolean
+          description: Override presence wrapping for this message (default: enabled)
       responses:
         200:
-          description: Document sent
+          description: OK
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        400:
+          description: Bad request
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /chats/{chat_jid}/archive:
     post:
@@ -1643,6 +1950,16 @@ paths:
       responses:
         200:
           description: Chat archived/unarchived
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /chats/{chat_jid}/pin:
     post:
@@ -1673,6 +1990,16 @@ paths:
       responses:
         200:
           description: Chat pinned/unpinned
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /messages/{message_id}/read:
     post:
@@ -1701,6 +2028,16 @@ paths:
       responses:
         200:
           description: Message marked as read
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /messages/{message_id}/reaction:
     post:
@@ -1731,6 +2068,16 @@ paths:
       responses:
         200:
           description: Reaction added/removed
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /messages/{message_id}:
     patch:
@@ -1763,6 +2110,20 @@ paths:
       responses:
         200:
           description: Message edited
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        400:
+          description: Bad request
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
     delete:
       security:
         - BearerAuth: []
@@ -1778,6 +2139,16 @@ paths:
       responses:
         200:
           description: Message deleted
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /messages/{message_id}/reply:
     post:
@@ -1809,9 +2180,75 @@ paths:
               text:
                 type: string
                 example: Thanks for the info!
+              typing_simulation:
+                type: boolean
+                description: Override typing simulation for this reply (default: enabled)
+              presence_simulation:
+                type: boolean
+                description: Override presence wrapping for this reply (default: enabled)
       responses:
         200:
-          description: Reply sent
+          description: OK
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        400:
+          description: Bad request
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /messages/{message_id}/forward:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - "06 - Message Actions"
+      summary: Forward Message
+      description: Forward a message to another chat
+      consumes:
+        - application/json
+      parameters:
+        - name: message_id
+          in: path
+          required: true
+          type: string
+          description: ID of the message to forward
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - to_chat_jid
+            properties:
+              to_chat_jid:
+                type: string
+                example: 6281234567890@s.whatsapp.net
+                description: Target chat JID to forward the message to
+      responses:
+        200:
+          description: Message forwarded successfully
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        400:
+          description: Bad request
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /groups:
     get:
@@ -1824,6 +2261,16 @@ paths:
       responses:
         200:
           description: Groups retrieved
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
     post:
       security:
         - BearerAuth: []
@@ -1854,6 +2301,20 @@ paths:
       responses:
         200:
           description: Group created
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        400:
+          description: Bad request
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /groups/{group_jid}:
     get:
@@ -1871,6 +2332,20 @@ paths:
       responses:
         200:
           description: Group info retrieved
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        404:
+          description: Group not found
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /groups/{group_jid}/leave:
     post:
@@ -1887,6 +2362,16 @@ paths:
       responses:
         200:
           description: Left group
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /groups/{group_jid}/name:
     patch:
@@ -1915,6 +2400,20 @@ paths:
       responses:
         200:
           description: Group name updated
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        403:
+          description: Not admin
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /groups/{group_jid}/description:
     patch:
@@ -1943,6 +2442,20 @@ paths:
       responses:
         200:
           description: Description updated
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        403:
+          description: Not admin
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /groups/{group_jid}/photo:
     post:
@@ -1965,6 +2478,20 @@ paths:
       responses:
         200:
           description: Photo updated
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        400:
+          description: Bad request
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /groups/{group_jid}/invite-link:
     get:
@@ -1985,6 +2512,20 @@ paths:
       responses:
         200:
           description: Invite link retrieved
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        403:
+          description: Not admin
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /groups/{group_jid}/settings:
     patch:
@@ -2012,6 +2553,20 @@ paths:
       responses:
         200:
           description: Settings updated
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        403:
+          description: Not admin
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /groups/{group_jid}/participant-requests:
     get:
@@ -2028,6 +2583,16 @@ paths:
       responses:
         200:
           description: Join requests retrieved
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /groups/{group_jid}/join-approval:
     post:
@@ -2056,6 +2621,20 @@ paths:
       responses:
         200:
           description: Join approval mode set
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        403:
+          description: Not admin
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /groups/invite/{invite_code}:
     get:
@@ -2072,6 +2651,20 @@ paths:
       responses:
         200:
           description: Group info from invite
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        404:
+          description: Invalid invite
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /groups/{group_jid}/join-invite:
     post:
@@ -2101,6 +2694,16 @@ paths:
       responses:
         200:
           description: Joined group
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /groups/{group_jid}/member-add-mode:
     patch:
@@ -2129,6 +2732,20 @@ paths:
       responses:
         200:
           description: Member add mode set
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        403:
+          description: Not admin
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /groups/{group_jid}/topic:
     patch:
@@ -2158,6 +2775,20 @@ paths:
       responses:
         200:
           description: Topic updated
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        403:
+          description: Not admin
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /groups/{parent_group_jid}/link/{group_jid}:
     post:
@@ -2178,6 +2809,20 @@ paths:
       responses:
         200:
           description: Groups linked
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        403:
+          description: Not admin
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /groups/{community_jid}/linked-participants:
     get:
@@ -2194,6 +2839,16 @@ paths:
       responses:
         200:
           description: Community members retrieved
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /groups/{community_jid}/subgroups:
     get:
@@ -2210,6 +2865,16 @@ paths:
       responses:
         200:
           description: Subgroups retrieved
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /groups/{group_jid}/participants:
     post:
@@ -2240,6 +2905,20 @@ paths:
       responses:
         200:
           description: Participants added
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        403:
+          description: Not admin
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
     delete:
       security:
         - BearerAuth: []
@@ -2268,6 +2947,20 @@ paths:
       responses:
         200:
           description: Participants removed
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        403:
+          description: Not admin
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /groups/{group_jid}/requests/approve:
     post:
@@ -2298,6 +2991,20 @@ paths:
       responses:
         200:
           description: Requests approved
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        403:
+          description: Not admin
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /groups/{group_jid}/requests/reject:
     post:
@@ -2328,6 +3035,20 @@ paths:
       responses:
         200:
           description: Requests rejected
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        403:
+          description: Not admin
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /groups/{group_jid}/admins:
     post:
@@ -2358,6 +3079,20 @@ paths:
       responses:
         200:
           description: Promoted to admin
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        403:
+          description: Not admin
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
     delete:
       security:
         - BearerAuth: []
@@ -2386,6 +3121,20 @@ paths:
       responses:
         200:
           description: Demoted from admin
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        403:
+          description: Not admin
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /chats/{chat_jid}/presence:
     post:
@@ -2425,6 +3174,16 @@ paths:
       responses:
         200:
           description: Presence sent
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /presence/status:
     post:
@@ -2453,6 +3212,16 @@ paths:
       responses:
         200:
           description: Status updated
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /chats/{chat_jid}/disappearing-timer:
     patch:
@@ -2488,6 +3257,16 @@ paths:
       responses:
         200:
           description: Timer set
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /app-state/{name}:
     get:
@@ -2514,6 +3293,16 @@ paths:
       responses:
         200:
           description: App state fetched
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /app-state:
     post:
@@ -2549,6 +3338,16 @@ paths:
       responses:
         200:
           description: App state patch sent
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /app-state/mark-clean:
     post:
@@ -2577,6 +3376,16 @@ paths:
       responses:
         200:
           description: App state marked as clean
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /webhooks:
     get:
@@ -2589,6 +3398,16 @@ paths:
       responses:
         200:
           description: Webhooks retrieved
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
     post:
       security:
         - BearerAuth: []
@@ -2623,6 +3442,20 @@ paths:
       responses:
         201:
           description: Webhook created
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        400:
+          description: Bad request
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /webhooks/{webhook_id}:
     get:
@@ -2639,6 +3472,20 @@ paths:
       responses:
         200:
           description: Webhook details retrieved
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        404:
+          description: Webhook not found
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
     patch:
       security:
         - BearerAuth: []
@@ -2668,6 +3515,24 @@ paths:
       responses:
         200:
           description: Webhook updated
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        400:
+          description: Bad request
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        404:
+          description: Webhook not found
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
     delete:
       security:
         - BearerAuth: []
@@ -2682,6 +3547,20 @@ paths:
       responses:
         200:
           description: Webhook deleted
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        404:
+          description: Webhook not found
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /webhooks/{webhook_id}/logs:
     get:
@@ -2699,6 +3578,20 @@ paths:
       responses:
         200:
           description: Webhook logs retrieved
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        404:
+          description: Webhook not found
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /webhooks/{webhook_id}/test:
     post:
@@ -2716,3 +3609,17 @@ paths:
       responses:
         200:
           description: Test event sent
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        404:
+          description: Webhook not found
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"

@@ -48,6 +48,8 @@ type RequestSendMessage struct {
 	Text           string
 	ReplyMessageID string
 	ViewOnce       bool
+	TypingSimulation   *bool `json:"typing_simulation"`
+	PresenceSimulation *bool `json:"presence_simulation"`
 }
 
 type RequestSendLink struct {
@@ -126,8 +128,21 @@ type RequestDelete struct {
 }
 
 type RequestForward struct {
-	MessageID string
-	ToChatJID string
+	MessageID string `json:"message_id"`
+	ToChatJID string `json:"to_chat_jid"`
+}
+
+type RequestDownloadMedia struct {
+	ChatJID   string `json:"chat_jid"`
+	SenderJID string `json:"sender_jid"`
+}
+
+type RequestSetProfilePhoto struct {
+	PhotoBase64 string `json:"photo_base64"`
+}
+
+type RequestContactSync struct {
+	Phones []string `json:"phones"`
 }
 
 type RequestReply struct {
@@ -136,6 +151,8 @@ type RequestReply struct {
 	MessageID     string
 	Text          string
 	QuotedMessage *waE2E.Message
+	TypingSimulation   *bool `json:"typing_simulation"`
+	PresenceSimulation *bool `json:"presence_simulation"`
 }
 
 type RequestCreateGroup struct {

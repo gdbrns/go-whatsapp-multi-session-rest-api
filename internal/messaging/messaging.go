@@ -35,6 +35,22 @@ func convertFileToBytes(file multipart.File) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
+func parseOptionalBool(val string) *bool {
+	if val == "" {
+		return nil
+	}
+	switch strings.ToLower(val) {
+	case "true", "1", "yes", "on":
+		b := true
+		return &b
+	case "false", "0", "no", "off":
+		b := false
+		return &b
+	default:
+		return nil
+	}
+}
+
 func SendText(c *fiber.Ctx) error {
 	deviceID, jid := getDeviceContext(c)
 	chatJID := c.Params("chat_jid")
@@ -62,7 +78,11 @@ func SendText(c *fiber.Ctx) error {
 		ctx = context.Background()
 	}
 
-	msgID, err := pkgWhatsApp.WhatsAppSendText(ctx, jid, deviceID, chatJID, reqSendMessage.Text)
+	opts := &pkgWhatsApp.SendOptions{
+		TypingSimulation:   reqSendMessage.TypingSimulation,
+		PresenceSimulation: reqSendMessage.PresenceSimulation,
+	}
+	msgID, err := pkgWhatsApp.WhatsAppSendText(ctx, jid, deviceID, chatJID, reqSendMessage.Text, opts)
 	if err != nil {
 		log.MessageOpCtx(c, "SendText", chatJID).WithError(err).Error("Failed to send text message")
 		return router.ResponseInternalError(c, err.Error())
@@ -85,6 +105,8 @@ func SendImage(c *fiber.Ctx) error {
 
 	caption := c.FormValue("caption")
 	viewOnce := c.FormValue("view_once") == "true"
+	typingSimulation := parseOptionalBool(c.FormValue("typing_simulation"))
+	presenceSimulation := parseOptionalBool(c.FormValue("presence_simulation"))
 
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
@@ -112,7 +134,11 @@ func SendImage(c *fiber.Ctx) error {
 		ctx = context.Background()
 	}
 
-	msgID, err := pkgWhatsApp.WhatsAppSendImage(ctx, jid, deviceID, chatJID, fileBytes, "image/jpeg", caption, viewOnce)
+	opts := &pkgWhatsApp.SendOptions{
+		TypingSimulation:   typingSimulation,
+		PresenceSimulation: presenceSimulation,
+	}
+	msgID, err := pkgWhatsApp.WhatsAppSendImage(ctx, jid, deviceID, chatJID, fileBytes, "image/jpeg", caption, viewOnce, opts)
 	if err != nil {
 		log.MessageOpCtx(c, "SendImage", chatJID).WithError(err).Error("Failed to send image")
 		return router.ResponseInternalError(c, err.Error())
@@ -133,6 +159,8 @@ func SendDocument(c *fiber.Ctx) error {
 	}
 
 	fileName := c.FormValue("filename")
+	typingSimulation := parseOptionalBool(c.FormValue("typing_simulation"))
+	presenceSimulation := parseOptionalBool(c.FormValue("presence_simulation"))
 
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
@@ -164,7 +192,11 @@ func SendDocument(c *fiber.Ctx) error {
 		ctx = context.Background()
 	}
 
-	msgID, err := pkgWhatsApp.WhatsAppSendDocument(ctx, jid, deviceID, chatJID, fileBytes, "application/octet-stream", fileName)
+	opts := &pkgWhatsApp.SendOptions{
+		TypingSimulation:   typingSimulation,
+		PresenceSimulation: presenceSimulation,
+	}
+	msgID, err := pkgWhatsApp.WhatsAppSendDocument(ctx, jid, deviceID, chatJID, fileBytes, "application/octet-stream", fileName, opts)
 	if err != nil {
 		log.MessageOpCtx(c, "SendDocument", chatJID).WithError(err).Error("Failed to send document")
 		return router.ResponseInternalError(c, err.Error())

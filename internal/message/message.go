@@ -196,7 +196,11 @@ func Reply(c *fiber.Ctx) error {
 		ctx = context.Background()
 	}
 
-	msgID, err := pkgWhatsApp.WhatsAppSendText(ctx, jid, deviceID, reqReply.ChatJID, reqReply.Text)
+	opts := &pkgWhatsApp.SendOptions{
+		TypingSimulation:   reqReply.TypingSimulation,
+		PresenceSimulation: reqReply.PresenceSimulation,
+	}
+	msgID, err := pkgWhatsApp.WhatsAppSendText(ctx, jid, deviceID, reqReply.ChatJID, reqReply.Text, opts)
 	if err != nil {
 		log.MessageOpCtx(c, "Reply", reqReply.ChatJID).WithField("reply_to_message_id", messageID).WithError(err).Error("Failed to reply to message")
 		return router.ResponseInternalError(c, err.Error())
@@ -205,4 +209,43 @@ func Reply(c *fiber.Ctx) error {
 	log.MessageOpCtx(c, "Reply", reqReply.ChatJID).WithField("reply_to_message_id", messageID).WithField("new_msg_id", msgID).Info("Reply sent successfully")
 
 	return router.ResponseSuccessWithData(c, "Success reply to message", map[string]interface{}{"message_id": msgID})
+}
+
+// Forward forwards a message to another chat
+func Forward(c *fiber.Ctx) error {
+	deviceID, jid := getDeviceContext(c)
+	messageID := c.Params("message_id")
+
+	var reqForward typWhatsApp.RequestForward
+	err := c.BodyParser(&reqForward)
+	if err != nil {
+		log.MessageOpCtx(c, "Forward", "").Warn("Failed to parse body request")
+		return router.ResponseBadRequest(c, "Failed parse body request")
+	}
+
+	reqForward.MessageID = messageID
+
+	if reqForward.ToChatJID == "" {
+		log.MessageOpCtx(c, "Forward", "").Warn("Missing to_chat_jid")
+		return router.ResponseBadRequest(c, "to_chat_jid is required")
+	}
+
+	log.MessageOpCtx(c, "Forward", reqForward.ToChatJID).WithField("message_id", messageID).Info("Forwarding message")
+
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	toChatJID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, reqForward.ToChatJID)
+
+	newMsgID, err := pkgWhatsApp.WhatsAppForwardMessage(jid, deviceID, messageID, toChatJID)
+	if err != nil {
+		log.MessageOpCtx(c, "Forward", reqForward.ToChatJID).WithField("message_id", messageID).WithError(err).Error("Failed to forward message")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.MessageOpCtx(c, "Forward", reqForward.ToChatJID).WithField("message_id", messageID).WithField("new_msg_id", newMsgID).Info("Message forwarded successfully")
+
+	return router.ResponseSuccessWithData(c, "Success forward message", map[string]interface{}{"message_id": newMsgID})
 }

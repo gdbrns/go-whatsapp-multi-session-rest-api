@@ -94,12 +94,7 @@ func CreateAPIKey(c *fiber.Ctx) error {
 
 	log.AdminOp(c, "CreateAPIKey").WithField("api_key_id", apiKey.ID).WithField("customer_name", req.CustomerName).Info("API key created successfully")
 
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-		"status":  true,
-		"code":    fiber.StatusCreated,
-		"message": "API key created successfully",
-		"data":    response,
-	})
+	return router.ResponseCreatedWithData(c, "API key created successfully", response)
 }
 
 // @Summary     List API Keys

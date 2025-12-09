@@ -1,7 +1,9 @@
 package log
 
 import (
+	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -25,19 +27,125 @@ func init() {
 		logger.SetLevel(logrus.InfoLevel)
 	}
 
-	// For production B2B, consider JSON format for log aggregation
+	// Ultra-short format for clean backend logs
 	if os.Getenv("LOG_FORMAT") == "json" {
 		logger.Formatter = &logrus.JSONFormatter{
-			TimestampFormat: time.RFC3339,
+			TimestampFormat: "15:04:05",
 		}
 	} else {
 		logger.Formatter = &logrus.TextFormatter{
-			TimestampFormat: time.RFC3339,
+			TimestampFormat: "15:04:05",
 			FullTimestamp:   true,
 			DisableColors:   false,
 			ForceColors:     true,
 		}
 	}
+}
+
+// shortID returns last 6 chars of ID for compact logging
+func shortID(id string) string {
+	if len(id) <= 6 {
+		return id
+	}
+	return id[len(id)-6:]
+}
+
+// shortJID returns phone number only from JID (e.g., "628xxx" from "628xxx@s.whatsapp.net")
+func shortJID(jid string) string {
+	if idx := strings.Index(jid, "@"); idx > 0 {
+		phone := jid[:idx]
+		if len(phone) > 8 {
+			return phone[:4] + ".." + phone[len(phone)-4:]
+		}
+		return phone
+	}
+	if len(jid) > 8 {
+		return jid[:4] + ".." + jid[len(jid)-4:]
+	}
+	return jid
+}
+
+// Evt logs an event with ultra-short format: [scope] action device target
+func Evt(scope, action, deviceID string, extra ...string) {
+	msg := fmt.Sprintf("[%s] %s d:%s", scope, action, shortID(deviceID))
+	if len(extra) > 0 {
+		msg += " " + strings.Join(extra, " ")
+	}
+	logger.Info(msg)
+}
+
+// EvtOK logs successful event
+func EvtOK(scope, action, deviceID string, extra ...string) {
+	msg := fmt.Sprintf("[%s] ✓ %s d:%s", scope, action, shortID(deviceID))
+	if len(extra) > 0 {
+		msg += " " + strings.Join(extra, " ")
+	}
+	logger.Info(msg)
+}
+
+// EvtErr logs error event
+func EvtErr(scope, action, deviceID string, err error) {
+	logger.Error(fmt.Sprintf("[%s] ✗ %s d:%s err:%v", scope, action, shortID(deviceID), err))
+}
+
+// WH logs webhook dispatch with ACK
+func WH(eventType, deviceID string, webhookCount int) {
+	if webhookCount > 0 {
+		logger.Info(fmt.Sprintf("[wh] → %s d:%s (%d hooks)", eventType, shortID(deviceID), webhookCount))
+	}
+}
+
+// WHACK logs webhook delivery ACK
+func WHACK(eventType, deviceID string, webhookID int64, success bool, attempt int) {
+	status := "✓"
+	if !success {
+		status = "✗"
+	}
+	logger.Info(fmt.Sprintf("[wh] %s %s d:%s wh:%d att:%d", status, eventType, shortID(deviceID), webhookID, attempt))
+}
+
+// Conn logs connection events
+func Conn(action, deviceID, jid string) {
+	logger.Info(fmt.Sprintf("[conn] %s d:%s j:%s", action, shortID(deviceID), shortJID(jid)))
+}
+
+// Msg logs message events
+func Msg(action, deviceID, msgID, target string) {
+	logger.Info(fmt.Sprintf("[msg] %s d:%s m:%s t:%s", action, shortID(deviceID), shortID(msgID), shortJID(target)))
+}
+
+// API logs API request/response
+func API(method, path string, status int, latency time.Duration) {
+	logger.Info(fmt.Sprintf("[api] %s %s %d %dms", method, path, status, latency.Milliseconds()))
+}
+
+// Grp logs group events
+func Grp(action, deviceID, groupJID string) {
+	logger.Info(fmt.Sprintf("[grp] %s d:%s g:%s", action, shortID(deviceID), shortJID(groupJID)))
+}
+
+// Call logs call events
+func Call(action, deviceID, callID, from string) {
+	logger.Info(fmt.Sprintf("[call] %s d:%s c:%s f:%s", action, shortID(deviceID), shortID(callID), shortJID(from)))
+}
+
+// Sys logs system events
+func Sys(action string, extra ...string) {
+	msg := fmt.Sprintf("[sys] %s", action)
+	if len(extra) > 0 {
+		msg += " " + strings.Join(extra, " ")
+	}
+	logger.Info(msg)
+}
+
+// SysErr logs system errors
+func SysErr(action string, err error) {
+	logger.Error(fmt.Sprintf("[sys] ✗ %s err:%v", action, err))
+}
+
+// Debug logs debug info (only if LOG_LEVEL=debug)
+func Debug(scope, msg string) {
+	logger.Debug(fmt.Sprintf("[%s] %s", scope, msg))
 }
 
 func Print(c *fiber.Ctx) *logrus.Entry {

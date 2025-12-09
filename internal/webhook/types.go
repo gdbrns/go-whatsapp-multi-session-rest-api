@@ -15,6 +15,27 @@ const (
 	EventConnectionConnected   EventType = "connection.connected"
 	EventConnectionDisconnected EventType = "connection.disconnected"
 	EventConnectionLoggedOut   EventType = "connection.logged_out"
+	EventConnectionReconnecting EventType = "connection.reconnecting"
+	EventConnectionKeepAliveTimeout EventType = "connection.keepalive_timeout"
+	EventConnectionTemporaryBan EventType = "connection.temporary_ban"
+	EventAppStateSyncComplete  EventType = "appstate.sync_complete"
+	EventAppStatePatchReceived EventType = "appstate.patch_received"
+	// Call events
+	EventCallOffer             EventType = "call.offer"
+	EventCallAccept            EventType = "call.accept"
+	EventCallTerminate         EventType = "call.terminate"
+	EventCallReject            EventType = "call.reject"
+	// History sync events
+	EventHistorySync           EventType = "history.sync"
+	// Blocklist events
+	EventBlocklistChange       EventType = "blocklist.change"
+	// Group events
+	EventGroupJoin             EventType = "group.join"
+	EventGroupLeave            EventType = "group.leave"
+	EventGroupParticipantUpdate EventType = "group.participant_update"
+	EventGroupInfoUpdate       EventType = "group.info_update"
+	// Contact events
+	EventContactUpdate         EventType = "contact.update"
 )
 
 type DeliveryStatus string

@@ -91,6 +91,22 @@ func ResponseCreated(c *fiber.Ctx, message string) error {
 	return c.Status(response.Code).JSON(response)
 }
 
+func ResponseCreatedWithData(c *fiber.Ctx, message string, data interface{}) error {
+	response := Response{
+		Status: true,
+		Code:   http.StatusCreated,
+		Data:   data,
+	}
+
+	if strings.TrimSpace(message) == "" {
+		message = http.StatusText(response.Code)
+	}
+	response.Message = message
+
+	logSuccess(c, response.Code, response.Message)
+	return c.Status(response.Code).JSON(response)
+}
+
 func ResponseNoContent(c *fiber.Ctx) error {
 	return c.SendStatus(http.StatusNoContent)
 }
