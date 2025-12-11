@@ -1,42 +1,79 @@
 version: 2
 
+project_name: whatsapp-api-multisession
+
 before:
   hooks:
-    - make vendor
+    - go mod tidy
+    - go mod download
 
 builds:
   - main: ./cmd/main/main.go
+    binary: whatsapp-api
     env:
       - CGO_ENABLED=0
     ldflags:
       - -s
       - -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
     goos:
       - darwin
       - linux
       - windows
     goarch:
-      - 386
       - amd64
       - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
 
 archives:
   - formats:
+      - tar.gz
       - zip
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
       - LICENSE
       - README.md
       - .env.example
+      - docs/*
 
 checksum:
   name_template: 'checksums.txt'
+  algorithm: sha256
 
 snapshot:
-  version_template: "{{ .Version }}_{{ .ShortCommit }}"
+  version_template: "{{ .Version }}-next-{{ .ShortCommit }}"
 
 changelog:
+  sort: asc
+  use: github
   filters:
     exclude:
       - '^docs:'
       - '^test:'
+      - '^chore:'
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: Features
+      regexp: "^.*feat[(\\w)]*:+.*$"
+      order: 0
+    - title: Bug Fixes
+      regexp: "^.*fix[(\\w)]*:+.*$"
+      order: 1
+    - title: Performance
+      regexp: "^.*perf[(\\w)]*:+.*$"
+      order: 2
+    - title: Others
+      order: 999
+
+release:
+  prerelease: auto
+  make_latest: true

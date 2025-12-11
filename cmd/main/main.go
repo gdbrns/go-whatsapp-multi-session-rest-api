@@ -1,16 +1,32 @@
 package main
 
 // @title Go WhatsApp Multi-Device and Multi Session REST API
-// @version 1.0.0
-// @description This is WhatsApp Multi-Device and Multi Session Implementation in Go REST API
+// @version 2.0.0
+// @description Enterprise-grade WhatsApp Multi-Device REST API with 111+ endpoints including messaging, polls, newsletters/channels, status/stories, and 31 webhook event types
 
-// @contact.name Dimas Restu Hidayanto
+// @contact.name gdbrns
+// @contact.url https://github.com/gdbrns/go-whatsapp-multi-session-rest-api
 
-// @securityDefinitions.basic BasicAuth
+// @license.name MIT
+// @license.url https://github.com/gdbrns/go-whatsapp-multi-session-rest-api/blob/main/LICENSE
+
+// @host localhost:7001
+// @BasePath /
+
+// @securityDefinitions.apikey AdminAuth
+// @in header
+// @name X-Admin-Secret
+// @description Admin secret key for managing API keys
+
+// @securityDefinitions.apikey APIKeyAuth
+// @in header
+// @name X-API-Key
+// @description API key for creating devices
 
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
+// @description JWT Bearer token for device operations
 
 import (
 	"context"
