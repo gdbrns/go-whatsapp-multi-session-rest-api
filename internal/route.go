@@ -15,6 +15,9 @@ import (
 	ctlIndex "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/index"
 	ctlMessage "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/message"
 	ctlMessaging "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/messaging"
+	ctlNewsletter "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/newsletter"
+	ctlStatus "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/status"
+	ctlPoll "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/poll"
 	ctlPresence "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/presence"
 	ctlUser "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/user"
 	ctlWebhooks "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/webhooks"
@@ -113,6 +116,11 @@ func Routes(app *fiber.App) {
 	// Chat/Messaging routes
 	app.Post(router.BaseURL+"/chats/:chat_jid/messages", deviceAuthMiddleware, ctlMessaging.SendText)
 	app.Post(router.BaseURL+"/chats/:chat_jid/images", deviceAuthMiddleware, ctlMessaging.SendImage)
+	app.Post(router.BaseURL+"/chats/:chat_jid/videos", deviceAuthMiddleware, ctlMessaging.SendVideo)
+	app.Post(router.BaseURL+"/chats/:chat_jid/audio", deviceAuthMiddleware, ctlMessaging.SendAudio)
+	app.Post(router.BaseURL+"/chats/:chat_jid/stickers", deviceAuthMiddleware, ctlMessaging.SendSticker)
+	app.Post(router.BaseURL+"/chats/:chat_jid/locations", deviceAuthMiddleware, ctlMessaging.SendLocation)
+	app.Post(router.BaseURL+"/chats/:chat_jid/contacts", deviceAuthMiddleware, ctlMessaging.SendContact)
 	app.Post(router.BaseURL+"/chats/:chat_jid/documents", deviceAuthMiddleware, ctlMessaging.SendDocument)
 	app.Get(router.BaseURL+"/chats/:chat_jid/messages", deviceAuthMiddleware, ctlMessaging.GetMessages)
 	app.Post(router.BaseURL+"/chats/:chat_jid/archive", deviceAuthMiddleware, ctlMessaging.ArchiveChat)
@@ -125,6 +133,33 @@ func Routes(app *fiber.App) {
 	app.Delete(router.BaseURL+"/messages/:message_id", deviceAuthMiddleware, ctlMessage.Delete)
 	app.Post(router.BaseURL+"/messages/:message_id/reply", deviceAuthMiddleware, ctlMessage.Reply)
 	app.Post(router.BaseURL+"/messages/:message_id/forward", deviceAuthMiddleware, ctlMessage.Forward)
+
+	// Poll routes
+	app.Post(router.BaseURL+"/chats/:chat_jid/polls", deviceAuthMiddleware, ctlPoll.CreatePoll)
+	app.Post(router.BaseURL+"/polls/:poll_id/vote", deviceAuthMiddleware, ctlPoll.VotePoll)
+	app.Get(router.BaseURL+"/polls/:poll_id/results", deviceAuthMiddleware, ctlPoll.GetPollResults)
+	app.Delete(router.BaseURL+"/polls/:poll_id", deviceAuthMiddleware, ctlPoll.DeletePoll)
+
+	// Newsletter/Channel routes
+	app.Get(router.BaseURL+"/newsletters", deviceAuthMiddleware, ctlNewsletter.ListNewsletters)
+	app.Post(router.BaseURL+"/newsletters", deviceAuthMiddleware, ctlNewsletter.CreateNewsletter)
+	app.Get(router.BaseURL+"/newsletters/:jid", deviceAuthMiddleware, ctlNewsletter.GetNewsletterInfo)
+	app.Post(router.BaseURL+"/newsletters/:jid/follow", deviceAuthMiddleware, ctlNewsletter.FollowNewsletter)
+	app.Delete(router.BaseURL+"/newsletters/:jid/follow", deviceAuthMiddleware, ctlNewsletter.UnfollowNewsletter)
+	app.Get(router.BaseURL+"/newsletters/:jid/messages", deviceAuthMiddleware, ctlNewsletter.GetNewsletterMessages)
+	app.Post(router.BaseURL+"/newsletters/:jid/messages", deviceAuthMiddleware, ctlNewsletter.SendNewsletterMessage)
+	app.Post(router.BaseURL+"/newsletters/:jid/reaction", deviceAuthMiddleware, ctlNewsletter.ReactToNewsletterMessage)
+	app.Post(router.BaseURL+"/newsletters/:jid/mute", deviceAuthMiddleware, ctlNewsletter.ToggleNewsletterMute)
+	app.Post(router.BaseURL+"/newsletters/:jid/viewed", deviceAuthMiddleware, ctlNewsletter.MarkNewsletterViewed)
+	app.Get(router.BaseURL+"/newsletters/invite/:code", deviceAuthMiddleware, ctlNewsletter.GetNewsletterInfoFromInvite)
+	app.Post(router.BaseURL+"/newsletters/:jid/live", deviceAuthMiddleware, ctlNewsletter.SubscribeLiveUpdates)
+	app.Post(router.BaseURL+"/newsletters/:jid/photo", deviceAuthMiddleware, ctlNewsletter.UpdateNewsletterPhoto)
+
+	// Status/Stories routes
+	app.Post(router.BaseURL+"/status", deviceAuthMiddleware, ctlStatus.PostStatus)
+	app.Get(router.BaseURL+"/status", deviceAuthMiddleware, ctlStatus.GetStatusUpdates)
+	app.Delete(router.BaseURL+"/status/:status_id", deviceAuthMiddleware, ctlStatus.DeleteStatus)
+	app.Get(router.BaseURL+"/status/:user_jid", deviceAuthMiddleware, ctlStatus.GetUserStatus)
 
 	// Group routes
 	app.Get(router.BaseURL+"/groups", deviceAuthMiddleware, ctlGroups.List)

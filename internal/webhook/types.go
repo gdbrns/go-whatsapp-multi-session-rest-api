@@ -36,6 +36,22 @@ const (
 	EventGroupInfoUpdate       EventType = "group.info_update"
 	// Contact events
 	EventContactUpdate         EventType = "contact.update"
+	// Newsletter/Channel events
+	EventNewsletterJoin              EventType = "newsletter.join"
+	EventNewsletterLeave             EventType = "newsletter.leave"
+	EventNewsletterMessageReceived   EventType = "newsletter.message_received"
+	EventNewsletterUpdate            EventType = "newsletter.update"
+	// Poll events
+	EventPollCreated           EventType = "poll.created"
+	EventPollVote              EventType = "poll.vote"
+	EventPollUpdate            EventType = "poll.update"
+	// Status/Stories events
+	EventStatusPosted          EventType = "status.posted"
+	EventStatusViewed          EventType = "status.viewed"
+	EventStatusDeleted         EventType = "status.deleted"
+	// Media events
+	EventMediaReceived         EventType = "media.received"
+	EventMediaDownloaded       EventType = "media.downloaded"
 )
 
 type DeliveryStatus string

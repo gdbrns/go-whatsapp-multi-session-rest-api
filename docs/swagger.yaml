@@ -2,20 +2,23 @@ swagger: "2.0"
 info:
   title: WhatsApp Multi-Device REST API
   description: |
-    Minimal RESTful API for WhatsApp Multi-Device and Multi-Session implementation.
+    Enterprise-grade RESTful API for WhatsApp Multi-Device and Multi-Session implementation.
 
-    **Features 54 endpoints** including:
+    **Features 111+ endpoints** including:
     - Device & Session Management
-    - Messaging (Text, Images, Documents)
+    - Messaging (Text, Images, Videos, Audio, Stickers, Locations, Contacts, Documents)
     - Message Actions (Read, React, Edit, Delete, Reply)
     - Group Management (CRUD, Participants, Admins, Settings)
     - User Profiles & Privacy
+    - Polls (Create, Vote, Results)
+    - Newsletter/Channels (Create, Follow, Messages, Reactions)
+    - Status/Stories (Post, View, Delete)
     - App State Synchronization
     - Presence & Status Management
-    - Webhook Integration
+    - Webhook Integration (31 event types)
 
     **Endpoints are organized by usage frequency** - most commonly used endpoints appear first.
-  version: "1.0.0"
+  version: "2.0.0"
   contact:
     name: API Support
     url: https://github.com/gdbrns/go-whatsapp-multi-session-rest-api
@@ -61,7 +64,7 @@ tags:
   - name: "05 - User Management"
     description: User profiles, privacy settings, and status updates
   - name: "06 - Messaging"
-    description: Send text, images, documents
+    description: Send text, images, videos, audio, stickers, locations, contacts, and documents
   - name: "07 - Message Actions"
     description: Read, react, edit, delete, reply to messages
   - name: "08 - Group Management"
@@ -72,6 +75,12 @@ tags:
     description: App state synchronization
   - name: "11 - Webhooks"
     description: Webhook configuration and management
+  - name: "12 - Polls"
+    description: Create polls, vote, and get results
+  - name: "13 - Newsletter/Channels"
+    description: WhatsApp Channels - create, follow, manage newsletters
+  - name: "14 - Status/Stories"
+    description: Post and manage WhatsApp Status/Stories
 
 definitions:
   ErrorResponse:

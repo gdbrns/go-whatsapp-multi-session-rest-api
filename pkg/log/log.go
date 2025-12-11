@@ -410,3 +410,75 @@ func AuthOp(c *fiber.Ctx, operation, deviceID string) *logrus.Entry {
 	}
 	return logger.WithFields(fields)
 }
+
+// Poll creates a log entry for poll operations
+func Poll(c *fiber.Ctx, operation, pollID string) *logrus.Entry {
+	fields := logrus.Fields{
+		"operation": operation,
+		"scope":     "poll",
+	}
+	if pollID != "" {
+		fields["poll_id"] = pollID
+	}
+	if c != nil {
+		if reqID := c.Locals("request_id"); reqID != nil {
+			if id, ok := reqID.(string); ok && id != "" {
+				fields["request_id"] = id
+			}
+		}
+		if deviceID := c.Locals("device_id"); deviceID != nil {
+			fields["device_id"] = deviceID
+		}
+		if jid := c.Locals("device_jid"); jid != nil {
+			fields["device_jid"] = jid
+		}
+	}
+	return logger.WithFields(fields)
+}
+
+// Newsletter creates a log entry for newsletter/channel operations
+func Newsletter(c *fiber.Ctx, operation, newsletterJID string) *logrus.Entry {
+	fields := logrus.Fields{
+		"operation": operation,
+		"scope":     "newsletter",
+	}
+	if newsletterJID != "" {
+		fields["newsletter_jid"] = newsletterJID
+	}
+	if c != nil {
+		if reqID := c.Locals("request_id"); reqID != nil {
+			if id, ok := reqID.(string); ok && id != "" {
+				fields["request_id"] = id
+			}
+		}
+		if deviceID := c.Locals("device_id"); deviceID != nil {
+			fields["device_id"] = deviceID
+		}
+		if jid := c.Locals("device_jid"); jid != nil {
+			fields["device_jid"] = jid
+		}
+	}
+	return logger.WithFields(fields)
+}
+
+// Status creates a log entry for status/stories operations
+func Status(c *fiber.Ctx, operation string) *logrus.Entry {
+	fields := logrus.Fields{
+		"operation": operation,
+		"scope":     "status",
+	}
+	if c != nil {
+		if reqID := c.Locals("request_id"); reqID != nil {
+			if id, ok := reqID.(string); ok && id != "" {
+				fields["request_id"] = id
+			}
+		}
+		if deviceID := c.Locals("device_id"); deviceID != nil {
+			fields["device_id"] = deviceID
+		}
+		if jid := c.Locals("device_jid"); jid != nil {
+			fields["device_jid"] = jid
+		}
+	}
+	return logger.WithFields(fields)
+}

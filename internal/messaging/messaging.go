@@ -315,3 +315,249 @@ func PinChat(c *fiber.Ctx) error {
 
 	return router.ResponseSuccess(c, "Success pin chat")
 }
+
+func SendVideo(c *fiber.Ctx) error {
+	deviceID, jid := getDeviceContext(c)
+	chatJID := c.Params("chat_jid")
+
+	if err := validation.ValidateChatJID(chatJID); err != nil {
+		log.MessageOpCtx(c, "SendVideo", chatJID).Warn("Invalid chat_jid")
+		return router.ResponseBadRequest(c, err.Error())
+	}
+
+	caption := c.FormValue("caption")
+	viewOnce := c.FormValue("view_once") == "true"
+	typingSimulation := parseOptionalBool(c.FormValue("typing_simulation"))
+	presenceSimulation := parseOptionalBool(c.FormValue("presence_simulation"))
+
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		log.MessageOpCtx(c, "SendVideo", chatJID).Warn("No file provided")
+		return router.ResponseBadRequest(c, "file is required")
+	}
+
+	log.MessageOpCtx(c, "SendVideo", chatJID).WithField("filename", fileHeader.Filename).WithField("size", fileHeader.Size).WithField("view_once", viewOnce).Info("Sending video")
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		log.MessageOpCtx(c, "SendVideo", chatJID).WithError(err).Error("Failed to open file")
+		return router.ResponseInternalError(c, err.Error())
+	}
+	defer file.Close()
+
+	fileBytes, err := convertFileToBytes(file)
+	if err != nil {
+		log.MessageOpCtx(c, "SendVideo", chatJID).WithError(err).Error("Failed to convert file to bytes")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	opts := &pkgWhatsApp.SendOptions{
+		TypingSimulation:   typingSimulation,
+		PresenceSimulation: presenceSimulation,
+	}
+	msgID, err := pkgWhatsApp.WhatsAppSendVideo(ctx, jid, deviceID, chatJID, fileBytes, "video/mp4", caption, viewOnce, opts)
+	if err != nil {
+		log.MessageOpCtx(c, "SendVideo", chatJID).WithError(err).Error("Failed to send video")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.MessageOpCtx(c, "SendVideo", chatJID).WithField("message_id", msgID).Info("Video sent successfully")
+
+	return router.ResponseSuccessWithData(c, "Success send video", map[string]interface{}{"message_id": msgID})
+}
+
+func SendAudio(c *fiber.Ctx) error {
+	deviceID, jid := getDeviceContext(c)
+	chatJID := c.Params("chat_jid")
+
+	if err := validation.ValidateChatJID(chatJID); err != nil {
+		log.MessageOpCtx(c, "SendAudio", chatJID).Warn("Invalid chat_jid")
+		return router.ResponseBadRequest(c, err.Error())
+	}
+
+	isVoiceNote := c.FormValue("voice_note") == "true" || c.FormValue("ptt") == "true"
+	typingSimulation := parseOptionalBool(c.FormValue("typing_simulation"))
+	presenceSimulation := parseOptionalBool(c.FormValue("presence_simulation"))
+
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		log.MessageOpCtx(c, "SendAudio", chatJID).Warn("No file provided")
+		return router.ResponseBadRequest(c, "file is required")
+	}
+
+	log.MessageOpCtx(c, "SendAudio", chatJID).WithField("filename", fileHeader.Filename).WithField("size", fileHeader.Size).WithField("voice_note", isVoiceNote).Info("Sending audio")
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		log.MessageOpCtx(c, "SendAudio", chatJID).WithError(err).Error("Failed to open file")
+		return router.ResponseInternalError(c, err.Error())
+	}
+	defer file.Close()
+
+	fileBytes, err := convertFileToBytes(file)
+	if err != nil {
+		log.MessageOpCtx(c, "SendAudio", chatJID).WithError(err).Error("Failed to convert file to bytes")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	opts := &pkgWhatsApp.SendOptions{
+		TypingSimulation:   typingSimulation,
+		PresenceSimulation: presenceSimulation,
+	}
+	msgID, err := pkgWhatsApp.WhatsAppSendAudio(ctx, jid, deviceID, chatJID, fileBytes, "audio/mpeg", isVoiceNote, opts)
+	if err != nil {
+		log.MessageOpCtx(c, "SendAudio", chatJID).WithError(err).Error("Failed to send audio")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.MessageOpCtx(c, "SendAudio", chatJID).WithField("message_id", msgID).Info("Audio sent successfully")
+
+	return router.ResponseSuccessWithData(c, "Success send audio", map[string]interface{}{"message_id": msgID})
+}
+
+func SendSticker(c *fiber.Ctx) error {
+	deviceID, jid := getDeviceContext(c)
+	chatJID := c.Params("chat_jid")
+
+	if err := validation.ValidateChatJID(chatJID); err != nil {
+		log.MessageOpCtx(c, "SendSticker", chatJID).Warn("Invalid chat_jid")
+		return router.ResponseBadRequest(c, err.Error())
+	}
+
+	typingSimulation := parseOptionalBool(c.FormValue("typing_simulation"))
+	presenceSimulation := parseOptionalBool(c.FormValue("presence_simulation"))
+
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		log.MessageOpCtx(c, "SendSticker", chatJID).Warn("No file provided")
+		return router.ResponseBadRequest(c, "file is required (must be WebP format)")
+	}
+
+	log.MessageOpCtx(c, "SendSticker", chatJID).WithField("filename", fileHeader.Filename).WithField("size", fileHeader.Size).Info("Sending sticker")
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		log.MessageOpCtx(c, "SendSticker", chatJID).WithError(err).Error("Failed to open file")
+		return router.ResponseInternalError(c, err.Error())
+	}
+	defer file.Close()
+
+	fileBytes, err := convertFileToBytes(file)
+	if err != nil {
+		log.MessageOpCtx(c, "SendSticker", chatJID).WithError(err).Error("Failed to convert file to bytes")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	opts := &pkgWhatsApp.SendOptions{
+		TypingSimulation:   typingSimulation,
+		PresenceSimulation: presenceSimulation,
+	}
+	msgID, err := pkgWhatsApp.WhatsAppSendSticker(ctx, jid, deviceID, chatJID, fileBytes, opts)
+	if err != nil {
+		log.MessageOpCtx(c, "SendSticker", chatJID).WithError(err).Error("Failed to send sticker")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.MessageOpCtx(c, "SendSticker", chatJID).WithField("message_id", msgID).Info("Sticker sent successfully")
+
+	return router.ResponseSuccessWithData(c, "Success send sticker", map[string]interface{}{"message_id": msgID})
+}
+
+func SendLocation(c *fiber.Ctx) error {
+	deviceID, jid := getDeviceContext(c)
+	chatJID := c.Params("chat_jid")
+
+	if err := validation.ValidateChatJID(chatJID); err != nil {
+		log.MessageOpCtx(c, "SendLocation", chatJID).Warn("Invalid chat_jid")
+		return router.ResponseBadRequest(c, err.Error())
+	}
+
+	var req typWhatsApp.RequestSendLocation
+	err := c.BodyParser(&req)
+	if err != nil {
+		log.MessageOpCtx(c, "SendLocation", chatJID).Warn("Failed to parse body request")
+		return router.ResponseBadRequest(c, "Failed parse body request")
+	}
+
+	if req.Latitude == 0 && req.Longitude == 0 {
+		log.MessageOpCtx(c, "SendLocation", chatJID).Warn("Invalid coordinates")
+		return router.ResponseBadRequest(c, "latitude and longitude are required")
+	}
+
+	log.MessageOpCtx(c, "SendLocation", chatJID).WithField("latitude", req.Latitude).WithField("longitude", req.Longitude).Info("Sending location")
+
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	opts := &pkgWhatsApp.SendOptions{}
+	msgID, err := pkgWhatsApp.WhatsAppSendLocation(ctx, jid, deviceID, chatJID, req.Latitude, req.Longitude, req.Name, req.Address, opts)
+	if err != nil {
+		log.MessageOpCtx(c, "SendLocation", chatJID).WithError(err).Error("Failed to send location")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.MessageOpCtx(c, "SendLocation", chatJID).WithField("message_id", msgID).Info("Location sent successfully")
+
+	return router.ResponseSuccessWithData(c, "Success send location", map[string]interface{}{"message_id": msgID})
+}
+
+func SendContact(c *fiber.Ctx) error {
+	deviceID, jid := getDeviceContext(c)
+	chatJID := c.Params("chat_jid")
+
+	if err := validation.ValidateChatJID(chatJID); err != nil {
+		log.MessageOpCtx(c, "SendContact", chatJID).Warn("Invalid chat_jid")
+		return router.ResponseBadRequest(c, err.Error())
+	}
+
+	var req typWhatsApp.RequestSendContact
+	err := c.BodyParser(&req)
+	if err != nil {
+		log.MessageOpCtx(c, "SendContact", chatJID).Warn("Failed to parse body request")
+		return router.ResponseBadRequest(c, "Failed parse body request")
+	}
+
+	if strings.TrimSpace(req.Name) == "" {
+		log.MessageOpCtx(c, "SendContact", chatJID).Warn("Contact name is required")
+		return router.ResponseBadRequest(c, "name is required")
+	}
+	if strings.TrimSpace(req.Phone) == "" {
+		log.MessageOpCtx(c, "SendContact", chatJID).Warn("Contact phone is required")
+		return router.ResponseBadRequest(c, "phone is required")
+	}
+
+	log.MessageOpCtx(c, "SendContact", chatJID).WithField("name", req.Name).WithField("phone", req.Phone).Info("Sending contact")
+
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	opts := &pkgWhatsApp.SendOptions{}
+	msgID, err := pkgWhatsApp.WhatsAppSendContact(ctx, jid, deviceID, chatJID, req.Name, req.Phone, opts)
+	if err != nil {
+		log.MessageOpCtx(c, "SendContact", chatJID).WithError(err).Error("Failed to send contact")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.MessageOpCtx(c, "SendContact", chatJID).WithField("message_id", msgID).Info("Contact sent successfully")
+
+	return router.ResponseSuccessWithData(c, "Success send contact", map[string]interface{}{"message_id": msgID})
+}

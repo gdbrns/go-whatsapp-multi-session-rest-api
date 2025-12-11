@@ -21,7 +21,7 @@ Complete documentation for all WhatsApp API webhook event types and their payloa
 
 When WhatsApp events occur, webhooks are triggered and HTTP POST requests are sent to your configured endpoint. Each device can have multiple webhooks configured, and each webhook can filter which event types it receives.
 
-### Supported Event Types (19 Total)
+### Supported Event Types (31 Total)
 
 | Category | Event Types |
 |----------|-------------|
@@ -29,7 +29,11 @@ When WhatsApp events occur, webhooks are triggered and HTTP POST requests are se
 | **Connection** (6) | `connection.connected`, `connection.disconnected`, `connection.logged_out`, `connection.reconnecting`, `connection.keepalive_timeout`, `connection.temporary_ban` |
 | **Calls** (4) | `call.offer`, `call.accept`, `call.terminate`, `call.reject` |
 | **Groups** (4) | `group.join`, `group.leave`, `group.participant_update`, `group.info_update` |
-| **Contact** (1) | `contact.update`, `blocklist.change` |
+| **Newsletter** (4) | `newsletter.join`, `newsletter.leave`, `newsletter.message_received`, `newsletter.update` |
+| **Polls** (3) | `poll.created`, `poll.vote`, `poll.update` |
+| **Status** (3) | `status.posted`, `status.viewed`, `status.deleted` |
+| **Media** (2) | `media.received`, `media.downloaded` |
+| **Contact** (2) | `contact.update`, `blocklist.change` |
 | **App State** (2) | `appstate.sync_complete`, `appstate.patch_received` |
 | **History** (1) | `history.sync` |
 
@@ -648,6 +652,326 @@ Triggered during message history synchronization.
 | `sync_type` | string | Type of sync (e.g., "RECENT", "FULL", "ON_DEMAND") |
 | `progress` | integer | Sync progress percentage (0-100) |
 | `conversation_count` | integer | Number of conversations synced |
+
+---
+
+## Newsletter Events
+
+### `newsletter.join`
+
+Triggered when subscribing to a newsletter/channel.
+
+```json
+{
+  "event_type": "newsletter.join",
+  "device_id": "abc123def456-ghi789",
+  "timestamp": "2024-12-09T13:37:04.123456Z",
+  "data": {
+    "jid": "6281234567890",
+    "newsletter_jid": "120363123456789012@newsletter"
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `jid` | string | Phone number of the device |
+| `newsletter_jid` | string | JID of the newsletter joined |
+
+---
+
+### `newsletter.leave`
+
+Triggered when unsubscribing from a newsletter/channel.
+
+```json
+{
+  "event_type": "newsletter.leave",
+  "device_id": "abc123def456-ghi789",
+  "timestamp": "2024-12-09T13:37:04.123456Z",
+  "data": {
+    "jid": "6281234567890",
+    "newsletter_jid": "120363123456789012@newsletter",
+    "role": "subscriber"
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `jid` | string | Phone number of the device |
+| `newsletter_jid` | string | JID of the newsletter left |
+| `role` | string | Role before leaving (e.g., "subscriber", "admin") |
+
+---
+
+### `newsletter.message_received`
+
+Triggered when a newsletter message is received.
+
+```json
+{
+  "event_type": "newsletter.message_received",
+  "device_id": "abc123def456-ghi789",
+  "timestamp": "2024-12-09T13:37:04.123456Z",
+  "data": {
+    "jid": "6281234567890",
+    "newsletter_jid": "120363123456789012@newsletter",
+    "server_id": 12345,
+    "views_count": 1500
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `jid` | string | Phone number of the device |
+| `newsletter_jid` | string | JID of the newsletter |
+| `server_id` | integer | Server message ID |
+| `views_count` | integer | Number of views |
+
+---
+
+### `newsletter.update`
+
+Triggered when a newsletter is updated (muted, settings changed, etc.).
+
+```json
+{
+  "event_type": "newsletter.update",
+  "device_id": "abc123def456-ghi789",
+  "timestamp": "2024-12-09T13:37:04.123456Z",
+  "data": {
+    "jid": "6281234567890",
+    "newsletter_jid": "120363123456789012@newsletter",
+    "mute": true
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `jid` | string | Phone number of the device |
+| `newsletter_jid` | string | JID of the newsletter |
+| `mute` | boolean | Mute status |
+
+---
+
+## Poll Events
+
+### `poll.created`
+
+Triggered when a poll is created.
+
+```json
+{
+  "event_type": "poll.created",
+  "device_id": "abc123def456-ghi789",
+  "timestamp": "2024-12-09T13:37:04.123456Z",
+  "data": {
+    "jid": "6281234567890",
+    "poll_message_id": "3EB0ABC123DEF456789",
+    "chat_jid": "6289876543210@s.whatsapp.net",
+    "question": "What's your favorite color?",
+    "options": ["Red", "Blue", "Green"]
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `jid` | string | Phone number of the device |
+| `poll_message_id` | string | Message ID of the poll |
+| `chat_jid` | string | Chat where poll was created |
+| `question` | string | Poll question |
+| `options` | array | Poll options |
+
+---
+
+### `poll.vote`
+
+Triggered when someone votes on a poll.
+
+```json
+{
+  "event_type": "poll.vote",
+  "device_id": "abc123def456-ghi789",
+  "timestamp": "2024-12-09T13:37:04.123456Z",
+  "data": {
+    "jid": "6281234567890",
+    "poll_message": "3EB0ABC123DEF456789",
+    "chat_jid": "6289876543210@s.whatsapp.net",
+    "voter": "6289876543211@s.whatsapp.net",
+    "vote_hash": ["abc123", "def456"]
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `jid` | string | Phone number of the device |
+| `poll_message` | string | Message ID of the poll |
+| `chat_jid` | string | Chat where poll exists |
+| `voter` | string | JID of the voter |
+| `vote_hash` | array | Encrypted vote hashes |
+
+---
+
+### `poll.update`
+
+Triggered when poll results are updated.
+
+```json
+{
+  "event_type": "poll.update",
+  "device_id": "abc123def456-ghi789",
+  "timestamp": "2024-12-09T13:37:04.123456Z",
+  "data": {
+    "jid": "6281234567890",
+    "poll_message_id": "3EB0ABC123DEF456789",
+    "chat_jid": "6289876543210@s.whatsapp.net"
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `jid` | string | Phone number of the device |
+| `poll_message_id` | string | Message ID of the poll |
+| `chat_jid` | string | Chat where poll exists |
+
+---
+
+## Status/Stories Events
+
+### `status.posted`
+
+Triggered when a status is posted.
+
+```json
+{
+  "event_type": "status.posted",
+  "device_id": "abc123def456-ghi789",
+  "timestamp": "2024-12-09T13:37:04.123456Z",
+  "data": {
+    "jid": "6281234567890",
+    "status_id": "3EB0ABC123DEF456789",
+    "type": "text"
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `jid` | string | Phone number of the device |
+| `status_id` | string | ID of the posted status |
+| `type` | string | Status type ("text", "image", "video") |
+
+---
+
+### `status.viewed`
+
+Triggered when someone views your status.
+
+```json
+{
+  "event_type": "status.viewed",
+  "device_id": "abc123def456-ghi789",
+  "timestamp": "2024-12-09T13:37:04.123456Z",
+  "data": {
+    "jid": "6281234567890",
+    "status_id": "3EB0ABC123DEF456789",
+    "viewer": "6289876543210@s.whatsapp.net"
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `jid` | string | Phone number of the device |
+| `status_id` | string | ID of the viewed status |
+| `viewer` | string | JID of the viewer |
+
+---
+
+### `status.deleted`
+
+Triggered when a status is deleted.
+
+```json
+{
+  "event_type": "status.deleted",
+  "device_id": "abc123def456-ghi789",
+  "timestamp": "2024-12-09T13:37:04.123456Z",
+  "data": {
+    "jid": "6281234567890",
+    "status_id": "3EB0ABC123DEF456789"
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `jid` | string | Phone number of the device |
+| `status_id` | string | ID of the deleted status |
+
+---
+
+## Media Events
+
+### `media.received`
+
+Triggered when media is received in a message.
+
+```json
+{
+  "event_type": "media.received",
+  "device_id": "abc123def456-ghi789",
+  "timestamp": "2024-12-09T13:37:04.123456Z",
+  "data": {
+    "jid": "6281234567890",
+    "message_id": "3EB0ABC123DEF456789",
+    "chat": "6289876543210@s.whatsapp.net",
+    "media_type": "image",
+    "mime_type": "image/jpeg"
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `jid` | string | Phone number of the device |
+| `message_id` | string | Message ID containing media |
+| `chat` | string | Chat JID |
+| `media_type` | string | Type of media ("image", "video", "audio", "document", "sticker") |
+| `mime_type` | string | MIME type of the media |
+
+---
+
+### `media.downloaded`
+
+Triggered when media is downloaded.
+
+```json
+{
+  "event_type": "media.downloaded",
+  "device_id": "abc123def456-ghi789",
+  "timestamp": "2024-12-09T13:37:04.123456Z",
+  "data": {
+    "jid": "6281234567890",
+    "message_id": "3EB0ABC123DEF456789",
+    "media_type": "image",
+    "size": 125000
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `jid` | string | Phone number of the device |
+| `message_id` | string | Message ID of the media |
+| `media_type` | string | Type of media |
+| `size` | integer | Size of downloaded media in bytes |
 
 ---
 

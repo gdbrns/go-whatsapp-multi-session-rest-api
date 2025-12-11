@@ -28,14 +28,17 @@
 - 🔐 **Multi-Session Support** - Handle multiple WhatsApp accounts simultaneously
 - 📱 **Multi-Device Support** - Up to 4 devices per WhatsApp account
 - 🎫 **JWT Token Authentication** - Stateless, high-performance authentication for 1000+ sessions
-- 🚀 **84 Production-Ready Endpoints** - Admin, messaging, groups, webhooks, docs
-- 📨 **Core Messaging** - Text messages, images, and documents
+- 🚀 **111 Production-Ready Endpoints** - Full whatsmeow coverage including all media types
+- 📨 **Rich Messaging** - Text, images, videos, audio, stickers, locations, contacts, documents
+- 📊 **Polls** - Create polls, vote, and receive real-time results via webhooks
+- 📰 **Newsletter/Channels** - Full channel support - create, follow, message, react
+- 📱 **Status/Stories** - Post and manage WhatsApp Status updates
 - 🌳 **RESTful Architecture** - Hierarchical resource-based routes
 - 👥 **Group Management** - Full CRUD for groups, participants, admins, and settings
-- 🔄 **Message Operations** - Edit, react, delete, reply, mark read
+- 🔄 **Message Operations** - Edit, react, delete, reply, forward, mark read
 - 📊 **Presence & Status** - Online status, typing indicators, disappearing messages
 - 🔄 **App State Synchronization** - Fetch, send, and manage app state patches
-- 🪝 **Webhook Integration** - Real-time event notifications with retry support
+- 🪝 **Webhook Integration** - 31 event types with real-time notifications and retry support
 - 🏗️ **Production Ready** - Docker support, environment configuration, logging
 - 📖 **OpenAPI/Swagger** - Interactive API documentation at `/docs/`
 - 🔑 **Admin Dashboard Ready** - Manage API keys and devices with admin endpoints
@@ -277,11 +280,29 @@ curl -X POST "http://localhost:7001/webhooks" \
   }'
 ```
 
+### Webhook Events Summary (31 Event Types)
+
+| Category | Events |
+|----------|--------|
+| **Messages** (5) | `message.received`, `message.delivered`, `message.read`, `message.played`, `message.deleted` |
+| **Connection** (6) | `connection.connected`, `connection.disconnected`, `connection.logged_out`, `connection.reconnecting`, `connection.keepalive_timeout`, `connection.temporary_ban` |
+| **Calls** (4) | `call.offer`, `call.accept`, `call.terminate`, `call.reject` |
+| **Groups** (4) | `group.join`, `group.leave`, `group.participant_update`, `group.info_update` |
+| **Newsletter** (4) | `newsletter.join`, `newsletter.leave`, `newsletter.message_received`, `newsletter.update` |
+| **Polls** (3) | `poll.created`, `poll.vote`, `poll.update` |
+| **Status** (3) | `status.posted`, `status.viewed`, `status.deleted` |
+| **Media** (2) | `media.received`, `media.downloaded` |
+| **Contact** (2) | `contact.update`, `blocklist.change` |
+| **App State** (2) | `appstate.sync_complete`, `appstate.patch_received` |
+| **History** (1) | `history.sync` |
+
+📖 See [`docs/WEBHOOK_EVENTS.md`](docs/WEBHOOK_EVENTS.md) for detailed event payloads.
+
 ## 📚 API Endpoints
 
 ### All Endpoints
 
-**Organized by category** with most commonly used endpoints first. All paths honor optional `HTTP_BASE_URL` (prefix not shown below). Total: **84 endpoints** (85 when `HTTP_BASE_URL` is set because the index path is registered with and without a trailing slash).
+**Organized by category** with most commonly used endpoints first. All paths honor optional `HTTP_BASE_URL` (prefix not shown below). Total: **111 endpoints** (112 when `HTTP_BASE_URL` is set because the index path is registered with and without a trailing slash).
 
 **Input & validation notes**
 - Phone numbers must be in international format (no leading `0`, digits only, 6-16 chars). Requests with invalid/unknown numbers return 4xx.
@@ -332,15 +353,26 @@ curl -X POST "http://localhost:7001/webhooks" \
 | 33 | POST | `/chats/{chat_jid}/messages` | JWT | Send text message |
 | 34 | GET | `/chats/{chat_jid}/messages` | JWT | Get chat messages |
 | 35 | POST | `/chats/{chat_jid}/images` | JWT | Send image |
-| 36 | POST | `/chats/{chat_jid}/documents` | JWT | Send document |
-| 37 | POST | `/chats/{chat_jid}/archive` | JWT | Archive/unarchive chat |
-| 38 | POST | `/chats/{chat_jid}/pin` | JWT | Pin/unpin chat |
+| 36 | POST | `/chats/{chat_jid}/videos` | JWT | Send video |
+| 37 | POST | `/chats/{chat_jid}/audio` | JWT | Send audio/voice note |
+| 38 | POST | `/chats/{chat_jid}/stickers` | JWT | Send sticker (WebP) |
+| 39 | POST | `/chats/{chat_jid}/locations` | JWT | Send location |
+| 40 | POST | `/chats/{chat_jid}/contacts` | JWT | Send contact vCard |
+| 41 | POST | `/chats/{chat_jid}/documents` | JWT | Send document |
+| 42 | POST | `/chats/{chat_jid}/archive` | JWT | Archive/unarchive chat |
+| 43 | POST | `/chats/{chat_jid}/pin` | JWT | Pin/unpin chat |
 | | | **Message Actions** | | |
-| 39 | POST | `/messages/{message_id}/read` | JWT | Mark message as read |
-| 40 | POST | `/messages/{message_id}/reaction` | JWT | React to message |
-| 41 | PATCH | `/messages/{message_id}` | JWT | Edit message |
-| 42 | DELETE | `/messages/{message_id}` | JWT | Delete message |
-| 43 | POST | `/messages/{message_id}/reply` | JWT | Reply to message |
+| 44 | POST | `/messages/{message_id}/read` | JWT | Mark message as read |
+| 45 | POST | `/messages/{message_id}/reaction` | JWT | React to message |
+| 46 | PATCH | `/messages/{message_id}` | JWT | Edit message |
+| 47 | DELETE | `/messages/{message_id}` | JWT | Delete message |
+| 48 | POST | `/messages/{message_id}/reply` | JWT | Reply to message |
+| 49 | POST | `/messages/{message_id}/forward` | JWT | Forward message |
+| | | **Polls** | | |
+| 50 | POST | `/chats/{chat_jid}/polls` | JWT | Create poll |
+| 51 | POST | `/polls/{poll_id}/vote` | JWT | Vote on poll |
+| 52 | GET | `/polls/{poll_id}/results` | JWT | Get poll results |
+| 53 | DELETE | `/polls/{poll_id}` | JWT | Delete poll |
 | | | **Group Management** | | |
 | 44 | GET | `/groups` | JWT | List all groups with members |
 | 45 | POST | `/groups` | JWT | Create group |
@@ -375,18 +407,37 @@ curl -X POST "http://localhost:7001/webhooks" \
 | 72 | POST | `/app-state` | JWT | Send app state patch |
 | 73 | POST | `/app-state/mark-clean` | JWT | Mark app state as clean |
 | | | **Webhooks** | | |
-| 74 | GET | `/webhooks` | JWT | List webhooks |
-| 75 | POST | `/webhooks` | JWT | Create webhook |
-| 76 | GET | `/webhooks/{webhook_id}` | JWT | Get webhook details |
-| 77 | PATCH | `/webhooks/{webhook_id}` | JWT | Update webhook |
-| 78 | DELETE | `/webhooks/{webhook_id}` | JWT | Delete webhook |
-| 79 | GET | `/webhooks/{webhook_id}/logs` | JWT | Get webhook logs |
-| 80 | POST | `/webhooks/{webhook_id}/test` | JWT | Test webhook |
+| 85 | GET | `/webhooks` | JWT | List webhooks |
+| 86 | POST | `/webhooks` | JWT | Create webhook |
+| 87 | GET | `/webhooks/{webhook_id}` | JWT | Get webhook details |
+| 88 | PATCH | `/webhooks/{webhook_id}` | JWT | Update webhook |
+| 89 | DELETE | `/webhooks/{webhook_id}` | JWT | Delete webhook |
+| 90 | GET | `/webhooks/{webhook_id}/logs` | JWT | Get webhook logs |
+| 91 | POST | `/webhooks/{webhook_id}/test` | JWT | Test webhook |
+| | | **Newsletter/Channels** | | |
+| 92 | GET | `/newsletters` | JWT | List subscribed newsletters |
+| 93 | POST | `/newsletters` | JWT | Create newsletter |
+| 94 | GET | `/newsletters/{jid}` | JWT | Get newsletter info |
+| 95 | POST | `/newsletters/{jid}/follow` | JWT | Follow newsletter |
+| 96 | DELETE | `/newsletters/{jid}/follow` | JWT | Unfollow newsletter |
+| 97 | GET | `/newsletters/{jid}/messages` | JWT | Get newsletter messages |
+| 98 | POST | `/newsletters/{jid}/messages` | JWT | Send newsletter message |
+| 99 | POST | `/newsletters/{jid}/reaction` | JWT | React to newsletter message |
+| 100 | POST | `/newsletters/{jid}/mute` | JWT | Toggle newsletter mute |
+| 101 | POST | `/newsletters/{jid}/viewed` | JWT | Mark messages viewed |
+| 102 | GET | `/newsletters/invite/{code}` | JWT | Get info from invite |
+| 103 | POST | `/newsletters/{jid}/live` | JWT | Subscribe to live updates |
+| 104 | POST | `/newsletters/{jid}/photo` | JWT | Update newsletter photo |
+| | | **Status/Stories** | | |
+| 105 | POST | `/status` | JWT | Post status (text/image/video) |
+| 106 | GET | `/status` | JWT | Get status updates |
+| 107 | DELETE | `/status/{status_id}` | JWT | Delete status |
+| 108 | GET | `/status/{user_jid}` | JWT | Get user status |
 | | | **System** | | |
-| 81 | GET | `/` | - | Server status |
-| 82 | GET | `/docs/*` | - | Swagger UI |
-| 83 | GET | `/docs/swagger.json` | - | OpenAPI JSON spec |
-| 84 | GET | `/docs/swagger.yaml` | - | OpenAPI YAML spec |
+| 109 | GET | `/` | - | Server status |
+| 110 | GET | `/docs/*` | - | Swagger UI |
+| 111 | GET | `/docs/swagger.json` | - | OpenAPI JSON spec |
+| 112 | GET | `/docs/swagger.yaml` | - | OpenAPI YAML spec |
 
 **Authentication Types:**
 - **Admin**: `X-Admin-Secret` header

@@ -41,12 +41,15 @@
     {"name": "03 - Device Registration", "description": "Create devices and manage JWT tokens"},
     {"name": "04 - Device Operations", "description": "Login, logout, status, and reconnection"},
     {"name": "05 - User Management", "description": "User profiles, privacy settings, and contacts"},
-    {"name": "06 - Messaging", "description": "Send text, images, documents"},
+    {"name": "06 - Messaging", "description": "Send text, images, videos, audio, stickers, locations, contacts, and documents"},
     {"name": "07 - Message Actions", "description": "Read, react, edit, delete, reply to messages"},
     {"name": "08 - Group Management", "description": "Create, manage, and administer WhatsApp groups"},
     {"name": "09 - Presence & Status", "description": "Typing indicators, online status, disappearing messages"},
     {"name": "10 - App State", "description": "App state synchronization"},
-    {"name": "11 - Webhooks", "description": "Webhook configuration and management"}
+    {"name": "11 - Webhooks", "description": "Webhook configuration and management"},
+    {"name": "12 - Polls", "description": "Create polls, vote, and get results"},
+    {"name": "13 - Newsletter/Channels", "description": "WhatsApp Channels - create, follow, manage newsletters"},
+    {"name": "14 - Status/Stories", "description": "Post and manage WhatsApp Status/Stories"}
   ],
   "definitions": {
     "ErrorResponse": {
@@ -1901,6 +1904,434 @@
           "200": {"description": "Test event sent", "schema": {"$ref": "#/definitions/SuccessResponse"}},
           "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
           "404": {"description": "Webhook not found", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/chats/{chat_jid}/videos": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["06 - Messaging"],
+        "summary": "Send Video",
+        "description": "Send a video to a chat",
+        "consumes": ["multipart/form-data"],
+        "parameters": [
+          {"name": "chat_jid", "in": "path", "required": true, "type": "string", "description": "Chat JID (e.g., 6281234567890@s.whatsapp.net)"},
+          {"name": "file", "in": "formData", "required": true, "type": "file", "description": "Video file (MP4, 3GP, MOV)"},
+          {"name": "caption", "in": "formData", "type": "string", "description": "Video caption"},
+          {"name": "view_once", "in": "formData", "type": "boolean", "description": "Send as view once"}
+        ],
+        "responses": {
+          "200": {"description": "Video sent", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/chats/{chat_jid}/audio": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["06 - Messaging"],
+        "summary": "Send Audio",
+        "description": "Send audio or voice note to a chat",
+        "consumes": ["multipart/form-data"],
+        "parameters": [
+          {"name": "chat_jid", "in": "path", "required": true, "type": "string"},
+          {"name": "file", "in": "formData", "required": true, "type": "file", "description": "Audio file (MP3, OGG, WAV)"},
+          {"name": "voice_note", "in": "formData", "type": "boolean", "description": "Send as voice note (PTT)"},
+          {"name": "ptt", "in": "formData", "type": "boolean", "description": "Alias for voice_note"}
+        ],
+        "responses": {
+          "200": {"description": "Audio sent", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/chats/{chat_jid}/stickers": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["06 - Messaging"],
+        "summary": "Send Sticker",
+        "description": "Send a sticker to a chat (WebP format only)",
+        "consumes": ["multipart/form-data"],
+        "parameters": [
+          {"name": "chat_jid", "in": "path", "required": true, "type": "string"},
+          {"name": "file", "in": "formData", "required": true, "type": "file", "description": "Sticker file (WebP format)"}
+        ],
+        "responses": {
+          "200": {"description": "Sticker sent", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/chats/{chat_jid}/locations": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["06 - Messaging"],
+        "summary": "Send Location",
+        "description": "Send a location to a chat",
+        "parameters": [
+          {"name": "chat_jid", "in": "path", "required": true, "type": "string"},
+          {"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["latitude", "longitude"], "properties": {"latitude": {"type": "number", "example": -6.2088}, "longitude": {"type": "number", "example": 106.8456}, "name": {"type": "string", "example": "Jakarta"}, "address": {"type": "string", "example": "Central Jakarta, Indonesia"}}}}
+        ],
+        "responses": {
+          "200": {"description": "Location sent", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/chats/{chat_jid}/contacts": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["06 - Messaging"],
+        "summary": "Send Contact",
+        "description": "Send a contact vCard to a chat",
+        "parameters": [
+          {"name": "chat_jid", "in": "path", "required": true, "type": "string"},
+          {"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["name", "phone"], "properties": {"name": {"type": "string", "example": "John Doe"}, "phone": {"type": "string", "example": "6281234567890"}}}}
+        ],
+        "responses": {
+          "200": {"description": "Contact sent", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/chats/{chat_jid}/polls": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["12 - Polls"],
+        "summary": "Create Poll",
+        "description": "Create a poll in a chat",
+        "parameters": [
+          {"name": "chat_jid", "in": "path", "required": true, "type": "string"},
+          {"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["question", "options"], "properties": {"question": {"type": "string", "example": "What's your favorite color?"}, "options": {"type": "array", "items": {"type": "string"}, "example": ["Red", "Blue", "Green"]}, "multi_answer": {"type": "boolean", "example": false}}}}
+        ],
+        "responses": {
+          "200": {"description": "Poll created", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/polls/{poll_id}/vote": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["12 - Polls"],
+        "summary": "Vote on Poll",
+        "description": "Vote on an existing poll",
+        "parameters": [
+          {"name": "poll_id", "in": "path", "required": true, "type": "string"},
+          {"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["chat_jid", "options"], "properties": {"chat_jid": {"type": "string"}, "options": {"type": "array", "items": {"type": "string"}}}}}
+        ],
+        "responses": {
+          "200": {"description": "Vote submitted", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/polls/{poll_id}/results": {
+      "get": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["12 - Polls"],
+        "summary": "Get Poll Results",
+        "description": "Get results of a poll (delivered via webhook events)",
+        "parameters": [{"name": "poll_id", "in": "path", "required": true, "type": "string"}],
+        "responses": {
+          "200": {"description": "Poll results info", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/polls/{poll_id}": {
+      "delete": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["12 - Polls"],
+        "summary": "Delete Poll",
+        "description": "Delete a poll message",
+        "parameters": [
+          {"name": "poll_id", "in": "path", "required": true, "type": "string"},
+          {"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["chat_jid"], "properties": {"chat_jid": {"type": "string"}}}}
+        ],
+        "responses": {
+          "200": {"description": "Poll deleted", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/newsletters": {
+      "get": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["13 - Newsletter/Channels"],
+        "summary": "List Subscribed Newsletters",
+        "description": "Get all newsletters/channels the device is subscribed to",
+        "responses": {
+          "200": {"description": "Newsletters listed", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      },
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["13 - Newsletter/Channels"],
+        "summary": "Create Newsletter",
+        "description": "Create a new newsletter/channel",
+        "parameters": [{"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string", "example": "My Channel"}, "description": {"type": "string", "example": "Channel description"}}}}],
+        "responses": {
+          "200": {"description": "Newsletter created", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/newsletters/{jid}": {
+      "get": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["13 - Newsletter/Channels"],
+        "summary": "Get Newsletter Info",
+        "description": "Get information about a specific newsletter",
+        "parameters": [{"name": "jid", "in": "path", "required": true, "type": "string", "description": "Newsletter JID"}],
+        "responses": {
+          "200": {"description": "Newsletter info", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "404": {"description": "Newsletter not found", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/newsletters/{jid}/follow": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["13 - Newsletter/Channels"],
+        "summary": "Follow Newsletter",
+        "description": "Subscribe to a newsletter/channel",
+        "parameters": [{"name": "jid", "in": "path", "required": true, "type": "string"}],
+        "responses": {
+          "200": {"description": "Newsletter followed", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      },
+      "delete": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["13 - Newsletter/Channels"],
+        "summary": "Unfollow Newsletter",
+        "description": "Unsubscribe from a newsletter/channel",
+        "parameters": [{"name": "jid", "in": "path", "required": true, "type": "string"}],
+        "responses": {
+          "200": {"description": "Newsletter unfollowed", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/newsletters/{jid}/messages": {
+      "get": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["13 - Newsletter/Channels"],
+        "summary": "Get Newsletter Messages",
+        "description": "Get messages from a newsletter",
+        "parameters": [
+          {"name": "jid", "in": "path", "required": true, "type": "string"},
+          {"name": "count", "in": "query", "type": "integer", "default": 50},
+          {"name": "before", "in": "query", "type": "integer", "description": "Get messages before this server ID"}
+        ],
+        "responses": {
+          "200": {"description": "Messages retrieved", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      },
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["13 - Newsletter/Channels"],
+        "summary": "Send Newsletter Message",
+        "description": "Send a message to a newsletter (admin only)",
+        "parameters": [
+          {"name": "jid", "in": "path", "required": true, "type": "string"},
+          {"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["text"], "properties": {"text": {"type": "string"}}}}
+        ],
+        "responses": {
+          "200": {"description": "Message sent", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/newsletters/{jid}/reaction": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["13 - Newsletter/Channels"],
+        "summary": "React to Newsletter Message",
+        "description": "Send a reaction to a newsletter message",
+        "parameters": [
+          {"name": "jid", "in": "path", "required": true, "type": "string"},
+          {"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["message_server_id"], "properties": {"message_server_id": {"type": "integer"}, "emoji": {"type": "string", "example": "👍"}}}}
+        ],
+        "responses": {
+          "200": {"description": "Reaction sent", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/newsletters/{jid}/mute": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["13 - Newsletter/Channels"],
+        "summary": "Toggle Newsletter Mute",
+        "description": "Mute or unmute a newsletter",
+        "parameters": [
+          {"name": "jid", "in": "path", "required": true, "type": "string"},
+          {"name": "body", "in": "body", "required": true, "schema": {"type": "object", "properties": {"mute": {"type": "boolean"}}}}
+        ],
+        "responses": {
+          "200": {"description": "Mute toggled", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/newsletters/{jid}/viewed": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["13 - Newsletter/Channels"],
+        "summary": "Mark Newsletter Messages Viewed",
+        "description": "Mark newsletter messages as viewed",
+        "parameters": [
+          {"name": "jid", "in": "path", "required": true, "type": "string"},
+          {"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["message_server_ids"], "properties": {"message_server_ids": {"type": "array", "items": {"type": "integer"}}}}}
+        ],
+        "responses": {
+          "200": {"description": "Messages marked as viewed", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/newsletters/invite/{code}": {
+      "get": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["13 - Newsletter/Channels"],
+        "summary": "Get Newsletter Info from Invite",
+        "description": "Get newsletter information using an invite code",
+        "parameters": [{"name": "code", "in": "path", "required": true, "type": "string", "description": "Invite code"}],
+        "responses": {
+          "200": {"description": "Newsletter info", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "404": {"description": "Invalid invite code", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/newsletters/{jid}/live": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["13 - Newsletter/Channels"],
+        "summary": "Subscribe to Live Updates",
+        "description": "Subscribe to live updates for a newsletter",
+        "parameters": [{"name": "jid", "in": "path", "required": true, "type": "string"}],
+        "responses": {
+          "200": {"description": "Subscribed to live updates", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/newsletters/{jid}/photo": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["13 - Newsletter/Channels"],
+        "summary": "Update Newsletter Photo",
+        "description": "Update the newsletter photo (admin only)",
+        "consumes": ["multipart/form-data"],
+        "parameters": [
+          {"name": "jid", "in": "path", "required": true, "type": "string"},
+          {"name": "file", "in": "formData", "required": true, "type": "file", "description": "Photo file"}
+        ],
+        "responses": {
+          "200": {"description": "Photo updated", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/status": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["14 - Status/Stories"],
+        "summary": "Post Status",
+        "description": "Post a new status/story (text, image, or video)",
+        "consumes": ["application/json", "multipart/form-data"],
+        "parameters": [
+          {"name": "text", "in": "formData", "type": "string", "description": "Text for text status (JSON body)"},
+          {"name": "file", "in": "formData", "type": "file", "description": "Image or video file for media status"},
+          {"name": "caption", "in": "formData", "type": "string", "description": "Caption for media status"},
+          {"name": "type", "in": "formData", "type": "string", "enum": ["image", "video"], "description": "Media type"}
+        ],
+        "responses": {
+          "200": {"description": "Status posted", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      },
+      "get": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["14 - Status/Stories"],
+        "summary": "Get Status Updates",
+        "description": "Get status updates (delivered via webhook events)",
+        "responses": {
+          "200": {"description": "Status updates info", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/status/{status_id}": {
+      "delete": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["14 - Status/Stories"],
+        "summary": "Delete Status",
+        "description": "Delete own status",
+        "parameters": [{"name": "status_id", "in": "path", "required": true, "type": "string"}],
+        "responses": {
+          "200": {"description": "Status deleted", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/status/{user_jid}": {
+      "get": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["14 - Status/Stories"],
+        "summary": "Get User Status",
+        "description": "Get status/about info of a specific user",
+        "parameters": [{"name": "user_jid", "in": "path", "required": true, "type": "string"}],
+        "responses": {
+          "200": {"description": "User status", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "404": {"description": "User not found", "schema": {"$ref": "#/definitions/ErrorResponse"}},
           "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
         }
       }

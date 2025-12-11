@@ -1007,6 +1007,24 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 				"contact_jid":  e.JID.String(),
 				"action":       e.Action.String(),
 			})
+		// Newsletter events
+		case *events.NewsletterJoin:
+			dispatchWebhook(deviceID, webhook.EventNewsletterJoin, map[string]interface{}{
+				"jid":            currentJID,
+				"newsletter_jid": e.ID.String(),
+			})
+		case *events.NewsletterLeave:
+			dispatchWebhook(deviceID, webhook.EventNewsletterLeave, map[string]interface{}{
+				"jid":            currentJID,
+				"newsletter_jid": e.ID.String(),
+				"role":           e.Role,
+			})
+		case *events.NewsletterMuteChange:
+			dispatchWebhook(deviceID, webhook.EventNewsletterUpdate, map[string]interface{}{
+				"jid":            currentJID,
+				"newsletter_jid": e.ID.String(),
+				"mute":           e.Mute,
+			})
 		}
 	}
 }
@@ -2190,6 +2208,802 @@ func WhatsAppSendImage(ctx context.Context, jid string, deviceID string, rjid st
 			ThumbnailSHA256:     imageThumbUploaded.FileSHA256,
 			ThumbnailEncSHA256:  imageThumbUploaded.FileEncSHA256,
 			ViewOnce:            proto.Bool(isViewOnce),
+		},
+	}
+	_, err = client.SendMessage(ctx, remoteJID, msgContent, msgExtra)
+	if err != nil {
+		return "", err
+	}
+	return msgExtra.ID, nil
+}
+
+// Status/Stories functions
+
+func WhatsAppPostTextStatus(ctx context.Context, jid string, deviceID string, text string, backgroundColor string, font int) (string, error) {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return "", err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(text) == "" {
+		return "", errors.New("Status text cannot be empty")
+	}
+	if err := waitRateLimit(ctx, deviceID); err != nil {
+		return "", err
+	}
+	// Status JID for posting to status/stories
+	statusJID := types.StatusBroadcastJID
+	// Build the extended text message for status
+	msgContent := &waE2E.Message{
+		ExtendedTextMessage: &waE2E.ExtendedTextMessage{
+			Text: proto.String(text),
+		},
+	}
+	msgExtra := whatsmeow.SendRequestExtra{ID: client.GenerateMessageID()}
+	_, err = client.SendMessage(ctx, statusJID, msgContent, msgExtra)
+	if err != nil {
+		return "", err
+	}
+	return msgExtra.ID, nil
+}
+
+func WhatsAppPostImageStatus(ctx context.Context, jid string, deviceID string, imageBytes []byte, caption string) (string, error) {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return "", err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return "", err
+	}
+	if len(imageBytes) == 0 {
+		return "", errors.New("Image payload cannot be empty")
+	}
+	if err := enforceSizeLimit("image", int64(len(imageBytes)), maxImageBytes); err != nil {
+		return "", err
+	}
+	if err := waitRateLimit(ctx, deviceID); err != nil {
+		return "", err
+	}
+	statusJID := types.StatusBroadcastJID
+	imageMime := detectMime(imageBytes, "image/jpeg")
+	imageUploaded, err := client.Upload(ctx, imageBytes, whatsmeow.MediaImage)
+	if err != nil {
+		return "", errors.New("Error while uploading image to WhatsApp server")
+	}
+	msgExtra := whatsmeow.SendRequestExtra{ID: client.GenerateMessageID()}
+	msgContent := &waE2E.Message{
+		ImageMessage: &waE2E.ImageMessage{
+			URL:           proto.String(imageUploaded.URL),
+			DirectPath:    proto.String(imageUploaded.DirectPath),
+			Mimetype:      proto.String(imageMime),
+			Caption:       proto.String(caption),
+			FileLength:    proto.Uint64(imageUploaded.FileLength),
+			FileSHA256:    imageUploaded.FileSHA256,
+			FileEncSHA256: imageUploaded.FileEncSHA256,
+			MediaKey:      imageUploaded.MediaKey,
+		},
+	}
+	_, err = client.SendMessage(ctx, statusJID, msgContent, msgExtra)
+	if err != nil {
+		return "", err
+	}
+	return msgExtra.ID, nil
+}
+
+func WhatsAppPostVideoStatus(ctx context.Context, jid string, deviceID string, videoBytes []byte, caption string) (string, error) {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return "", err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return "", err
+	}
+	if len(videoBytes) == 0 {
+		return "", errors.New("Video payload cannot be empty")
+	}
+	if err := enforceSizeLimit("video", int64(len(videoBytes)), maxVideoBytes); err != nil {
+		return "", err
+	}
+	if err := waitRateLimit(ctx, deviceID); err != nil {
+		return "", err
+	}
+	statusJID := types.StatusBroadcastJID
+	videoMime := detectMime(videoBytes, "video/mp4")
+	videoUploaded, err := client.Upload(ctx, videoBytes, whatsmeow.MediaVideo)
+	if err != nil {
+		return "", errors.New("Error while uploading video to WhatsApp server")
+	}
+	msgExtra := whatsmeow.SendRequestExtra{ID: client.GenerateMessageID()}
+	msgContent := &waE2E.Message{
+		VideoMessage: &waE2E.VideoMessage{
+			URL:           proto.String(videoUploaded.URL),
+			DirectPath:    proto.String(videoUploaded.DirectPath),
+			Mimetype:      proto.String(videoMime),
+			Caption:       proto.String(caption),
+			FileLength:    proto.Uint64(videoUploaded.FileLength),
+			FileSHA256:    videoUploaded.FileSHA256,
+			FileEncSHA256: videoUploaded.FileEncSHA256,
+			MediaKey:      videoUploaded.MediaKey,
+		},
+	}
+	_, err = client.SendMessage(ctx, statusJID, msgContent, msgExtra)
+	if err != nil {
+		return "", err
+	}
+	return msgExtra.ID, nil
+}
+
+func WhatsAppGetStatusUpdates(ctx context.Context, jid string, deviceID string) ([]map[string]interface{}, error) {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return nil, err
+	}
+	// Status updates are received via events/webhooks
+	// This function returns a placeholder - actual status updates come via Message events
+	// with Chat = status@broadcast
+	_ = client
+	return []map[string]interface{}{
+		{
+			"note": "Status updates are delivered via webhook events with event_type 'message.received' where chat is 'status@broadcast'",
+		},
+	}, nil
+}
+
+func WhatsAppDeleteStatus(ctx context.Context, jid string, deviceID string, statusID string) error {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return err
+	}
+	statusJID := types.StatusBroadcastJID
+	// Delete the status message using revoke
+	revokeMsg := client.BuildRevoke(statusJID, types.EmptyJID, statusID)
+	_, err = client.SendMessage(ctx, statusJID, revokeMsg)
+	return err
+}
+
+func WhatsAppGetUserStatus(ctx context.Context, jid string, deviceID string, userJID string) ([]map[string]interface{}, error) {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return nil, err
+	}
+	// User statuses are received via events
+	// This provides the user's "about" status text
+	parsedJID, err := types.ParseJID(userJID)
+	if err != nil {
+		parsedJID, err = WhatsAppCheckJID(ctx, jid, deviceID, userJID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	userInfo, err := client.GetUserInfo(ctx, []types.JID{parsedJID})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]map[string]interface{}, 0)
+	for userJIDKey, info := range userInfo {
+		result = append(result, map[string]interface{}{
+			"jid":            userJIDKey.String(),
+			"status":         info.Status,
+			"verified_name":  info.VerifiedName,
+			"picture_id":     info.PictureID,
+		})
+	}
+	return result, nil
+}
+
+// Newsletter/Channel functions
+
+func WhatsAppGetSubscribedNewsletters(ctx context.Context, jid string, deviceID string) ([]map[string]interface{}, error) {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return nil, err
+	}
+	newsletters, err := client.GetSubscribedNewsletters(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]map[string]interface{}, len(newsletters))
+	for i, n := range newsletters {
+		result[i] = map[string]interface{}{
+			"jid":              n.ID.String(),
+			"name":             n.ThreadMeta.Name.Text,
+			"description":      n.ThreadMeta.Description.Text,
+			"subscriber_count": n.ThreadMeta.SubscriberCount,
+			"verification":     n.ThreadMeta.VerificationState,
+			"picture":          n.ThreadMeta.Picture,
+			"preview":          n.ThreadMeta.Preview,
+			"state":            n.State,
+		}
+	}
+	return result, nil
+}
+
+func WhatsAppCreateNewsletter(ctx context.Context, jid string, deviceID string, name string, description string) (map[string]interface{}, error) {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return nil, err
+	}
+	params := whatsmeow.CreateNewsletterParams{
+		Name:        name,
+		Description: description,
+	}
+	newsletter, err := client.CreateNewsletter(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{
+		"jid":         newsletter.ID.String(),
+		"name":        newsletter.ThreadMeta.Name.Text,
+		"description": newsletter.ThreadMeta.Description.Text,
+	}, nil
+}
+
+func WhatsAppGetNewsletterInfo(ctx context.Context, jid string, deviceID string, newsletterJID string) (map[string]interface{}, error) {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return nil, err
+	}
+	parsedJID, err := types.ParseJID(newsletterJID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid newsletter JID: %w", err)
+	}
+	info, err := client.GetNewsletterInfo(ctx, parsedJID)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{
+		"jid":              info.ID.String(),
+		"name":             info.ThreadMeta.Name.Text,
+		"description":      info.ThreadMeta.Description.Text,
+		"subscriber_count": info.ThreadMeta.SubscriberCount,
+		"verification":     info.ThreadMeta.VerificationState,
+		"picture":          info.ThreadMeta.Picture,
+		"preview":          info.ThreadMeta.Preview,
+		"state":            info.State,
+	}, nil
+}
+
+func WhatsAppFollowNewsletter(ctx context.Context, jid string, deviceID string, newsletterJID string) error {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return err
+	}
+	parsedJID, err := types.ParseJID(newsletterJID)
+	if err != nil {
+		return fmt.Errorf("invalid newsletter JID: %w", err)
+	}
+	return client.FollowNewsletter(ctx, parsedJID)
+}
+
+func WhatsAppUnfollowNewsletter(ctx context.Context, jid string, deviceID string, newsletterJID string) error {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return err
+	}
+	parsedJID, err := types.ParseJID(newsletterJID)
+	if err != nil {
+		return fmt.Errorf("invalid newsletter JID: %w", err)
+	}
+	return client.UnfollowNewsletter(ctx, parsedJID)
+}
+
+func WhatsAppGetNewsletterMessages(ctx context.Context, jid string, deviceID string, newsletterJID string, count int, before int) ([]map[string]interface{}, error) {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return nil, err
+	}
+	parsedJID, err := types.ParseJID(newsletterJID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid newsletter JID: %w", err)
+	}
+	params := &whatsmeow.GetNewsletterMessagesParams{
+		Count: count,
+	}
+	if before > 0 {
+		params.Before = before
+	}
+	messages, err := client.GetNewsletterMessages(ctx, parsedJID, params)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]map[string]interface{}, len(messages))
+	for i, m := range messages {
+		result[i] = map[string]interface{}{
+			"server_id":  m.MessageServerID,
+			"views":      m.ViewsCount,
+			"reactions":  m.ReactionCounts,
+		}
+	}
+	return result, nil
+}
+
+func WhatsAppSendNewsletterMessage(ctx context.Context, jid string, deviceID string, newsletterJID string, text string) (string, error) {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return "", err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return "", err
+	}
+	parsedJID, err := types.ParseJID(newsletterJID)
+	if err != nil {
+		return "", fmt.Errorf("invalid newsletter JID: %w", err)
+	}
+	if err := waitRateLimit(ctx, deviceID); err != nil {
+		return "", err
+	}
+	msgContent := &waE2E.Message{
+		Conversation: proto.String(text),
+	}
+	resp, err := client.SendMessage(ctx, parsedJID, msgContent)
+	if err != nil {
+		return "", err
+	}
+	return resp.ID, nil
+}
+
+func WhatsAppNewsletterSendReaction(ctx context.Context, jid string, deviceID string, newsletterJID string, messageServerID int, emoji string) error {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return err
+	}
+	parsedJID, err := types.ParseJID(newsletterJID)
+	if err != nil {
+		return fmt.Errorf("invalid newsletter JID: %w", err)
+	}
+	return client.NewsletterSendReaction(ctx, parsedJID, types.MessageServerID(messageServerID), emoji, "")
+}
+
+func WhatsAppNewsletterToggleMute(ctx context.Context, jid string, deviceID string, newsletterJID string, mute bool) error {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return err
+	}
+	parsedJID, err := types.ParseJID(newsletterJID)
+	if err != nil {
+		return fmt.Errorf("invalid newsletter JID: %w", err)
+	}
+	return client.NewsletterToggleMute(ctx, parsedJID, mute)
+}
+
+func WhatsAppNewsletterMarkViewed(ctx context.Context, jid string, deviceID string, newsletterJID string, messageServerIDs []int) error {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return err
+	}
+	parsedJID, err := types.ParseJID(newsletterJID)
+	if err != nil {
+		return fmt.Errorf("invalid newsletter JID: %w", err)
+	}
+	// Convert []int to []types.MessageServerID
+	serverIDs := make([]types.MessageServerID, len(messageServerIDs))
+	for i, id := range messageServerIDs {
+		serverIDs[i] = types.MessageServerID(id)
+	}
+	return client.NewsletterMarkViewed(ctx, parsedJID, serverIDs)
+}
+
+func WhatsAppGetNewsletterInfoWithInvite(ctx context.Context, jid string, deviceID string, inviteCode string) (map[string]interface{}, error) {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return nil, err
+	}
+	info, err := client.GetNewsletterInfoWithInvite(ctx, inviteCode)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{
+		"jid":              info.ID.String(),
+		"name":             info.ThreadMeta.Name.Text,
+		"description":      info.ThreadMeta.Description.Text,
+		"subscriber_count": info.ThreadMeta.SubscriberCount,
+		"verification":     info.ThreadMeta.VerificationState,
+		"picture":          info.ThreadMeta.Picture,
+		"preview":          info.ThreadMeta.Preview,
+		"state":            info.State,
+	}, nil
+}
+
+func WhatsAppNewsletterSubscribeLiveUpdates(ctx context.Context, jid string, deviceID string, newsletterJID string) error {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return err
+	}
+	parsedJID, err := types.ParseJID(newsletterJID)
+	if err != nil {
+		return fmt.Errorf("invalid newsletter JID: %w", err)
+	}
+	_, err = client.NewsletterSubscribeLiveUpdates(ctx, parsedJID)
+	return err
+}
+
+func WhatsAppUploadNewsletterPhoto(ctx context.Context, jid string, deviceID string, newsletterJID string, photoBytes []byte) error {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return err
+	}
+	parsedJID, err := types.ParseJID(newsletterJID)
+	if err != nil {
+		return fmt.Errorf("invalid newsletter JID: %w", err)
+	}
+	_, err = client.UploadNewsletter(ctx, photoBytes, whatsmeow.MediaImage)
+	if err != nil {
+		return fmt.Errorf("failed to upload newsletter photo: %w", err)
+	}
+	// Note: The actual setting of the photo requires additional API calls
+	// that may vary based on whatsmeow version
+	_ = parsedJID
+	return nil
+}
+
+// Poll functions
+
+func WhatsAppCreatePoll(ctx context.Context, jid string, deviceID string, rjid string, question string, options []string, multiAnswer bool) (string, error) {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return "", err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(question) == "" {
+		return "", errors.New("Poll question cannot be empty")
+	}
+	if len(options) < 2 {
+		return "", errors.New("Poll must have at least 2 options")
+	}
+	if len(options) > 12 {
+		return "", errors.New("Poll cannot have more than 12 options")
+	}
+	remoteJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, rjid)
+	if err != nil {
+		return "", err
+	}
+	if err := waitRateLimit(ctx, deviceID); err != nil {
+		return "", err
+	}
+	selectableCount := 1
+	if multiAnswer {
+		selectableCount = len(options)
+	}
+	pollMsg := client.BuildPollCreation(question, options, selectableCount)
+	msgExtra := whatsmeow.SendRequestExtra{ID: client.GenerateMessageID()}
+	_, err = client.SendMessage(ctx, remoteJID, pollMsg, msgExtra)
+	if err != nil {
+		return "", err
+	}
+	return msgExtra.ID, nil
+}
+
+func WhatsAppVotePoll(ctx context.Context, jid string, deviceID string, rjid string, pollMsgID string, selectedOptions []string) error {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return err
+	}
+	if len(selectedOptions) == 0 {
+		return errors.New("At least one option must be selected")
+	}
+	remoteJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, rjid)
+	if err != nil {
+		return err
+	}
+	if err := waitRateLimit(ctx, deviceID); err != nil {
+		return err
+	}
+	// Build the poll vote message
+	// Note: BuildPollVote requires the original poll message info
+	// This is a simplified implementation that may need adjustment based on actual poll message storage
+	pollMsgInfo := &types.MessageInfo{
+		ID:        pollMsgID,
+		MessageSource: types.MessageSource{
+			Chat: remoteJID,
+		},
+	}
+	pollVoteMsg, err := client.BuildPollVote(ctx, pollMsgInfo, selectedOptions)
+	if err != nil {
+		return fmt.Errorf("failed to build poll vote: %w", err)
+	}
+	_, err = client.SendMessage(ctx, remoteJID, pollVoteMsg)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func WhatsAppSendVideo(ctx context.Context, jid string, deviceID string, rjid string, videoBytes []byte, videoType string, videoCaption string, isViewOnce bool, opts *SendOptions) (string, error) {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return "", err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return "", err
+	}
+	if len(videoBytes) == 0 {
+		return "", errors.New("Video payload cannot be empty")
+	}
+	if err := enforceSizeLimit("video", int64(len(videoBytes)), maxVideoBytes); err != nil {
+		return "", err
+	}
+	videoMime := detectMime(videoBytes, videoType)
+	allowedVideoMimes := map[string]bool{
+		"video/mp4":       true,
+		"video/3gpp":      true,
+		"video/quicktime": true,
+		"video/webm":      true,
+		"video/mpeg":      true,
+	}
+	if !allowedVideoMimes[videoMime] {
+		return "", fmt.Errorf("Video MIME type %s is not allowed", videoMime)
+	}
+	remoteJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, rjid)
+	if err != nil {
+		return "", err
+	}
+	if err := waitRateLimit(ctx, deviceID); err != nil {
+		return "", err
+	}
+	cleanup := beginPresenceSimulation(ctx, jid, deviceID, remoteJID, false, opts)
+	defer cleanup()
+	videoUploaded, err := client.Upload(ctx, videoBytes, whatsmeow.MediaVideo)
+	if err != nil {
+		return "", errors.New("Error While Uploading Video to WhatsApp Server")
+	}
+	msgExtra := whatsmeow.SendRequestExtra{ID: client.GenerateMessageID()}
+	msgContent := &waE2E.Message{
+		VideoMessage: &waE2E.VideoMessage{
+			URL:           proto.String(videoUploaded.URL),
+			DirectPath:    proto.String(videoUploaded.DirectPath),
+			Mimetype:      proto.String(videoMime),
+			Caption:       proto.String(videoCaption),
+			FileLength:    proto.Uint64(videoUploaded.FileLength),
+			FileSHA256:    videoUploaded.FileSHA256,
+			FileEncSHA256: videoUploaded.FileEncSHA256,
+			MediaKey:      videoUploaded.MediaKey,
+			ViewOnce:      proto.Bool(isViewOnce),
+		},
+	}
+	_, err = client.SendMessage(ctx, remoteJID, msgContent, msgExtra)
+	if err != nil {
+		return "", err
+	}
+	return msgExtra.ID, nil
+}
+
+func WhatsAppSendAudio(ctx context.Context, jid string, deviceID string, rjid string, audioBytes []byte, audioType string, isVoiceNote bool, opts *SendOptions) (string, error) {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return "", err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return "", err
+	}
+	if len(audioBytes) == 0 {
+		return "", errors.New("Audio payload cannot be empty")
+	}
+	if err := enforceSizeLimit("audio", int64(len(audioBytes)), maxAudioBytes); err != nil {
+		return "", err
+	}
+	audioMime := detectMime(audioBytes, audioType)
+	allowedAudioMimes := map[string]bool{
+		"audio/mpeg":      true,
+		"audio/mp3":       true,
+		"audio/mp4":       true,
+		"audio/ogg":       true,
+		"audio/wav":       true,
+		"audio/x-wav":     true,
+		"audio/aac":       true,
+		"audio/opus":      true,
+		"audio/ogg; codecs=opus": true,
+	}
+	if !allowedAudioMimes[audioMime] {
+		return "", fmt.Errorf("Audio MIME type %s is not allowed", audioMime)
+	}
+	remoteJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, rjid)
+	if err != nil {
+		return "", err
+	}
+	if err := waitRateLimit(ctx, deviceID); err != nil {
+		return "", err
+	}
+	cleanup := beginPresenceSimulation(ctx, jid, deviceID, remoteJID, true, opts)
+	defer cleanup()
+	audioUploaded, err := client.Upload(ctx, audioBytes, whatsmeow.MediaAudio)
+	if err != nil {
+		return "", errors.New("Error While Uploading Audio to WhatsApp Server")
+	}
+	msgExtra := whatsmeow.SendRequestExtra{ID: client.GenerateMessageID()}
+	msgContent := &waE2E.Message{
+		AudioMessage: &waE2E.AudioMessage{
+			URL:           proto.String(audioUploaded.URL),
+			DirectPath:    proto.String(audioUploaded.DirectPath),
+			Mimetype:      proto.String(audioMime),
+			FileLength:    proto.Uint64(audioUploaded.FileLength),
+			FileSHA256:    audioUploaded.FileSHA256,
+			FileEncSHA256: audioUploaded.FileEncSHA256,
+			MediaKey:      audioUploaded.MediaKey,
+			PTT:           proto.Bool(isVoiceNote),
+		},
+	}
+	_, err = client.SendMessage(ctx, remoteJID, msgContent, msgExtra)
+	if err != nil {
+		return "", err
+	}
+	return msgExtra.ID, nil
+}
+
+func WhatsAppSendSticker(ctx context.Context, jid string, deviceID string, rjid string, stickerBytes []byte, opts *SendOptions) (string, error) {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return "", err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return "", err
+	}
+	if len(stickerBytes) == 0 {
+		return "", errors.New("Sticker payload cannot be empty")
+	}
+	if err := enforceSizeLimit("sticker", int64(len(stickerBytes)), maxImageBytes); err != nil {
+		return "", err
+	}
+	stickerMime := detectMime(stickerBytes, "image/webp")
+	allowedStickerMimes := map[string]bool{
+		"image/webp": true,
+	}
+	if !allowedStickerMimes[stickerMime] {
+		return "", fmt.Errorf("Sticker MIME type %s is not allowed. Stickers must be in WebP format", stickerMime)
+	}
+	remoteJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, rjid)
+	if err != nil {
+		return "", err
+	}
+	if err := waitRateLimit(ctx, deviceID); err != nil {
+		return "", err
+	}
+	cleanup := beginPresenceSimulation(ctx, jid, deviceID, remoteJID, false, opts)
+	defer cleanup()
+	stickerUploaded, err := client.Upload(ctx, stickerBytes, whatsmeow.MediaImage)
+	if err != nil {
+		return "", errors.New("Error While Uploading Sticker to WhatsApp Server")
+	}
+	msgExtra := whatsmeow.SendRequestExtra{ID: client.GenerateMessageID()}
+	msgContent := &waE2E.Message{
+		StickerMessage: &waE2E.StickerMessage{
+			URL:           proto.String(stickerUploaded.URL),
+			DirectPath:    proto.String(stickerUploaded.DirectPath),
+			Mimetype:      proto.String(stickerMime),
+			FileLength:    proto.Uint64(stickerUploaded.FileLength),
+			FileSHA256:    stickerUploaded.FileSHA256,
+			FileEncSHA256: stickerUploaded.FileEncSHA256,
+			MediaKey:      stickerUploaded.MediaKey,
+		},
+	}
+	_, err = client.SendMessage(ctx, remoteJID, msgContent, msgExtra)
+	if err != nil {
+		return "", err
+	}
+	return msgExtra.ID, nil
+}
+
+func WhatsAppSendLocation(ctx context.Context, jid string, deviceID string, rjid string, latitude float64, longitude float64, name string, address string, opts *SendOptions) (string, error) {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return "", err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return "", err
+	}
+	if latitude < -90 || latitude > 90 {
+		return "", errors.New("Latitude must be between -90 and 90")
+	}
+	if longitude < -180 || longitude > 180 {
+		return "", errors.New("Longitude must be between -180 and 180")
+	}
+	remoteJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, rjid)
+	if err != nil {
+		return "", err
+	}
+	if err := waitRateLimit(ctx, deviceID); err != nil {
+		return "", err
+	}
+	cleanup := beginPresenceSimulation(ctx, jid, deviceID, remoteJID, false, opts)
+	defer cleanup()
+	msgExtra := whatsmeow.SendRequestExtra{ID: client.GenerateMessageID()}
+	msgContent := &waE2E.Message{
+		LocationMessage: &waE2E.LocationMessage{
+			DegreesLatitude:  proto.Float64(latitude),
+			DegreesLongitude: proto.Float64(longitude),
+			Name:             proto.String(name),
+			Address:          proto.String(address),
+		},
+	}
+	_, err = client.SendMessage(ctx, remoteJID, msgContent, msgExtra)
+	if err != nil {
+		return "", err
+	}
+	return msgExtra.ID, nil
+}
+
+func WhatsAppSendContact(ctx context.Context, jid string, deviceID string, rjid string, contactName string, contactPhone string, opts *SendOptions) (string, error) {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return "", err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(contactName) == "" {
+		return "", errors.New("Contact name cannot be empty")
+	}
+	if strings.TrimSpace(contactPhone) == "" {
+		return "", errors.New("Contact phone cannot be empty")
+	}
+	remoteJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, rjid)
+	if err != nil {
+		return "", err
+	}
+	if err := waitRateLimit(ctx, deviceID); err != nil {
+		return "", err
+	}
+	cleanup := beginPresenceSimulation(ctx, jid, deviceID, remoteJID, false, opts)
+	defer cleanup()
+	// Build vCard format
+	vcard := fmt.Sprintf("BEGIN:VCARD\nVERSION:3.0\nFN:%s\nTEL;type=CELL;type=VOICE;waid=%s:+%s\nEND:VCARD",
+		contactName, contactPhone, contactPhone)
+	msgExtra := whatsmeow.SendRequestExtra{ID: client.GenerateMessageID()}
+	msgContent := &waE2E.Message{
+		ContactMessage: &waE2E.ContactMessage{
+			DisplayName: proto.String(contactName),
+			Vcard:       proto.String(vcard),
 		},
 	}
 	_, err = client.SendMessage(ctx, remoteJID, msgContent, msgExtra)

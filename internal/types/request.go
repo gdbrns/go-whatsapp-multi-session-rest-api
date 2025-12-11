@@ -61,8 +61,10 @@ type RequestSendLink struct {
 }
 
 type RequestSendLocation struct {
-	Latitude  float64
-	Longitude float64
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+	Name      string  `json:"name"`
+	Address   string  `json:"address"`
 }
 
 type RequestSendContact struct {
