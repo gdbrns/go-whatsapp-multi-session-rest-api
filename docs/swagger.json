@@ -49,7 +49,11 @@
     {"name": "11 - Webhooks", "description": "Webhook configuration and management"},
     {"name": "12 - Polls", "description": "Create polls, vote, and get results"},
     {"name": "13 - Newsletter/Channels", "description": "WhatsApp Channels - create, follow, manage newsletters"},
-    {"name": "14 - Status/Stories", "description": "Post and manage WhatsApp Status/Stories"}
+    {"name": "14 - Status/Stories", "description": "Post and manage WhatsApp Status/Stories"},
+    {"name": "15 - Calls", "description": "Call handling - reject incoming calls"},
+    {"name": "16 - Business", "description": "Business profile and message link operations"},
+    {"name": "17 - Bots", "description": "WhatsApp AI Bots listing and profiles"},
+    {"name": "18 - Contact QR", "description": "Contact QR code link generation and resolution"}
   ],
   "definitions": {
     "ErrorResponse": {
@@ -2332,6 +2336,239 @@
           "200": {"description": "User status", "schema": {"$ref": "#/definitions/SuccessResponse"}},
           "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
           "404": {"description": "User not found", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/calls/reject": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["15 - Calls"],
+        "summary": "Reject Incoming Call",
+        "description": "Reject an incoming WhatsApp call. Use the call information from the webhook event to reject a call.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["call_from", "call_id"],
+              "properties": {
+                "call_from": {"type": "string", "description": "JID of the caller", "example": "6281234567890@s.whatsapp.net"},
+                "call_id": {"type": "string", "description": "Call ID from the call event", "example": "3EB0A0F1B2C3D4E5F6"}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {"description": "Call rejected successfully", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/business/{jid}/profile": {
+      "get": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["16 - Business"],
+        "summary": "Get Business Profile",
+        "description": "Get the business profile of a WhatsApp Business account including description, category, website, email, and address.",
+        "parameters": [{"name": "jid", "in": "path", "required": true, "type": "string", "description": "JID of the business account", "example": "6281234567890@s.whatsapp.net"}],
+        "responses": {
+          "200": {"description": "Business profile retrieved", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "404": {"description": "Business not found", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/business/link/{code}": {
+      "get": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["16 - Business"],
+        "summary": "Resolve Business Message Link",
+        "description": "Resolve a wa.me/message/{code} business message link to get the business JID and prefilled message.",
+        "parameters": [{"name": "code", "in": "path", "required": true, "type": "string", "description": "Code from wa.me/message/{code} link"}],
+        "responses": {
+          "200": {"description": "Link resolved", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "404": {"description": "Invalid link code", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/bots": {
+      "get": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["17 - Bots"],
+        "summary": "Get Available Bots",
+        "description": "Get the list of available WhatsApp AI bots that can be interacted with.",
+        "responses": {
+          "200": {"description": "Bot list retrieved", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/bots/profiles": {
+      "get": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["17 - Bots"],
+        "summary": "Get Bot Profiles",
+        "description": "Get detailed profiles of available WhatsApp AI bots.",
+        "responses": {
+          "200": {"description": "Bot profiles retrieved", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/users/me/contact-qr": {
+      "get": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["18 - Contact QR"],
+        "summary": "Get Contact QR Link",
+        "description": "Get your contact QR code link that others can use to add you as a contact. Optionally revoke the previous link.",
+        "parameters": [{"name": "revoke", "in": "query", "type": "boolean", "default": false, "description": "Whether to revoke the previous link and generate a new one"}],
+        "responses": {
+          "200": {"description": "Contact QR link retrieved", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/users/contact-qr/{code}": {
+      "get": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["18 - Contact QR"],
+        "summary": "Resolve Contact QR Link",
+        "description": "Resolve a contact QR link code to get the contact's JID and push name.",
+        "parameters": [{"name": "code", "in": "path", "required": true, "type": "string", "description": "Contact QR link code"}],
+        "responses": {
+          "200": {"description": "Contact QR resolved", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "404": {"description": "Invalid QR code", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/presence/subscribe": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["09 - Presence & Status"],
+        "summary": "Subscribe to Presence Updates",
+        "description": "Subscribe to presence updates (online/offline/typing) for a specific user. Updates will be delivered via webhook.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["jid"],
+              "properties": {
+                "jid": {"type": "string", "description": "JID of the user to subscribe to", "example": "6281234567890@s.whatsapp.net"}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {"description": "Subscribed to presence updates", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/devices/me/passive": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["04 - Device Operations"],
+        "summary": "Set Passive Mode",
+        "description": "Set the client to passive mode. In passive mode, the client will not receive messages but can still send them. Useful for reducing bandwidth.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "passive": {"type": "boolean", "description": "Whether to enable passive mode", "default": true}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {"description": "Passive mode set", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/newsletters/{jid}/updates": {
+      "get": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["13 - Newsletter/Channels"],
+        "summary": "Get Newsletter Message Updates",
+        "description": "Get updates for messages in a newsletter including edits, reaction counts, and other changes.",
+        "parameters": [
+          {"name": "jid", "in": "path", "required": true, "type": "string", "description": "Newsletter JID"},
+          {"name": "count", "in": "query", "type": "integer", "default": 100, "description": "Maximum number of updates to retrieve"},
+          {"name": "since", "in": "query", "type": "integer", "default": 0, "description": "Get updates since this timestamp"}
+        ],
+        "responses": {
+          "200": {"description": "Message updates retrieved", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/newsletters/tos/accept": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["13 - Newsletter/Channels"],
+        "summary": "Accept TOS Notice",
+        "description": "Accept the Terms of Service notice required for newsletter features.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["notice_id", "stage"],
+              "properties": {
+                "notice_id": {"type": "string", "description": "TOS notice ID"},
+                "stage": {"type": "string", "description": "TOS stage identifier"}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {"description": "TOS accepted", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/groups/{parent_jid}/link/{child_jid}": {
+      "delete": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["08 - Group Management"],
+        "summary": "Unlink Subgroup from Community",
+        "description": "Unlink a subgroup from a community/parent group.",
+        "parameters": [
+          {"name": "parent_jid", "in": "path", "required": true, "type": "string", "description": "JID of the parent community"},
+          {"name": "child_jid", "in": "path", "required": true, "type": "string", "description": "JID of the subgroup to unlink"}
+        ],
+        "responses": {
+          "200": {"description": "Subgroup unlinked", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "403": {"description": "Not authorized to unlink", "schema": {"$ref": "#/definitions/ErrorResponse"}},
           "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
         }
       }

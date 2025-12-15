@@ -450,3 +450,68 @@ func GetBlocklist(c *fiber.Ctx) error {
 		"blocked": blockedJIDs,
 	})
 }
+
+// GetContactQRLink gets the current user's contact QR link
+func GetContactQRLink(c *fiber.Ctx) error {
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	deviceID, jid := getDeviceContext(c)
+
+	// Check if revoke parameter is set
+	revoke := c.QueryBool("revoke", false)
+
+	log.Session(c, "GetContactQRLink").WithField("revoke", revoke).Info("Getting contact QR link")
+
+	link, err := pkgWhatsApp.WhatsAppGetContactQRLink(ctx, jid, deviceID, revoke)
+	if err != nil {
+		log.Session(c, "GetContactQRLink").WithError(err).Error("Failed to get contact QR link")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.Session(c, "GetContactQRLink").Info("Contact QR link retrieved successfully")
+
+	return router.ResponseSuccessWithData(c, "Success get contact QR link", map[string]interface{}{
+		"link": link,
+	})
+}
+
+// ResolveContactQRLink resolves a contact QR link code
+func ResolveContactQRLink(c *fiber.Ctx) error {
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	deviceID, jid := getDeviceContext(c)
+	code := c.Params("code")
+
+	if code == "" {
+		log.Session(c, "ResolveContactQRLink").Warn("Missing code parameter")
+		return router.ResponseBadRequest(c, "code parameter is required")
+	}
+
+	log.Session(c, "ResolveContactQRLink").WithField("code", code).Info("Resolving contact QR link")
+
+	target, err := pkgWhatsApp.WhatsAppResolveContactQRLink(ctx, jid, deviceID, code)
+	if err != nil {
+		log.Session(c, "ResolveContactQRLink").WithField("code", code).WithError(err).Error("Failed to resolve contact QR link")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	if target == nil {
+		return router.ResponseNotFound(c, "Contact QR link not found")
+	}
+
+	response := map[string]interface{}{
+		"jid":       target.JID.String(),
+		"type":      target.Type,
+		"push_name": target.PushName,
+	}
+
+	log.Session(c, "ResolveContactQRLink").WithField("code", code).WithField("target_jid", target.JID.String()).Info("Contact QR link resolved successfully")
+
+	return router.ResponseSuccessWithData(c, "Success resolve contact QR link", response)
+}

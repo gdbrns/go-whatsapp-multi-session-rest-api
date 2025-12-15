@@ -725,3 +725,34 @@ func DemoteAdmins(c *fiber.Ctx) error {
 
 	return router.ResponseSuccessWithData(c, "Success demote admins", participants)
 }
+
+// UnlinkGroup unlinks a subgroup from a community/parent group
+func UnlinkGroup(c *fiber.Ctx) error {
+	deviceID, jid := getDeviceContext(c)
+	parentJID := c.Params("parent_jid")
+	childJID := c.Params("child_jid")
+
+	log.GroupOp(deviceID, jid, "UnlinkGroup", parentJID).
+		WithField("child_jid", childJID).
+		Info("Unlinking subgroup from community")
+
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	err := pkgWhatsApp.WhatsAppUnlinkGroup(ctx, jid, deviceID, parentJID, childJID)
+	if err != nil {
+		log.GroupOp(deviceID, jid, "UnlinkGroup", parentJID).
+			WithField("child_jid", childJID).
+			WithError(err).
+			Error("Failed to unlink subgroup")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.GroupOp(deviceID, jid, "UnlinkGroup", parentJID).
+		WithField("child_jid", childJID).
+		Info("Subgroup unlinked successfully")
+
+	return router.ResponseSuccess(c, "Success unlink subgroup from community")
+}

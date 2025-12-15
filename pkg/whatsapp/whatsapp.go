@@ -4462,3 +4462,433 @@ func (l *filteredLogger) Debugf(msg string, args ...interface{}) {
 func (l *filteredLogger) Sub(module string) waLog.Logger {
 	return newFilteredLogger(l.base.Sub(module))
 }
+
+// ============================================================
+// NEW FEATURES - WhatsApp API Extensions
+// ============================================================
+
+// WhatsAppRejectCall rejects an incoming call
+func WhatsAppRejectCall(ctx context.Context, jid string, deviceID string, callFrom string, callID string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return err
+	}
+
+	fromJID, err := types.ParseJID(callFrom)
+	if err != nil {
+		return fmt.Errorf("invalid call from JID: %v", err)
+	}
+
+	return client.RejectCall(ctx, fromJID, callID)
+}
+
+// BusinessProfile represents a WhatsApp business profile
+type BusinessProfile struct {
+	JID             string                    `json:"jid"`
+	Description     string                    `json:"description"`
+	Address         string                    `json:"address"`
+	Email           string                    `json:"email"`
+	Categories      []BusinessProfileCategory `json:"categories"`
+	ProfileOptions  map[string]string         `json:"profile_options"`
+	Websites        []string                  `json:"websites"`
+	BusinessHours   []BusinessProfileHours    `json:"business_hours"`
+}
+
+type BusinessProfileCategory struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type BusinessProfileHours struct {
+	DayOfWeek string `json:"day_of_week"`
+	Mode      string `json:"mode"`
+	OpenTime  string `json:"open_time"`
+	CloseTime string `json:"close_time"`
+}
+
+// WhatsAppGetBusinessProfile retrieves a business profile for a given JID
+func WhatsAppGetBusinessProfile(ctx context.Context, jid string, deviceID string, targetJID string) (*types.BusinessProfile, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return nil, err
+	}
+
+	target, err := types.ParseJID(targetJID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid target JID: %v", err)
+	}
+
+	return client.GetBusinessProfile(ctx, target)
+}
+
+// BusinessMessageLinkTarget represents a resolved business message link
+type BusinessMessageLinkTarget struct {
+	JID           string `json:"jid"`
+	PushName      string `json:"push_name"`
+	VerifiedName  string `json:"verified_name"`
+	IsBusiness    bool   `json:"is_business"`
+	Message       string `json:"message"`
+}
+
+// WhatsAppResolveBusinessMessageLink resolves a business message link (wa.me/message/XXX)
+func WhatsAppResolveBusinessMessageLink(ctx context.Context, jid string, deviceID string, code string) (*types.BusinessMessageLinkTarget, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return nil, err
+	}
+
+	return client.ResolveBusinessMessageLink(ctx, code)
+}
+
+// WhatsAppGetContactQRLink gets the current user's contact QR link
+func WhatsAppGetContactQRLink(ctx context.Context, jid string, deviceID string, revoke bool) (string, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return "", err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return "", err
+	}
+
+	return client.GetContactQRLink(ctx, revoke)
+}
+
+// WhatsAppResolveContactQRLink resolves a contact QR link code
+func WhatsAppResolveContactQRLink(ctx context.Context, jid string, deviceID string, code string) (*types.ContactQRLinkTarget, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return nil, err
+	}
+
+	return client.ResolveContactQRLink(ctx, code)
+}
+
+// BotInfo represents basic info about a bot
+type BotInfo struct {
+	JID          string `json:"jid"`
+	PluginType   string `json:"plugin_type"`
+	PluginName   string `json:"plugin_name"`
+}
+
+// WhatsAppGetBotListV2 retrieves the list of available bots
+func WhatsAppGetBotListV2(ctx context.Context, jid string, deviceID string) ([]types.BotListInfo, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return nil, err
+	}
+
+	return client.GetBotListV2(ctx)
+}
+
+// WhatsAppGetBotProfiles retrieves profiles for the given bots
+func WhatsAppGetBotProfiles(ctx context.Context, jid string, deviceID string, botInfo []types.BotListInfo) ([]types.BotProfileInfo, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return nil, err
+	}
+
+	return client.GetBotProfiles(ctx, botInfo)
+}
+
+// WhatsAppSubscribePresence subscribes to presence updates for a user
+func WhatsAppSubscribePresence(ctx context.Context, jid string, deviceID string, targetJID string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return err
+	}
+
+	target, err := types.ParseJID(targetJID)
+	if err != nil {
+		return fmt.Errorf("invalid target JID: %v", err)
+	}
+
+	return client.SubscribePresence(ctx, target)
+}
+
+// WhatsAppGetNewsletterMessageUpdates retrieves message updates for a newsletter
+func WhatsAppGetNewsletterMessageUpdates(ctx context.Context, jid string, deviceID string, newsletterJID string, count int, since int) ([]*types.NewsletterMessage, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return nil, err
+	}
+
+	nlJID, err := types.ParseJID(newsletterJID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid newsletter JID: %v", err)
+	}
+
+	params := &whatsmeow.GetNewsletterUpdatesParams{
+		Count: count,
+		Since: time.Unix(int64(since), 0),
+	}
+
+	return client.GetNewsletterMessageUpdates(ctx, nlJID, params)
+}
+
+// WhatsAppAcceptTOSNotice accepts a Terms of Service notice (required for newsletter creation)
+func WhatsAppAcceptTOSNotice(ctx context.Context, jid string, deviceID string, noticeID string, stage string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return err
+	}
+
+	return client.AcceptTOSNotice(ctx, noticeID, stage)
+}
+
+// WhatsAppSetPassive sets the client to passive mode
+func WhatsAppSetPassive(ctx context.Context, jid string, deviceID string, passive bool) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return err
+	}
+
+	return client.SetPassive(ctx, passive)
+}
+
+// WhatsAppWaitForConnection waits for the client to be connected
+func WhatsAppWaitForConnection(jid string, deviceID string, timeout time.Duration) bool {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return false
+	}
+
+	return client.WaitForConnection(timeout)
+}
+
+// WhatsAppSendMediaRetryReceipt sends a media retry receipt for failed media downloads
+func WhatsAppSendMediaRetryReceipt(ctx context.Context, jid string, deviceID string, chatJID string, senderJID string, messageID string, mediaKey []byte) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return err
+	}
+
+	chat, err := types.ParseJID(chatJID)
+	if err != nil {
+		return fmt.Errorf("invalid chat JID: %v", err)
+	}
+
+	sender, err := types.ParseJID(senderJID)
+	if err != nil {
+		return fmt.Errorf("invalid sender JID: %v", err)
+	}
+
+	msgInfo := &types.MessageInfo{
+		ID:        messageID,
+		MessageSource: types.MessageSource{
+			Chat:   chat,
+			Sender: sender,
+		},
+	}
+
+	return client.SendMediaRetryReceipt(ctx, msgInfo, mediaKey)
+}
+
+// WhatsAppBuildHistorySyncRequest builds a history sync request message
+func WhatsAppBuildHistorySyncRequest(jid string, deviceID string, chatJID string, senderJID string, lastMsgID string, count int) (*waE2E.Message, error) {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return nil, err
+	}
+
+	chat, err := types.ParseJID(chatJID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid chat JID: %v", err)
+	}
+
+	sender, err := types.ParseJID(senderJID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid sender JID: %v", err)
+	}
+
+	msgInfo := &types.MessageInfo{
+		ID:        lastMsgID,
+		MessageSource: types.MessageSource{
+			Chat:   chat,
+			Sender: sender,
+		},
+	}
+
+	return client.BuildHistorySyncRequest(msgInfo, count), nil
+}
+
+// WhatsAppBuildUnavailableMessageRequest builds a request for an unavailable message
+func WhatsAppBuildUnavailableMessageRequest(jid string, deviceID string, chatJID string, senderJID string, messageID string) (*waE2E.Message, error) {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return nil, err
+	}
+
+	chat, err := types.ParseJID(chatJID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid chat JID: %v", err)
+	}
+
+	sender, err := types.ParseJID(senderJID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid sender JID: %v", err)
+	}
+
+	return client.BuildUnavailableMessageRequest(chat, sender, messageID), nil
+}
+
+// WhatsAppUnlinkGroup unlinks a child group from a parent community
+func WhatsAppUnlinkGroup(ctx context.Context, jid string, deviceID string, parentJID string, childJID string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return err
+	}
+
+	parent, err := types.ParseJID(parentJID)
+	if err != nil {
+		return fmt.Errorf("invalid parent JID: %v", err)
+	}
+
+	child, err := types.ParseJID(childJID)
+	if err != nil {
+		return fmt.Errorf("invalid child JID: %v", err)
+	}
+
+	return client.UnlinkGroup(ctx, parent, child)
+}
+
+// WhatsAppGenerateMessageID generates a new random message ID
+func WhatsAppGenerateMessageID(jid string, deviceID string) (string, error) {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return "", err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return "", err
+	}
+
+	return string(client.GenerateMessageID()), nil
+}
+
+// WhatsAppUploadReader uploads media from a reader (streaming upload)
+func WhatsAppUploadReader(ctx context.Context, jid string, deviceID string, reader io.Reader, tempFile io.ReadWriteSeeker, appInfo whatsmeow.MediaType) (*whatsmeow.UploadResponse, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return nil, err
+	}
+
+	resp, err := client.UploadReader(ctx, reader, tempFile, appInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
+}
+
+// WhatsAppStoreLIDPNMapping stores a LID to phone number mapping
+func WhatsAppStoreLIDPNMapping(ctx context.Context, jid string, deviceID string, firstJID string, secondJID string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return err
+	}
+
+	first, err := types.ParseJID(firstJID)
+	if err != nil {
+		return fmt.Errorf("invalid first JID: %v", err)
+	}
+
+	second, err := types.ParseJID(secondJID)
+	if err != nil {
+		return fmt.Errorf("invalid second JID: %v", err)
+	}
+
+	client.StoreLIDPNMapping(ctx, first, second)
+	return nil
+}

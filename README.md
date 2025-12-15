@@ -4,10 +4,18 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/gdbrns/go-whatsapp-multi-session-rest-api)](https://goreportcard.com/report/github.com/gdbrns/go-whatsapp-multi-session-rest-api)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![whatsmeow](https://img.shields.io/badge/whatsmeow-v0.0.0--20251205-brightgreen.svg)](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20251205211405-fd6170ac96e5)
+[![API Docs](https://img.shields.io/badge/API%20Docs-Bump.sh-blue.svg)](https://bump.sh/gdbrns/doc/go-whatsapp-multi-session-rest)
 
 > A minimal REST API for WhatsApp Multi-Device and Multi-Session implementation built with Go and **[whatsmeow v0.0.0-20251205211405-fd6170ac96e5](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20251205211405-fd6170ac96e5)** (current latest). Supports multiple accounts and devices simultaneously with efficient memory use and production-ready deployments.
 
-**📚 API Documentation:** Interactive Swagger UI at `/docs/` when running
+## 📚 API Documentation
+
+| Format | Link |
+|--------|------|
+| 🌐 **Interactive Docs** | **[bump.sh/gdbrns/doc/go-whatsapp-multi-session-rest](https://bump.sh/gdbrns/doc/go-whatsapp-multi-session-rest)** |
+| 📖 Swagger UI | `http://localhost:7001/docs/` (when running) |
+| 📄 OpenAPI JSON | `http://localhost:7001/docs/swagger.json` |
+| 📄 OpenAPI YAML | `http://localhost:7001/docs/swagger.yaml` |
 
 ## 📋 Table of Contents
 
@@ -28,15 +36,20 @@
 - 🔐 **Multi-Session Support** - Handle multiple WhatsApp accounts simultaneously
 - 📱 **Multi-Device Support** - Up to 4 devices per WhatsApp account
 - 🎫 **JWT Token Authentication** - Stateless, high-performance authentication for 1000+ sessions
-- 🚀 **111 Production-Ready Endpoints** - Full whatsmeow coverage including all media types
+- 🚀 **120+ Production-Ready Endpoints** - Full whatsmeow coverage including all media types
 - 📨 **Rich Messaging** - Text, images, videos, audio, stickers, locations, contacts, documents
 - 📊 **Polls** - Create polls, vote, and receive real-time results via webhooks
-- 📰 **Newsletter/Channels** - Full channel support - create, follow, message, react
+- 📰 **Newsletter/Channels** - Full channel support - create, follow, message, react, TOS acceptance
 - 📱 **Status/Stories** - Post and manage WhatsApp Status updates
+- 📞 **Call Handling** - Reject incoming WhatsApp calls programmatically
+- 💼 **Business Profiles** - Get business profiles and resolve wa.me/message links
+- 🤖 **WhatsApp AI Bots** - List and get profiles of available WhatsApp bots
+- 📲 **Contact QR Codes** - Generate and resolve contact QR links
+- 👁️ **Presence Subscriptions** - Subscribe to user online/offline/typing status
 - 🌳 **RESTful Architecture** - Hierarchical resource-based routes
-- 👥 **Group Management** - Full CRUD for groups, participants, admins, and settings
+- 👥 **Group Management** - Full CRUD for groups, participants, admins, community unlinking
 - 🔄 **Message Operations** - Edit, react, delete, reply, forward, mark read
-- 📊 **Presence & Status** - Online status, typing indicators, disappearing messages
+- 📊 **Presence & Status** - Online status, typing indicators, disappearing messages, passive mode
 - 🔄 **App State Synchronization** - Fetch, send, and manage app state patches
 - 🪝 **Webhook Integration** - 31 event types with real-time notifications and retry support
 - 🏗️ **Production Ready** - Docker support, environment configuration, logging
@@ -170,7 +183,10 @@ go run cmd/main/main.go
 
 ### 2. Access API Documentation
 
-Open your browser and navigate to:
+**Online Documentation (Recommended):**
+- 🌐 **[bump.sh/gdbrns/doc/go-whatsapp-multi-session-rest](https://bump.sh/gdbrns/doc/go-whatsapp-multi-session-rest)** - Interactive API explorer with examples
+
+**Local Documentation (when running):**
 - **Swagger UI**: `http://localhost:7001/docs/`
 - **OpenAPI JSON**: `http://localhost:7001/docs/swagger.json`
 - **OpenAPI YAML**: `http://localhost:7001/docs/swagger.yaml`
@@ -302,7 +318,7 @@ curl -X POST "http://localhost:7001/webhooks" \
 
 ### All Endpoints
 
-**Organized by category** with most commonly used endpoints first. All paths honor optional `HTTP_BASE_URL` (prefix not shown below). Total: **111 endpoints** (112 when `HTTP_BASE_URL` is set because the index path is registered with and without a trailing slash).
+**Organized by category** with most commonly used endpoints first. All paths honor optional `HTTP_BASE_URL` (prefix not shown below). Total: **122 endpoints** (123 when `HTTP_BASE_URL` is set because the index path is registered with and without a trailing slash).
 
 **Input & validation notes**
 - Phone numbers must be in international format (no leading `0`, digits only, 6-16 chars). Requests with invalid/unknown numbers return 4xx.
@@ -339,105 +355,125 @@ curl -X POST "http://localhost:7001/webhooks" \
 | 21 | POST | `/devices/me/reconnect` | JWT | Reconnect device |
 | 22 | DELETE | `/devices/me/session` | JWT | Logout device |
 | 23 | GET | `/devices/me/contacts/{phone}/registered` | JWT | Check if phone is registered |
+| 24 | POST | `/devices/me/passive` | JWT | Set passive mode (reduce bandwidth) |
 | | | **User Management** | | |
-| 24 | GET | `/users/{user_jid}` | JWT | Get user info |
-| 25 | GET | `/users/{user_jid}/profile-picture` | JWT | Get user profile picture |
-| 26 | POST | `/users/{user_jid}/block` | JWT | Block user |
-| 27 | DELETE | `/users/{user_jid}/block` | JWT | Unblock user |
-| 28 | GET | `/users/me/privacy` | JWT | Get privacy settings |
-| 29 | PATCH | `/users/me/privacy` | JWT | Update privacy settings |
-| 30 | GET | `/users/me/status-privacy` | JWT | Get status privacy |
-| 31 | POST | `/users/me/status` | JWT | Update status/about |
-| 32 | GET | `/users/{jid}/devices` | JWT | Get user's linked devices |
+| 25 | GET | `/users/{user_jid}` | JWT | Get user info |
+| 26 | GET | `/users/{user_jid}/profile-picture` | JWT | Get user profile picture |
+| 27 | POST | `/users/{user_jid}/block` | JWT | Block user |
+| 28 | DELETE | `/users/{user_jid}/block` | JWT | Unblock user |
+| 29 | GET | `/users/me/privacy` | JWT | Get privacy settings |
+| 30 | PATCH | `/users/me/privacy` | JWT | Update privacy settings |
+| 31 | GET | `/users/me/status-privacy` | JWT | Get status privacy |
+| 32 | POST | `/users/me/status` | JWT | Update status/about |
+| 33 | GET | `/users/{jid}/devices` | JWT | Get user's linked devices |
+| 34 | POST | `/users/me/profile-photo` | JWT | Set profile photo |
+| 35 | GET | `/users/me/contacts` | JWT | Get contacts |
+| 36 | POST | `/users/me/contacts/sync` | JWT | Sync contacts |
+| 37 | GET | `/users/me/blocklist` | JWT | Get blocklist |
+| | | **Contact QR (NEW)** | | |
+| 38 | GET | `/users/me/contact-qr` | JWT | Get your contact QR link |
+| 39 | GET | `/users/contact-qr/{code}` | JWT | Resolve contact QR code |
 | | | **Messaging** | | |
-| 33 | POST | `/chats/{chat_jid}/messages` | JWT | Send text message |
-| 34 | GET | `/chats/{chat_jid}/messages` | JWT | Get chat messages |
-| 35 | POST | `/chats/{chat_jid}/images` | JWT | Send image |
-| 36 | POST | `/chats/{chat_jid}/videos` | JWT | Send video |
-| 37 | POST | `/chats/{chat_jid}/audio` | JWT | Send audio/voice note |
-| 38 | POST | `/chats/{chat_jid}/stickers` | JWT | Send sticker (WebP) |
-| 39 | POST | `/chats/{chat_jid}/locations` | JWT | Send location |
-| 40 | POST | `/chats/{chat_jid}/contacts` | JWT | Send contact vCard |
-| 41 | POST | `/chats/{chat_jid}/documents` | JWT | Send document |
-| 42 | POST | `/chats/{chat_jid}/archive` | JWT | Archive/unarchive chat |
-| 43 | POST | `/chats/{chat_jid}/pin` | JWT | Pin/unpin chat |
+| 40 | POST | `/chats/{chat_jid}/messages` | JWT | Send text message |
+| 41 | GET | `/chats/{chat_jid}/messages` | JWT | Get chat messages |
+| 42 | POST | `/chats/{chat_jid}/images` | JWT | Send image |
+| 43 | POST | `/chats/{chat_jid}/videos` | JWT | Send video |
+| 44 | POST | `/chats/{chat_jid}/audio` | JWT | Send audio/voice note |
+| 45 | POST | `/chats/{chat_jid}/stickers` | JWT | Send sticker (WebP) |
+| 46 | POST | `/chats/{chat_jid}/locations` | JWT | Send location |
+| 47 | POST | `/chats/{chat_jid}/contacts` | JWT | Send contact vCard |
+| 48 | POST | `/chats/{chat_jid}/documents` | JWT | Send document |
+| 49 | POST | `/chats/{chat_jid}/archive` | JWT | Archive/unarchive chat |
+| 50 | POST | `/chats/{chat_jid}/pin` | JWT | Pin/unpin chat |
 | | | **Message Actions** | | |
-| 44 | POST | `/messages/{message_id}/read` | JWT | Mark message as read |
-| 45 | POST | `/messages/{message_id}/reaction` | JWT | React to message |
-| 46 | PATCH | `/messages/{message_id}` | JWT | Edit message |
-| 47 | DELETE | `/messages/{message_id}` | JWT | Delete message |
-| 48 | POST | `/messages/{message_id}/reply` | JWT | Reply to message |
-| 49 | POST | `/messages/{message_id}/forward` | JWT | Forward message |
+| 51 | POST | `/messages/{message_id}/read` | JWT | Mark message as read |
+| 52 | POST | `/messages/{message_id}/reaction` | JWT | React to message |
+| 53 | PATCH | `/messages/{message_id}` | JWT | Edit message |
+| 54 | DELETE | `/messages/{message_id}` | JWT | Delete message |
+| 55 | POST | `/messages/{message_id}/reply` | JWT | Reply to message |
+| 56 | POST | `/messages/{message_id}/forward` | JWT | Forward message |
 | | | **Polls** | | |
-| 50 | POST | `/chats/{chat_jid}/polls` | JWT | Create poll |
-| 51 | POST | `/polls/{poll_id}/vote` | JWT | Vote on poll |
-| 52 | GET | `/polls/{poll_id}/results` | JWT | Get poll results |
-| 53 | DELETE | `/polls/{poll_id}` | JWT | Delete poll |
+| 57 | POST | `/chats/{chat_jid}/polls` | JWT | Create poll |
+| 58 | POST | `/polls/{poll_id}/vote` | JWT | Vote on poll |
+| 59 | GET | `/polls/{poll_id}/results` | JWT | Get poll results |
+| 60 | DELETE | `/polls/{poll_id}` | JWT | Delete poll |
+| | | **Calls (NEW)** | | |
+| 61 | POST | `/calls/reject` | JWT | Reject incoming call |
+| | | **Business (NEW)** | | |
+| 62 | GET | `/business/{jid}/profile` | JWT | Get business profile |
+| 63 | GET | `/business/link/{code}` | JWT | Resolve wa.me/message link |
+| | | **Bots (NEW)** | | |
+| 64 | GET | `/bots` | JWT | List available WhatsApp bots |
+| 65 | GET | `/bots/profiles` | JWT | Get bot profiles |
 | | | **Group Management** | | |
-| 44 | GET | `/groups` | JWT | List all groups with members |
-| 45 | POST | `/groups` | JWT | Create group |
-| 46 | GET | `/groups/{group_jid}` | JWT | Get group info |
-| 47 | POST | `/groups/{group_jid}/leave` | JWT | Leave group |
-| 48 | PATCH | `/groups/{group_jid}/name` | JWT | Update group name |
-| 49 | PATCH | `/groups/{group_jid}/description` | JWT | Update group description |
-| 50 | POST | `/groups/{group_jid}/photo` | JWT | Update group photo |
-| 51 | GET | `/groups/{group_jid}/invite-link` | JWT | Get invite link |
-| 52 | PATCH | `/groups/{group_jid}/settings` | JWT | Update group settings |
-| 53 | GET | `/groups/{group_jid}/participant-requests` | JWT | Get join requests |
-| 54 | POST | `/groups/{group_jid}/join-approval` | JWT | Set join approval mode |
-| 55 | GET | `/groups/invite/{invite_code}` | JWT | Preview group from invite |
-| 56 | POST | `/groups/{group_jid}/join-invite` | JWT | Join group via invite |
-| 57 | PATCH | `/groups/{group_jid}/member-add-mode` | JWT | Set member add mode |
-| 58 | PATCH | `/groups/{group_jid}/topic` | JWT | Update group topic |
-| 59 | POST | `/groups/{parent_group_jid}/link/{group_jid}` | JWT | Link subgroup |
-| 60 | GET | `/groups/{community_jid}/linked-participants` | JWT | Get community members |
-| 61 | GET | `/groups/{community_jid}/subgroups` | JWT | List community subgroups |
-| 62 | POST | `/groups/{group_jid}/participants` | JWT | Add participants |
-| 63 | DELETE | `/groups/{group_jid}/participants` | JWT | Remove participants |
-| 64 | POST | `/groups/{group_jid}/requests/approve` | JWT | Approve join requests |
-| 65 | POST | `/groups/{group_jid}/requests/reject` | JWT | Reject join requests |
-| 66 | POST | `/groups/{group_jid}/admins` | JWT | Promote to admin |
-| 67 | DELETE | `/groups/{group_jid}/admins` | JWT | Demote from admin |
+| 66 | GET | `/groups` | JWT | List all groups with members |
+| 67 | POST | `/groups` | JWT | Create group |
+| 68 | GET | `/groups/{group_jid}` | JWT | Get group info |
+| 69 | POST | `/groups/{group_jid}/leave` | JWT | Leave group |
+| 70 | PATCH | `/groups/{group_jid}/name` | JWT | Update group name |
+| 71 | PATCH | `/groups/{group_jid}/description` | JWT | Update group description |
+| 72 | POST | `/groups/{group_jid}/photo` | JWT | Update group photo |
+| 73 | GET | `/groups/{group_jid}/invite-link` | JWT | Get invite link |
+| 74 | PATCH | `/groups/{group_jid}/settings` | JWT | Update group settings |
+| 75 | GET | `/groups/{group_jid}/participant-requests` | JWT | Get join requests |
+| 76 | POST | `/groups/{group_jid}/join-approval` | JWT | Set join approval mode |
+| 77 | GET | `/groups/invite/{invite_code}` | JWT | Preview group from invite |
+| 78 | POST | `/groups/{group_jid}/join-invite` | JWT | Join group via invite |
+| 79 | PATCH | `/groups/{group_jid}/member-add-mode` | JWT | Set member add mode |
+| 80 | PATCH | `/groups/{group_jid}/topic` | JWT | Update group topic |
+| 81 | POST | `/groups/{parent_group_jid}/link/{group_jid}` | JWT | Link subgroup |
+| 82 | DELETE | `/groups/{parent_jid}/link/{child_jid}` | JWT | Unlink subgroup (NEW) |
+| 83 | GET | `/groups/{community_jid}/linked-participants` | JWT | Get community members |
+| 84 | GET | `/groups/{community_jid}/subgroups` | JWT | List community subgroups |
+| 85 | POST | `/groups/{group_jid}/participants` | JWT | Add participants |
+| 86 | DELETE | `/groups/{group_jid}/participants` | JWT | Remove participants |
+| 87 | POST | `/groups/{group_jid}/requests/approve` | JWT | Approve join requests |
+| 88 | POST | `/groups/{group_jid}/requests/reject` | JWT | Reject join requests |
+| 89 | POST | `/groups/{group_jid}/admins` | JWT | Promote to admin |
+| 90 | DELETE | `/groups/{group_jid}/admins` | JWT | Demote from admin |
 | | | **Presence & Status** | | |
-| 68 | POST | `/chats/{chat_jid}/presence` | JWT | Send typing/recording indicator |
-| 69 | POST | `/presence/status` | JWT | Update availability status |
-| 70 | PATCH | `/chats/{chat_jid}/disappearing-timer` | JWT | Set disappearing messages timer |
+| 91 | POST | `/chats/{chat_jid}/presence` | JWT | Send typing/recording indicator |
+| 92 | POST | `/presence/status` | JWT | Update availability status |
+| 93 | POST | `/presence/subscribe` | JWT | Subscribe to presence updates (NEW) |
+| 94 | PATCH | `/chats/{chat_jid}/disappearing-timer` | JWT | Set disappearing messages timer |
 | | | **App State** | | |
-| 71 | GET | `/app-state/{name}` | JWT | Fetch app state |
-| 72 | POST | `/app-state` | JWT | Send app state patch |
-| 73 | POST | `/app-state/mark-clean` | JWT | Mark app state as clean |
+| 95 | GET | `/app-state/{name}` | JWT | Fetch app state |
+| 96 | POST | `/app-state` | JWT | Send app state patch |
+| 97 | POST | `/app-state/mark-clean` | JWT | Mark app state as clean |
 | | | **Webhooks** | | |
-| 85 | GET | `/webhooks` | JWT | List webhooks |
-| 86 | POST | `/webhooks` | JWT | Create webhook |
-| 87 | GET | `/webhooks/{webhook_id}` | JWT | Get webhook details |
-| 88 | PATCH | `/webhooks/{webhook_id}` | JWT | Update webhook |
-| 89 | DELETE | `/webhooks/{webhook_id}` | JWT | Delete webhook |
-| 90 | GET | `/webhooks/{webhook_id}/logs` | JWT | Get webhook logs |
-| 91 | POST | `/webhooks/{webhook_id}/test` | JWT | Test webhook |
+| 98 | GET | `/webhooks` | JWT | List webhooks |
+| 99 | POST | `/webhooks` | JWT | Create webhook |
+| 100 | GET | `/webhooks/{webhook_id}` | JWT | Get webhook details |
+| 101 | PATCH | `/webhooks/{webhook_id}` | JWT | Update webhook |
+| 102 | DELETE | `/webhooks/{webhook_id}` | JWT | Delete webhook |
+| 103 | GET | `/webhooks/{webhook_id}/logs` | JWT | Get webhook logs |
+| 104 | POST | `/webhooks/{webhook_id}/test` | JWT | Test webhook |
 | | | **Newsletter/Channels** | | |
-| 92 | GET | `/newsletters` | JWT | List subscribed newsletters |
-| 93 | POST | `/newsletters` | JWT | Create newsletter |
-| 94 | GET | `/newsletters/{jid}` | JWT | Get newsletter info |
-| 95 | POST | `/newsletters/{jid}/follow` | JWT | Follow newsletter |
-| 96 | DELETE | `/newsletters/{jid}/follow` | JWT | Unfollow newsletter |
-| 97 | GET | `/newsletters/{jid}/messages` | JWT | Get newsletter messages |
-| 98 | POST | `/newsletters/{jid}/messages` | JWT | Send newsletter message |
-| 99 | POST | `/newsletters/{jid}/reaction` | JWT | React to newsletter message |
-| 100 | POST | `/newsletters/{jid}/mute` | JWT | Toggle newsletter mute |
-| 101 | POST | `/newsletters/{jid}/viewed` | JWT | Mark messages viewed |
-| 102 | GET | `/newsletters/invite/{code}` | JWT | Get info from invite |
-| 103 | POST | `/newsletters/{jid}/live` | JWT | Subscribe to live updates |
-| 104 | POST | `/newsletters/{jid}/photo` | JWT | Update newsletter photo |
+| 105 | GET | `/newsletters` | JWT | List subscribed newsletters |
+| 106 | POST | `/newsletters` | JWT | Create newsletter |
+| 107 | GET | `/newsletters/{jid}` | JWT | Get newsletter info |
+| 108 | POST | `/newsletters/{jid}/follow` | JWT | Follow newsletter |
+| 109 | DELETE | `/newsletters/{jid}/follow` | JWT | Unfollow newsletter |
+| 110 | GET | `/newsletters/{jid}/messages` | JWT | Get newsletter messages |
+| 111 | POST | `/newsletters/{jid}/messages` | JWT | Send newsletter message |
+| 112 | POST | `/newsletters/{jid}/reaction` | JWT | React to newsletter message |
+| 113 | POST | `/newsletters/{jid}/mute` | JWT | Toggle newsletter mute |
+| 114 | POST | `/newsletters/{jid}/viewed` | JWT | Mark messages viewed |
+| 115 | GET | `/newsletters/invite/{code}` | JWT | Get info from invite |
+| 116 | POST | `/newsletters/{jid}/live` | JWT | Subscribe to live updates |
+| 117 | POST | `/newsletters/{jid}/photo` | JWT | Update newsletter photo |
+| 118 | GET | `/newsletters/{jid}/updates` | JWT | Get message updates (NEW) |
+| 119 | POST | `/newsletters/tos/accept` | JWT | Accept TOS notice (NEW) |
 | | | **Status/Stories** | | |
-| 105 | POST | `/status` | JWT | Post status (text/image/video) |
-| 106 | GET | `/status` | JWT | Get status updates |
-| 107 | DELETE | `/status/{status_id}` | JWT | Delete status |
-| 108 | GET | `/status/{user_jid}` | JWT | Get user status |
+| 120 | POST | `/status` | JWT | Post status (text/image/video) |
+| 121 | GET | `/status` | JWT | Get status updates |
+| 122 | DELETE | `/status/{status_id}` | JWT | Delete status |
+| 123 | GET | `/status/{user_jid}` | JWT | Get user status |
 | | | **System** | | |
-| 109 | GET | `/` | - | Server status |
-| 110 | GET | `/docs/*` | - | Swagger UI |
-| 111 | GET | `/docs/swagger.json` | - | OpenAPI JSON spec |
-| 112 | GET | `/docs/swagger.yaml` | - | OpenAPI YAML spec |
+| 124 | GET | `/` | - | Server status |
+| 125 | GET | `/docs/*` | - | Swagger UI |
+| 126 | GET | `/docs/swagger.json` | - | OpenAPI JSON spec |
+| 127 | GET | `/docs/swagger.yaml` | - | OpenAPI YAML spec |
 
 **Authentication Types:**
 - **Admin**: `X-Admin-Secret` header

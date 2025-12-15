@@ -408,3 +408,77 @@ func UpdateNewsletterPhoto(c *fiber.Ctx) error {
 	return router.ResponseSuccess(c, "Success update newsletter photo")
 }
 
+// GetNewsletterMessageUpdates gets updates for messages in a newsletter (edits, reactions count, etc.)
+func GetNewsletterMessageUpdates(c *fiber.Ctx) error {
+	deviceID, jid := getDeviceContext(c)
+	newsletterJID := c.Params("jid")
+
+	count := c.QueryInt("count", 100)
+	since := c.QueryInt("since", 0)
+
+	log.Newsletter(c, "GetNewsletterMessageUpdates", newsletterJID).
+		WithField("count", count).
+		WithField("since", since).
+		Info("Getting newsletter message updates")
+
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	updates, err := pkgWhatsApp.WhatsAppGetNewsletterMessageUpdates(ctx, jid, deviceID, newsletterJID, count, since)
+	if err != nil {
+		log.Newsletter(c, "GetNewsletterMessageUpdates", newsletterJID).WithError(err).Error("Failed to get newsletter message updates")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.Newsletter(c, "GetNewsletterMessageUpdates", newsletterJID).Info("Newsletter message updates retrieved successfully")
+
+	return router.ResponseSuccessWithData(c, "Success get newsletter message updates", updates)
+}
+
+// AcceptTOSNotice accepts the Terms of Service notice for newsletter features
+func AcceptTOSNotice(c *fiber.Ctx) error {
+	deviceID, jid := getDeviceContext(c)
+
+	var req struct {
+		NoticeID string `json:"notice_id"`
+		Stage    string `json:"stage"`
+	}
+	err := c.BodyParser(&req)
+	if err != nil {
+		log.Newsletter(c, "AcceptTOSNotice", "").Warn("Failed to parse body request")
+		return router.ResponseBadRequest(c, "Failed parse body request")
+	}
+
+	if req.NoticeID == "" {
+		log.Newsletter(c, "AcceptTOSNotice", "").Warn("notice_id is required")
+		return router.ResponseBadRequest(c, "notice_id is required")
+	}
+
+	if req.Stage == "" {
+		log.Newsletter(c, "AcceptTOSNotice", "").Warn("stage is required")
+		return router.ResponseBadRequest(c, "stage is required")
+	}
+
+	log.Newsletter(c, "AcceptTOSNotice", "").
+		WithField("notice_id", req.NoticeID).
+		WithField("stage", req.Stage).
+		Info("Accepting TOS notice")
+
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	err = pkgWhatsApp.WhatsAppAcceptTOSNotice(ctx, jid, deviceID, req.NoticeID, req.Stage)
+	if err != nil {
+		log.Newsletter(c, "AcceptTOSNotice", "").WithError(err).Error("Failed to accept TOS notice")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.Newsletter(c, "AcceptTOSNotice", "").Info("TOS notice accepted successfully")
+
+	return router.ResponseSuccess(c, "Success accept TOS notice")
+}
+

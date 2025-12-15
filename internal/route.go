@@ -10,6 +10,9 @@ import (
 	ctlAdmin "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/admin"
 	ctlAppState "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/appstate"
 	ctlAuth "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/auth"
+	ctlBot "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/bot"
+	ctlBusiness "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/business"
+	ctlCall "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/call"
 	ctlDevice "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/device"
 	ctlGroups "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/groups"
 	ctlIndex "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/index"
@@ -205,4 +208,36 @@ func Routes(app *fiber.App) {
 	app.Delete(router.BaseURL+"/webhooks/:webhook_id", deviceAuthMiddleware, ctlWebhooks.DeleteWebhook)
 	app.Get(router.BaseURL+"/webhooks/:webhook_id/logs", deviceAuthMiddleware, ctlWebhooks.GetWebhookLogs)
 	app.Post(router.BaseURL+"/webhooks/:webhook_id/test", deviceAuthMiddleware, ctlWebhooks.TestWebhook)
+
+	// ============================================================
+	// NEW WHATSMEOW FEATURE ROUTES
+	// ============================================================
+
+	// Call routes
+	app.Post(router.BaseURL+"/calls/reject", deviceAuthMiddleware, ctlCall.RejectCall)
+
+	// Business routes
+	app.Get(router.BaseURL+"/business/:jid/profile", deviceAuthMiddleware, ctlBusiness.GetBusinessProfile)
+	app.Get(router.BaseURL+"/business/link/:code", deviceAuthMiddleware, ctlBusiness.ResolveBusinessMessageLink)
+
+	// Bot routes
+	app.Get(router.BaseURL+"/bots", deviceAuthMiddleware, ctlBot.GetBotList)
+	app.Get(router.BaseURL+"/bots/profiles", deviceAuthMiddleware, ctlBot.GetBotProfiles)
+
+	// Contact QR routes
+	app.Get(router.BaseURL+"/users/me/contact-qr", deviceAuthMiddleware, ctlUser.GetContactQRLink)
+	app.Get(router.BaseURL+"/users/contact-qr/:code", deviceAuthMiddleware, ctlUser.ResolveContactQRLink)
+
+	// Presence subscription route
+	app.Post(router.BaseURL+"/presence/subscribe", deviceAuthMiddleware, ctlPresence.SubscribePresence)
+	
+	// Passive mode route
+	app.Post(router.BaseURL+"/devices/me/passive", deviceAuthMiddleware, ctlPresence.SetPassive)
+
+	// Newsletter updates routes
+	app.Get(router.BaseURL+"/newsletters/:jid/updates", deviceAuthMiddleware, ctlNewsletter.GetNewsletterMessageUpdates)
+	app.Post(router.BaseURL+"/newsletters/tos/accept", deviceAuthMiddleware, ctlNewsletter.AcceptTOSNotice)
+
+	// Community/Group unlinking route
+	app.Delete(router.BaseURL+"/groups/:parent_jid/link/:child_jid", deviceAuthMiddleware, ctlGroups.UnlinkGroup)
 }

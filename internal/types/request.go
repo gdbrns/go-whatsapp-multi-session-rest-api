@@ -217,3 +217,127 @@ type ResponseUserPicture struct {
 	Type      string
 	DirectURL string
 }
+
+// ============================================================
+// NEW API REQUEST/RESPONSE TYPES
+// ============================================================
+
+// Call APIs
+type RequestRejectCall struct {
+	CallFrom string `json:"call_from"`
+	CallID   string `json:"call_id"`
+}
+
+// Business APIs
+type RequestBusinessProfile struct {
+	JID string `json:"jid"`
+}
+
+type RequestResolveBusinessLink struct {
+	Code string `json:"code"`
+}
+
+type ResponseBusinessProfile struct {
+	JID         string                 `json:"jid"`
+	Description string                 `json:"description"`
+	Address     string                 `json:"address"`
+	Email       string                 `json:"email"`
+	Websites    []string               `json:"websites"`
+	Categories  []map[string]string    `json:"categories"`
+}
+
+// Contact QR APIs
+type RequestContactQRLink struct {
+	Revoke bool `json:"revoke"`
+}
+
+type ResponseContactQRLink struct {
+	Link string `json:"link"`
+}
+
+type RequestResolveContactQR struct {
+	Code string `json:"code"`
+}
+
+type ResponseContactQRTarget struct {
+	JID      string `json:"jid"`
+	Type     string `json:"type"`
+	PushName string `json:"push_name"`
+}
+
+// Bot APIs
+type ResponseBotInfo struct {
+	JID        string `json:"jid"`
+	PluginType string `json:"plugin_type"`
+	PluginName string `json:"plugin_name"`
+}
+
+type ResponseBotProfile struct {
+	JID         string `json:"jid"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	PersonaID   string `json:"persona_id"`
+}
+
+// Presence APIs
+type RequestSubscribePresence struct {
+	JID string `json:"jid"`
+}
+
+// Newsletter APIs
+type RequestNewsletterUpdates struct {
+	Count int `json:"count"`
+	Since int `json:"since"`
+}
+
+type RequestAcceptTOS struct {
+	NoticeID string `json:"notice_id"`
+	Stage    string `json:"stage"`
+}
+
+// History Sync APIs
+type RequestHistorySyncRequest struct {
+	ChatJID   string `json:"chat_jid"`
+	SenderJID string `json:"sender_jid"`
+	LastMsgID string `json:"last_msg_id"`
+	Count     int    `json:"count"`
+}
+
+type RequestUnavailableMessage struct {
+	ChatJID   string `json:"chat_jid"`
+	SenderJID string `json:"sender_jid"`
+	MessageID string `json:"message_id"`
+}
+
+// Media Retry APIs
+type RequestMediaRetry struct {
+	ChatJID   string `json:"chat_jid"`
+	SenderJID string `json:"sender_jid"`
+	MessageID string `json:"message_id"`
+	MediaKey  string `json:"media_key"` // base64 encoded
+}
+
+// Utility APIs
+type RequestSetPassive struct {
+	Passive bool `json:"passive"`
+}
+
+type RequestWaitConnection struct {
+	TimeoutSeconds int `json:"timeout_seconds"`
+}
+
+type ResponseWaitConnection struct {
+	Connected bool `json:"connected"`
+}
+
+// Community APIs
+type RequestUnlinkGroup struct {
+	ParentJID string `json:"parent_jid"`
+	ChildJID  string `json:"child_jid"`
+}
+
+// LID Mapping APIs
+type RequestStoreLIDMapping struct {
+	FirstJID  string `json:"first_jid"`
+	SecondJID string `json:"second_jid"`
+}
