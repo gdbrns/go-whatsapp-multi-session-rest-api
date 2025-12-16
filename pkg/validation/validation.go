@@ -17,9 +17,7 @@ func ValidatePhone(phone string) error {
 	if trimmed == "" {
 		return errors.New("phone number cannot be empty")
 	}
-	if strings.HasPrefix(trimmed, "+") {
-		trimmed = trimmed[1:]
-	}
+	trimmed = strings.TrimPrefix(trimmed, "+")
 	if strings.HasPrefix(trimmed, "0") {
 		return errors.New("phone number must be in international format without leading 0")
 	}

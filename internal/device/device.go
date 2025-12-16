@@ -46,11 +46,6 @@ func ListDevices(c *fiber.Ctx) error {
 // Login initiates QR code login for a device
 // Uses X-Device-ID and X-Device-Secret headers for authentication
 func Login(c *fiber.Ctx) error {
-	ctx := c.UserContext()
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
 	deviceID, jid := getDeviceContext(c)
 
 	log.DeviceOpCtx(c, "Login").Info("Initiating QR code login")

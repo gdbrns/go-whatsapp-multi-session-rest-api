@@ -277,11 +277,6 @@ func UpdateSettings(c *fiber.Ctx) error {
 
 	log.GroupOp(deviceID, jid, "UpdateSettings", groupJID).Info("Updating group settings")
 
-	ctx := c.UserContext()
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
 	// Use WhatsAppComposeJID for group JIDs - WhatsAppGetJID is only for personal phone numbers
 	groupID := pkgWhatsApp.WhatsAppComposeJID(groupJID)
 
@@ -340,11 +335,6 @@ func SetJoinApproval(c *fiber.Ctx) error {
 	}
 
 	log.GroupOp(deviceID, jid, "SetJoinApproval", groupJID).WithField("mode", req.Mode).Info("Setting join approval mode")
-
-	ctx := c.UserContext()
-	if ctx == nil {
-		ctx = context.Background()
-	}
 
 	// Use WhatsAppComposeJID for group JIDs - WhatsAppGetJID is only for personal phone numbers
 	groupID := pkgWhatsApp.WhatsAppComposeJID(groupJID)

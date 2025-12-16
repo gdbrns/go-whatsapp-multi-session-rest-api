@@ -450,7 +450,7 @@ func SyncDeviceRoutings(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	for _, device := range devices {
 		if device.ID == nil {

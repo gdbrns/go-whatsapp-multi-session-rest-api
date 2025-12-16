@@ -53,7 +53,8 @@ type SessionKey struct {
 
 var WhatsAppDatastore *sqlstore.Container
 
-var requiredDatastoreTables = []string{
+// RequiredDatastoreTables lists all tables needed for the WhatsApp datastore
+var RequiredDatastoreTables = []string{
 	"device_routing",
 	"whatsmeow_device",
 	"whatsmeow_identity_keys",
@@ -765,7 +766,7 @@ func WhatsAppInitClient(device *store.Device, jid string, deviceID string) {
 	client := whatsmeow.NewClient(device, newFilteredLogger(baseLogger))
 
 	if len(WhatsAppClientProxyURL) > 0 {
-		client.SetProxyAddress(WhatsAppClientProxyURL)
+		_ = client.SetProxyAddress(WhatsAppClientProxyURL)
 	}
 
 	client.EnableAutoReconnect = true

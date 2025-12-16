@@ -29,8 +29,7 @@ func MarkRead(c *fiber.Ctx) error {
 	var reqRead typWhatsApp.RequestMarkRead
 	reqRead.MessageID = messageID
 
-	if err := c.BodyParser(&reqRead); err == nil {
-	}
+	_ = c.BodyParser(&reqRead)
 
 	if reqRead.ChatJID == "" || reqRead.SenderJID == "" {
 		log.MessageOpCtx(c, "MarkRead", "").Warn("Missing chat_jid or sender_jid")
@@ -142,8 +141,7 @@ func Delete(c *fiber.Ctx) error {
 	var reqDelete typWhatsApp.RequestDelete
 	reqDelete.MessageID = messageID
 
-	if err := c.BodyParser(&reqDelete); err == nil {
-	}
+	_ = c.BodyParser(&reqDelete)
 
 	if reqDelete.ChatJID == "" {
 		log.MessageOpCtx(c, "Delete", "").Warn("Missing chat_jid")
