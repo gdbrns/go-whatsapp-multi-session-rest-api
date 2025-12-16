@@ -1,6 +1,8 @@
 module github.com/gdbrns/go-whatsapp-multi-session-rest-api
 
-go 1.24.5
+go 1.24.0
+
+toolchain go1.24.5
 
 require (
 	github.com/forPelevin/gomoji v1.3.1
