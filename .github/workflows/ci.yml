@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: ['1.23']
+        go-version: ['1.24']
     
     steps:
       - name: Checkout code
@@ -52,7 +52,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.24'
           cache-dependency-path: go.sum
 
       - name: Run golangci-lint
@@ -67,7 +67,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        go-version: ['1.23']
+        go-version: ['1.24']
     
     steps:
       - name: Checkout code
@@ -82,17 +82,36 @@ jobs:
       - name: Verify dependencies
         run: go mod verify
 
-      - name: Build
+      - name: Build (Unix)
+        if: runner.os != 'Windows'
         run: |
-          CGO_ENABLED=0 go build \
-            -ldflags="-s -w -extldflags '-static' -X main.version=dev -X main.commit=${{ github.sha }} -X main.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+          go build \
+            -ldflags="-s -w -X main.version=dev -X main.commit=${{ github.sha }} -X main.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             -trimpath \
             -a -o whatsapp-api cmd/main/main.go
+        env:
+          CGO_ENABLED: 0
 
-      - name: Upload build artifacts
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          go build -ldflags="-s -w -X main.version=dev -X main.commit=${{ github.sha }}" -trimpath -a -o whatsapp-api.exe cmd/main/main.go
+        env:
+          CGO_ENABLED: 0
+
+      - name: Upload build artifacts (Unix)
+        if: runner.os != 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: whatsapp-api-${{ matrix.os }}
           path: whatsapp-api
+          retention-days: 7
+
+      - name: Upload build artifacts (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatsapp-api-${{ matrix.os }}
+          path: whatsapp-api.exe
           retention-days: 7
 

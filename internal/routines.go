@@ -23,7 +23,7 @@ func Routines(cron *cron.Cron) {
 		return
 	}
 
-	cron.AddFunc("0 */5 * * * *", func() {
+	_, err := cron.AddFunc("0 */5 * * * *", func() {
 		if pkgWhatsApp.WhatsAppClientsLen() == 0 {
 			return
 		}
@@ -39,6 +39,9 @@ func Routines(cron *cron.Cron) {
 			}
 		})
 	})
+	if err != nil {
+		log.Print(nil).WithField("error", err.Error()).Error("Failed to add health check cron job")
+	}
 
 	cron.Start()
 }

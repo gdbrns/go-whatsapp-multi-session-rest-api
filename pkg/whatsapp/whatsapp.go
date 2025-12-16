@@ -91,10 +91,8 @@ var (
 	groupListCacheEnabled    = true
 	deviceOSName             = "Chrome"
 	whatsAppLogLevel         = "ERROR"
-	autoMarkReadEnabled      bool
-	autoDownloadMediaEnabled bool
-	autoReplyEnabled         bool
-	autoPresenceEnabled      bool
+	autoMarkReadEnabled    bool
+	autoPresenceEnabled    bool
 	autoTypingEnabled        bool
 	typingDelayMin           time.Duration
 	typingDelayMax           time.Duration
@@ -270,10 +268,6 @@ func parseOptionalBool(envKey string, defaultVal bool) bool {
 	return defaultVal
 }
 
-func errInvalidBoolValue(raw, key string) error {
-	return fmt.Errorf("invalid boolean value %q for %s", raw, key)
-}
-
 func parseOptionalDuration(envKey string, defaultVal time.Duration) time.Duration {
 	if raw, ok := os.LookupEnv(envKey); ok {
 		raw = strings.TrimSpace(raw)
@@ -309,8 +303,6 @@ func loadBehaviorConfig() {
 	}
 
 	autoMarkReadEnabled = parseOptionalBool("WHATSAPP_AUTO_MARK_READ", false)
-	autoDownloadMediaEnabled = parseOptionalBool("WHATSAPP_AUTO_DOWNLOAD_MEDIA", false)
-	autoReplyEnabled = parseOptionalBool("WHATSAPP_AUTO_REPLY_ENABLED", false)
 	autoPresenceEnabled = parseOptionalBool("WHATSAPP_AUTO_PRESENCE_ENABLED", true)
 	autoTypingEnabled = parseOptionalBool("WHATSAPP_AUTO_TYPING_ENABLED", true)
 	typingDelayMin = parseOptionalDuration("WHATSAPP_TYPING_DELAY_MIN", 1*time.Second)
@@ -563,15 +555,6 @@ func upgradeDatastoreSchema(ctx context.Context) error {
 	return nil
 }
 
-func tableExistsQuery(driver string) (string, error) {
-	switch strings.ToLower(driver) {
-	case "postgres", "pgx":
-		return "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = $1)", nil
-	default:
-		return "", fmt.Errorf("unsupported datastore driver %s", driver)
-	}
-}
-
 func normalizeDatastoreDriver(driver string) string {
 	switch strings.ToLower(driver) {
 	case "postgresql", "postgres", "pgx":
@@ -603,11 +586,6 @@ func normalizeDatastoreDSN(driver string, dsn string) string {
 	dsn = appendParam(dsn, "statement_cache_capacity", "0")
 	dsn = appendParam(dsn, "default_query_exec_mode", "simple_protocol")
 	return dsn
-}
-
-// clientKey now uses deviceID only - JID parameter kept for compatibility but ignored
-func clientKey(jid string, deviceID string) SessionKey {
-	return SessionKey{DeviceID: deviceID}
 }
 
 // getClientByDeviceID looks up client by deviceID only (preferred method)
@@ -913,9 +891,9 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 			}
 		case *events.Receipt:
 			eventType := webhook.EventMessageDelivered
-			if e.Type == events.ReceiptTypeRead || e.Type == events.ReceiptTypeReadSelf {
-				eventType = webhook.EventMessageRead
-			} else if e.Type == events.ReceiptTypePlayed {
+	if e.Type == types.ReceiptTypeRead || e.Type == types.ReceiptTypeReadSelf {
+			eventType = webhook.EventMessageRead
+		} else if e.Type == types.ReceiptTypePlayed {
 				eventType = webhook.EventMessagePlayed
 			}
 			for _, msgID := range e.MessageIDs {
