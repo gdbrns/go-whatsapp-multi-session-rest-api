@@ -5,20 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.1] - 2025-12-17
+## [1.1.0] - 2025-12-17
+
+### 🚀 New Features
+
+#### CI/CD Automation
+- **GitHub Actions CI**: Automated testing, linting (golangci-lint), and multi-platform builds (Linux, Windows, macOS)
+- **GitHub Actions Release**: Automated releases with GoReleaser on tag push
+- **GitHub Actions Docker**: Multi-platform Docker images (amd64, arm64) published to GitHub Container Registry
+- **SBOM Generation**: Software Bill of Materials for supply chain security
+
+### 🔒 Security Hardening
+
+#### Docker Security
+- Run container as non-root user (`appuser:appgroup`)
+- Pin Alpine base image to v3.21 for reproducibility
+- Enable `no-new-privileges` security option
+- Read-only root filesystem with tmpfs for `/tmp`
+- Resource limits (CPU: 2 cores, Memory: 512M)
+
+#### Build Security
+- Static binary linking with `-extldflags '-static'`
+- Reproducible builds with `-trimpath` flag
+- Dependency verification with `go mod verify`
+
+### ⚡ Performance Improvements
+- Init process for proper signal handling and zombie reaping
+- Graceful shutdown with 30s stop grace period
+- Optimized Docker layer caching
 
 ### 🔄 Updated
 
 #### Dependencies
-- **whatsmeow**: Updated from `v0.0.0-20251203` to `v0.0.0-20251216102424-56a8e44b0cec` (Dec 16, 2024)
-  - Latest WhatsApp protocol updates
-  - Improved stability and bug fixes
-  - Enhanced `context.Context` support across API calls
-  - Updated `libsignal` and `util` dependencies
+- **whatsmeow**: `v0.0.0-20251203` → `v0.0.0-20251216102424-56a8e44b0cec`
+- **golang.org/x/sync**: `v0.18.0` → `v0.19.0`
+- **golang.org/x/crypto**: `v0.44.0` → `v0.46.0`
+- **google.golang.org/protobuf**: `v1.36.10` → `v1.36.11`
+- **go.mau.fi/util**: `v0.9.3` → `v0.9.4`
 
 ### 📚 Documentation
-- Updated README badges to reflect latest whatsmeow version
-- Enhanced acknowledgments section with proper attribution to @tulir and mautrix ecosystem
+- Updated README badges for whatsmeow v0.0.0-20251216
+- Enhanced acknowledgments for @tulir and mautrix ecosystem
+- Added release notes templates in GoReleaser
 
 ---
 
