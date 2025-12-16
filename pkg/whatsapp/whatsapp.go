@@ -662,30 +662,6 @@ func WhatsAppClientsLen() int {
 	return clientsLen()
 }
 
-// maskJIDForLog masks a JID/phone number for secure logging
-// Shows only first 3 and last 2 digits: 628123456789 -> 628*****89
-func maskJIDForLog(jid string) string {
-	if len(jid) < 6 {
-		return "***"
-	}
-	// Strip @suffix if present
-	atIdx := len(jid)
-	for i, c := range jid {
-		if c == '@' {
-			atIdx = i
-			break
-		}
-	}
-	numPart := jid[:atIdx]
-	suffix := jid[atIdx:]
-
-	if len(numPart) < 6 {
-		return "***" + suffix
-	}
-	masked := numPart[:3] + strings.Repeat("*", len(numPart)-5) + numPart[len(numPart)-2:]
-	return masked + suffix
-}
-
 func WhatsAppRangeClients(fn func(jid string, deviceID string, client *whatsmeow.Client)) {
 	rangeClients(func(key SessionKey, client *whatsmeow.Client) {
 		// Get JID from client store since it's not in the key anymore
@@ -1125,10 +1101,6 @@ func WhatsAppGenerateQR(ctx context.Context, qrChan <-chan whatsmeow.QRChannelIt
 func consumeQRChannel(ctx context.Context, qrChan <-chan whatsmeow.QRChannelItem, cancel context.CancelFunc, jid string, deviceID string) {
 	go func() {
 		defer cancel()
-		masked := maskJIDForLog(jid)
-		if masked == "" {
-			masked = "unknown"
-		}
 		for {
 			select {
 			case <-ctx.Done():
@@ -2126,7 +2098,7 @@ func WhatsAppSendImage(ctx context.Context, jid string, deviceID string, rjid st
 			return "", errors.New("Error While Encoding Convert Image Stream")
 		}
 		imageBytes = imgConvEncode.Bytes()
-		imageType = "image/png"
+		imageMime = "image/png"
 	}
 	isWhatsAppImageCompression, err := env.GetEnvBool("WHATSAPP_MEDIA_IMAGE_COMPRESSION")
 	if err != nil {
@@ -4253,11 +4225,7 @@ func WhatsAppDownloadMediaWithURL(ctx context.Context, jid string, deviceID stri
 }
 
 // WhatsAppDownloadThumbnail downloads a thumbnail from a message
-func WhatsAppDownloadThumbnail(ctx context.Context, jid string, deviceID string, msg *waE2E.Message) ([]byte, string, error) {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
+func WhatsAppDownloadThumbnail(_ context.Context, _ string, _ string, msg *waE2E.Message) ([]byte, string, error) {
 	var thumbnail []byte
 	var mimeType string = "image/jpeg"
 

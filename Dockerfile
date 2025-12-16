@@ -5,7 +5,7 @@ FROM golang:1.24-alpine AS go-builder
 WORKDIR /usr/src/app
 
 # Install build dependencies
-RUN apk add --no-cache git ca-certificates tzdata
+RUN apk add --no-cache --no-scripts git ca-certificates tzdata
 
 # Download dependencies first for better layer caching
 COPY go.mod go.sum ./
@@ -35,7 +35,7 @@ ENV TZ=UTC
 
 WORKDIR /usr/app/${SERVICE_NAME}
 
-RUN apk --no-cache add ca-certificates tzdata wget && \
+RUN apk --no-cache --no-scripts add ca-certificates tzdata wget && \
     mkdir -p dbs && \
     chown -R appuser:appgroup /usr/app/${SERVICE_NAME}
 
