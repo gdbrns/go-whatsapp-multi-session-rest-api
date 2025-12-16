@@ -6,15 +6,19 @@ before:
   hooks:
     - go mod tidy
     - go mod download
+    - go mod verify
 
 builds:
   - main: ./cmd/main/main.go
     binary: whatsapp-api
     env:
       - CGO_ENABLED=0
+    flags:
+      - -trimpath
     ldflags:
       - -s
       - -w
+      - -extldflags '-static'
       - -X main.version={{.Version}}
       - -X main.commit={{.Commit}}
       - -X main.date={{.Date}}
@@ -48,6 +52,9 @@ checksum:
   name_template: 'checksums.txt'
   algorithm: sha256
 
+sboms:
+  - artifacts: archive
+
 snapshot:
   version_template: "{{ .Version }}-next-{{ .ShortCommit }}"
 
@@ -77,3 +84,11 @@ changelog:
 release:
   prerelease: auto
   make_latest: true
+  header: |
+    ## WhatsApp API Multi-Session {{ .Version }}
+
+    ### Installation
+
+    Download the appropriate binary for your platform below.
+  footer: |
+    **Full Changelog**: https://github.com/gdbrns/go-whatsapp-multi-session-rest-api/compare/{{ .PreviousTag }}...{{ .Tag }}

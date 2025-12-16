@@ -65,6 +65,33 @@
         "error": {"type": "string", "example": "Bad request"}
       }
     },
+    "UnauthorizedResponse": {
+      "type": "object",
+      "properties": {
+        "status": {"type": "boolean", "example": false},
+        "code": {"type": "integer", "example": 401},
+        "message": {"type": "string", "example": "Unauthorized"},
+        "error": {"type": "string", "example": "Invalid or missing authentication"}
+      }
+    },
+    "NotFoundResponse": {
+      "type": "object",
+      "properties": {
+        "status": {"type": "boolean", "example": false},
+        "code": {"type": "integer", "example": 404},
+        "message": {"type": "string", "example": "Not found"},
+        "error": {"type": "string", "example": "Resource not found"}
+      }
+    },
+    "ForbiddenResponse": {
+      "type": "object",
+      "properties": {
+        "status": {"type": "boolean", "example": false},
+        "code": {"type": "integer", "example": 403},
+        "message": {"type": "string", "example": "Forbidden"},
+        "error": {"type": "string", "example": "You don't have permission to perform this action"}
+      }
+    },
     "SuccessResponse": {
       "type": "object",
       "properties": {
@@ -72,6 +99,271 @@
         "code": {"type": "integer", "example": 200},
         "message": {"type": "string", "example": "Success"},
         "data": {"type": "object"}
+      }
+    },
+    "ServerStatusResponse": {
+      "type": "object",
+      "properties": {
+        "status": {"type": "boolean", "example": true},
+        "code": {"type": "integer", "example": 200},
+        "message": {"type": "string", "example": "WhatsApp API Multi-Device is running"},
+        "data": {
+          "type": "object",
+          "properties": {
+            "version": {"type": "string", "example": "2.0.0"},
+            "uptime": {"type": "string", "example": "5d 12h 30m 15s"}
+          }
+        }
+      }
+    },
+    "MessageSentResponse": {
+      "type": "object",
+      "properties": {
+        "status": {"type": "boolean", "example": true},
+        "code": {"type": "integer", "example": 200},
+        "message": {"type": "string", "example": "Message sent successfully"},
+        "data": {
+          "type": "object",
+          "properties": {
+            "message_id": {"type": "string", "example": "3EB0ABC123DEF456789"},
+            "status": {"type": "string", "example": "sent"},
+            "timestamp": {"type": "integer", "example": 1702129024}
+          }
+        }
+      }
+    },
+    "MessagesListResponse": {
+      "type": "object",
+      "properties": {
+        "status": {"type": "boolean", "example": true},
+        "code": {"type": "integer", "example": 200},
+        "message": {"type": "string", "example": "Messages retrieved successfully"},
+        "data": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "message_id": {"type": "string", "example": "3EB0ABC123DEF456789"},
+              "from": {"type": "string", "example": "6281234567890@s.whatsapp.net"},
+              "text": {"type": "string", "example": "Hello, World!"},
+              "timestamp": {"type": "integer", "example": 1702129024},
+              "is_from_me": {"type": "boolean", "example": false}
+            }
+          }
+        }
+      }
+    },
+    "GroupInfoResponse": {
+      "type": "object",
+      "properties": {
+        "status": {"type": "boolean", "example": true},
+        "code": {"type": "integer", "example": 200},
+        "message": {"type": "string", "example": "Group info retrieved successfully"},
+        "data": {
+          "type": "object",
+          "properties": {
+            "jid": {"type": "string", "example": "120363123456789012@g.us"},
+            "name": {"type": "string", "example": "My Group"},
+            "description": {"type": "string", "example": "Group description"},
+            "owner": {"type": "string", "example": "6281234567890@s.whatsapp.net"},
+            "created_at": {"type": "integer", "example": 1702129024},
+            "participant_count": {"type": "integer", "example": 25},
+            "participants": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "jid": {"type": "string", "example": "6281234567890@s.whatsapp.net"},
+                  "is_admin": {"type": "boolean", "example": true},
+                  "is_super_admin": {"type": "boolean", "example": false}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "GroupsListResponse": {
+      "type": "object",
+      "properties": {
+        "status": {"type": "boolean", "example": true},
+        "code": {"type": "integer", "example": 200},
+        "message": {"type": "string", "example": "Groups retrieved successfully"},
+        "data": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "jid": {"type": "string", "example": "120363123456789012@g.us"},
+              "name": {"type": "string", "example": "My Group"},
+              "participant_count": {"type": "integer", "example": 25}
+            }
+          }
+        }
+      }
+    },
+    "UserInfoResponse": {
+      "type": "object",
+      "properties": {
+        "status": {"type": "boolean", "example": true},
+        "code": {"type": "integer", "example": 200},
+        "message": {"type": "string", "example": "User info retrieved successfully"},
+        "data": {
+          "type": "object",
+          "properties": {
+            "jid": {"type": "string", "example": "6281234567890@s.whatsapp.net"},
+            "name": {"type": "string", "example": "John Doe"},
+            "status": {"type": "string", "example": "Hey there! I am using WhatsApp"},
+            "picture_url": {"type": "string", "example": "https://pps.whatsapp.net/v/..."}
+          }
+        }
+      }
+    },
+    "ContactsListResponse": {
+      "type": "object",
+      "properties": {
+        "status": {"type": "boolean", "example": true},
+        "code": {"type": "integer", "example": 200},
+        "message": {"type": "string", "example": "Contacts retrieved successfully"},
+        "data": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "jid": {"type": "string", "example": "6281234567890@s.whatsapp.net"},
+              "name": {"type": "string", "example": "John Doe"},
+              "push_name": {"type": "string", "example": "John"}
+            }
+          }
+        }
+      }
+    },
+    "WebhookResponse": {
+      "type": "object",
+      "properties": {
+        "status": {"type": "boolean", "example": true},
+        "code": {"type": "integer", "example": 200},
+        "message": {"type": "string", "example": "Webhook retrieved successfully"},
+        "data": {
+          "type": "object",
+          "properties": {
+            "id": {"type": "integer", "example": 1},
+            "url": {"type": "string", "example": "https://your-server.com/webhook"},
+            "events": {"type": "array", "items": {"type": "string"}, "example": ["message.received", "connection.connected"]},
+            "active": {"type": "boolean", "example": true},
+            "created_at": {"type": "string", "example": "2025-01-01T00:00:00Z"}
+          }
+        }
+      }
+    },
+    "WebhooksListResponse": {
+      "type": "object",
+      "properties": {
+        "status": {"type": "boolean", "example": true},
+        "code": {"type": "integer", "example": 200},
+        "message": {"type": "string", "example": "Webhooks retrieved successfully"},
+        "data": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "integer", "example": 1},
+              "url": {"type": "string", "example": "https://your-server.com/webhook"},
+              "events": {"type": "array", "items": {"type": "string"}, "example": ["message.received"]},
+              "active": {"type": "boolean", "example": true}
+            }
+          }
+        }
+      }
+    },
+    "NewsletterResponse": {
+      "type": "object",
+      "properties": {
+        "status": {"type": "boolean", "example": true},
+        "code": {"type": "integer", "example": 200},
+        "message": {"type": "string", "example": "Newsletter info retrieved successfully"},
+        "data": {
+          "type": "object",
+          "properties": {
+            "jid": {"type": "string", "example": "120363123456789012@newsletter"},
+            "name": {"type": "string", "example": "My Channel"},
+            "description": {"type": "string", "example": "Channel description"},
+            "subscriber_count": {"type": "integer", "example": 1500},
+            "picture_url": {"type": "string", "example": "https://pps.whatsapp.net/v/..."}
+          }
+        }
+      }
+    },
+    "NewslettersListResponse": {
+      "type": "object",
+      "properties": {
+        "status": {"type": "boolean", "example": true},
+        "code": {"type": "integer", "example": 200},
+        "message": {"type": "string", "example": "Newsletters retrieved successfully"},
+        "data": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "jid": {"type": "string", "example": "120363123456789012@newsletter"},
+              "name": {"type": "string", "example": "My Channel"},
+              "subscriber_count": {"type": "integer", "example": 1500}
+            }
+          }
+        }
+      }
+    },
+    "PollCreatedResponse": {
+      "type": "object",
+      "properties": {
+        "status": {"type": "boolean", "example": true},
+        "code": {"type": "integer", "example": 200},
+        "message": {"type": "string", "example": "Poll created successfully"},
+        "data": {
+          "type": "object",
+          "properties": {
+            "message_id": {"type": "string", "example": "3EB0ABC123DEF456789"},
+            "question": {"type": "string", "example": "What's your favorite color?"},
+            "options": {"type": "array", "items": {"type": "string"}, "example": ["Red", "Blue", "Green"]}
+          }
+        }
+      }
+    },
+    "PrivacySettingsResponse": {
+      "type": "object",
+      "properties": {
+        "status": {"type": "boolean", "example": true},
+        "code": {"type": "integer", "example": 200},
+        "message": {"type": "string", "example": "Privacy settings retrieved successfully"},
+        "data": {
+          "type": "object",
+          "properties": {
+            "last_seen": {"type": "string", "example": "contacts"},
+            "profile_picture": {"type": "string", "example": "all"},
+            "status": {"type": "string", "example": "contacts"},
+            "read_receipts": {"type": "string", "example": "all"},
+            "groups": {"type": "string", "example": "contacts"}
+          }
+        }
+      }
+    },
+    "BusinessProfileResponse": {
+      "type": "object",
+      "properties": {
+        "status": {"type": "boolean", "example": true},
+        "code": {"type": "integer", "example": 200},
+        "message": {"type": "string", "example": "Business profile retrieved successfully"},
+        "data": {
+          "type": "object",
+          "properties": {
+            "jid": {"type": "string", "example": "6281234567890@s.whatsapp.net"},
+            "description": {"type": "string", "example": "Your trusted business partner"},
+            "category": {"type": "string", "example": "Technology"},
+            "website": {"type": "array", "items": {"type": "string"}, "example": ["https://example.com"]},
+            "email": {"type": "string", "example": "contact@example.com"},
+            "address": {"type": "string", "example": "123 Business Street, City"}
+          }
+        }
       }
     },
     "AdminStats": {
@@ -143,8 +435,33 @@
         "summary": "Server Status",
         "description": "Get server status and health check. No authentication required.",
         "responses": {
-          "200": {"description": "OK", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Server is running",
+            "schema": {"$ref": "#/definitions/ServerStatusResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "WhatsApp API Multi-Device is running",
+                "data": {
+                  "version": "2.0.0",
+                  "uptime": "5d 12h 30m 15s"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Unable to process request"
+              }
+            }
+          }
         }
       }
     },
@@ -181,9 +498,60 @@
         "summary": "Get Admin Statistics",
         "description": "Get system-wide statistics for admin dashboard including API keys, devices, and webhook counts",
         "responses": {
-          "200": {"description": "OK", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "401": {"description": "Unauthorized - Invalid admin secret", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Statistics retrieved successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "Statistics retrieved successfully"},
+                "data": {"$ref": "#/definitions/AdminStats"}
+              }
+            },
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Statistics retrieved successfully",
+                "data": {
+                  "total_api_keys": 5,
+                  "active_api_keys": 4,
+                  "total_devices": 25,
+                  "connected_devices": 18,
+                  "disconnected_devices": 5,
+                  "pending_devices": 2,
+                  "logged_out_devices": 0,
+                  "total_webhooks": 12,
+                  "active_webhooks": 10
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid admin secret",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or missing admin secret"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to retrieve statistics"
+              }
+            }
+          }
         }
       }
     },
@@ -218,9 +586,86 @@
         "summary": "List All Devices",
         "description": "Get all devices across all API keys with customer information. Useful for admin dashboard overview.",
         "responses": {
-          "200": {"description": "OK", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "401": {"description": "Unauthorized - Invalid admin secret", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Devices retrieved successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "Devices retrieved successfully"},
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "device_id": {"type": "string", "example": "550e8400-e29b-41d4-a716-446655440000"},
+                      "device_name": {"type": "string", "example": "Production Phone"},
+                      "whatsmeow_jid": {"type": "string", "example": "6281234567890@s.whatsapp.net"},
+                      "status": {"type": "string", "example": "connected"},
+                      "customer_name": {"type": "string", "example": "Acme Corp"},
+                      "api_key_id": {"type": "integer", "example": 1},
+                      "created_at": {"type": "string", "example": "2025-01-01T00:00:00Z"},
+                      "last_active_at": {"type": "string", "example": "2025-12-17T10:30:00Z"}
+                    }
+                  }
+                }
+              }
+            },
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Devices retrieved successfully",
+                "data": [
+                  {
+                    "device_id": "550e8400-e29b-41d4-a716-446655440000",
+                    "device_name": "Production Phone",
+                    "whatsmeow_jid": "6281234567890@s.whatsapp.net",
+                    "status": "connected",
+                    "customer_name": "Acme Corp",
+                    "api_key_id": 1,
+                    "created_at": "2025-01-01T00:00:00Z",
+                    "last_active_at": "2025-12-17T10:30:00Z"
+                  },
+                  {
+                    "device_id": "660e8400-e29b-41d4-a716-446655440001",
+                    "device_name": "Support Phone",
+                    "whatsmeow_jid": "6289876543210@s.whatsapp.net",
+                    "status": "disconnected",
+                    "customer_name": "Tech Solutions",
+                    "api_key_id": 2,
+                    "created_at": "2025-02-15T00:00:00Z",
+                    "last_active_at": "2025-12-16T08:15:00Z"
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid admin secret",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or missing admin secret"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to retrieve devices"
+              }
+            }
+          }
         }
       }
     },
@@ -231,9 +676,89 @@
         "summary": "Get All Device Statuses",
         "description": "Get live connection status for all devices across all API keys. Checks actual WhatsApp connection state in real-time.",
         "responses": {
-          "200": {"description": "OK", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "401": {"description": "Unauthorized - Invalid admin secret", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Device statuses retrieved successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "Device statuses retrieved successfully"},
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "device_id": {"type": "string"},
+                      "device_name": {"type": "string"},
+                      "whatsmeow_jid": {"type": "string"},
+                      "db_status": {"type": "string"},
+                      "client_loaded": {"type": "boolean"},
+                      "connected": {"type": "boolean"},
+                      "is_connected": {"type": "boolean"},
+                      "is_logged_in": {"type": "boolean"},
+                      "error": {"type": "string"}
+                    }
+                  }
+                }
+              }
+            },
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Device statuses retrieved successfully",
+                "data": [
+                  {
+                    "device_id": "550e8400-e29b-41d4-a716-446655440000",
+                    "device_name": "Production Phone",
+                    "whatsmeow_jid": "6281234567890@s.whatsapp.net",
+                    "db_status": "active",
+                    "client_loaded": true,
+                    "connected": true,
+                    "is_connected": true,
+                    "is_logged_in": true,
+                    "error": ""
+                  },
+                  {
+                    "device_id": "660e8400-e29b-41d4-a716-446655440001",
+                    "device_name": "Support Phone",
+                    "whatsmeow_jid": "6289876543210@s.whatsapp.net",
+                    "db_status": "disconnected",
+                    "client_loaded": false,
+                    "connected": false,
+                    "is_connected": false,
+                    "is_logged_in": true,
+                    "error": "Connection timeout"
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid admin secret",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or missing admin secret"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to retrieve device statuses"
+              }
+            }
+          }
         }
       }
     },
@@ -293,9 +818,67 @@
         "summary": "Get Webhook Statistics",
         "description": "Get webhook delivery statistics including success/failure rates",
         "responses": {
-          "200": {"description": "OK", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "401": {"description": "Unauthorized - Invalid admin secret", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Webhook statistics retrieved successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "Webhook statistics retrieved successfully"},
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "total_webhooks": {"type": "integer", "example": 12},
+                    "active_webhooks": {"type": "integer", "example": 10},
+                    "total_deliveries_24h": {"type": "integer", "example": 5420},
+                    "successful_deliveries_24h": {"type": "integer", "example": 5380},
+                    "failed_deliveries_24h": {"type": "integer", "example": 40},
+                    "success_rate": {"type": "number", "example": 99.26}
+                  }
+                }
+              }
+            },
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Webhook statistics retrieved successfully",
+                "data": {
+                  "total_webhooks": 12,
+                  "active_webhooks": 10,
+                  "total_deliveries_24h": 5420,
+                  "successful_deliveries_24h": 5380,
+                  "failed_deliveries_24h": 40,
+                  "success_rate": 99.26
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid admin secret",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or missing admin secret"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to retrieve webhook statistics"
+              }
+            }
+          }
         }
       }
     },
@@ -638,22 +1221,63 @@
         "description": "Get information about the current device (from JWT token)",
         "responses": {
           "200": {
-            "description": "Device info retrieved",
+            "description": "Device info retrieved successfully",
             "schema": {
               "type": "object",
               "properties": {
                 "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "Device info retrieved successfully"},
                 "data": {
                   "type": "object",
                   "properties": {
-                    "device_id": {"type": "string"},
-                    "device_name": {"type": "string"},
-                    "whatsmeow_jid": {"type": "string"},
-                    "status": {"type": "string"},
+                    "device_id": {"type": "string", "example": "550e8400-e29b-41d4-a716-446655440000"},
+                    "device_name": {"type": "string", "example": "Production Phone"},
+                    "whatsmeow_jid": {"type": "string", "example": "6281234567890@s.whatsapp.net"},
+                    "status": {"type": "string", "example": "connected"},
                     "created_at": {"type": "string", "example": "2025-01-01T00:00:00Z"},
-                    "last_active": {"type": "string", "example": "2025-12-03T10:30:00Z"}
+                    "last_active": {"type": "string", "example": "2025-12-17T10:30:00Z"}
                   }
                 }
+              }
+            },
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Device info retrieved successfully",
+                "data": {
+                  "device_id": "550e8400-e29b-41d4-a716-446655440000",
+                  "device_name": "Production Phone",
+                  "whatsmeow_jid": "6281234567890@s.whatsapp.net",
+                  "status": "connected",
+                  "created_at": "2025-01-01T00:00:00Z",
+                  "last_active": "2025-12-17T10:30:00Z"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to retrieve device info"
               }
             }
           }
@@ -701,17 +1325,55 @@
         ],
         "responses": {
           "200": {
-            "description": "QR code generated",
+            "description": "QR code generated successfully",
             "schema": {
               "type": "object",
               "properties": {
+                "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "QR code generated successfully"},
                 "data": {
                   "type": "object",
                   "properties": {
-                    "qr_code": {"type": "string", "example": "data:image/png;base64,..."},
+                    "qr_code": {"type": "string", "example": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."},
                     "timeout": {"type": "integer", "example": 60}
                   }
                 }
+              }
+            },
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "QR code generated successfully",
+                "data": {
+                  "qr_code": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+                  "timeout": 60
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to generate QR code"
               }
             }
           }
@@ -741,10 +1403,13 @@
         ],
         "responses": {
           "200": {
-            "description": "Pairing code generated",
+            "description": "Pairing code generated successfully",
             "schema": {
               "type": "object",
               "properties": {
+                "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "Pairing code generated successfully"},
                 "data": {
                   "type": "object",
                   "properties": {
@@ -752,6 +1417,53 @@
                     "timeout": {"type": "integer", "example": 120}
                   }
                 }
+              }
+            },
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Pairing code generated successfully",
+                "data": {
+                  "pair_code": "ABCD-1234",
+                  "timeout": 120
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 400,
+                "message": "Bad request",
+                "error": "Phone number is required"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to generate pairing code"
               }
             }
           }
@@ -765,9 +1477,48 @@
         "summary": "Reconnect Device",
         "description": "Manually reconnect a disconnected device to WhatsApp",
         "responses": {
-          "200": {"description": "Device reconnected", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Device reconnected successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "Device reconnected successfully"}
+              }
+            },
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Device reconnected successfully"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to reconnect device"
+              }
+            }
+          }
         }
       }
     },
@@ -778,9 +1529,48 @@
         "summary": "Logout Device",
         "description": "Logout from WhatsApp and remove the session. You'll need to scan QR again.",
         "responses": {
-          "200": {"description": "Device logged out", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Device logged out successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "Device logged out successfully"}
+              }
+            },
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Device logged out successfully"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to logout device"
+              }
+            }
+          }
         }
       }
     },
@@ -795,16 +1585,57 @@
         ],
         "responses": {
           "200": {
-            "description": "Registration status",
+            "description": "Registration status retrieved successfully",
             "schema": {
               "type": "object",
               "properties": {
+                "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "Registration status retrieved successfully"},
                 "data": {
                   "type": "object",
                   "properties": {
+                    "phone": {"type": "string", "example": "6281234567890"},
+                    "jid": {"type": "string", "example": "6281234567890@s.whatsapp.net"},
                     "is_registered": {"type": "boolean", "example": true, "description": "true if the phone is a valid WhatsApp account"}
                   }
                 }
+              }
+            },
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Registration status retrieved successfully",
+                "data": {
+                  "phone": "6281234567890",
+                  "jid": "6281234567890@s.whatsapp.net",
+                  "is_registered": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to check registration status"
               }
             }
           }
@@ -821,10 +1652,59 @@
           {"name": "user_jid", "in": "path", "required": true, "type": "string", "example": "6281234567890@s.whatsapp.net"}
         ],
         "responses": {
-          "200": {"description": "User info retrieved", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "404": {"description": "User not found", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "User info retrieved successfully",
+            "schema": {"$ref": "#/definitions/UserInfoResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "User info retrieved successfully",
+                "data": {
+                  "jid": "6281234567890@s.whatsapp.net",
+                  "name": "John Doe",
+                  "status": "Hey there! I am using WhatsApp",
+                  "picture_url": "https://pps.whatsapp.net/v/t61.24694-24/..."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "schema": {"$ref": "#/definitions/NotFoundResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 404,
+                "message": "Not found",
+                "error": "User not found"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to retrieve user info"
+              }
+            }
+          }
         }
       }
     },
@@ -875,9 +1755,48 @@
         "tags": ["05 - User Management"],
         "summary": "Get Privacy Settings",
         "responses": {
-          "200": {"description": "Privacy settings retrieved", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Privacy settings retrieved successfully",
+            "schema": {"$ref": "#/definitions/PrivacySettingsResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Privacy settings retrieved successfully",
+                "data": {
+                  "last_seen": "contacts",
+                  "profile_picture": "all",
+                  "status": "contacts",
+                  "read_receipts": "all",
+                  "groups": "contacts"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to retrieve privacy settings"
+              }
+            }
+          }
         }
       },
       "patch": {
@@ -899,10 +1818,60 @@
           }
         ],
         "responses": {
-          "200": {"description": "Privacy updated", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Privacy settings updated successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "Privacy settings updated successfully"}
+              }
+            },
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Privacy settings updated successfully"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 400,
+                "message": "Bad request",
+                "error": "Invalid setting or value"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to update privacy settings"
+              }
+            }
+          }
         }
       }
     },
@@ -982,9 +1951,53 @@
         "summary": "Get Contacts",
         "description": "Retrieve all saved contacts from WhatsApp",
         "responses": {
-          "200": {"description": "Contacts retrieved successfully", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Contacts retrieved successfully",
+            "schema": {"$ref": "#/definitions/ContactsListResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Contacts retrieved successfully",
+                "data": [
+                  {
+                    "jid": "6281234567890@s.whatsapp.net",
+                    "name": "John Doe",
+                    "push_name": "John"
+                  },
+                  {
+                    "jid": "6289876543210@s.whatsapp.net",
+                    "name": "Jane Smith",
+                    "push_name": "Jane"
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to retrieve contacts"
+              }
+            }
+          }
         }
       }
     },
@@ -1056,10 +2069,58 @@
           }
         ],
         "responses": {
-          "200": {"description": "OK", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Message sent successfully",
+            "schema": {"$ref": "#/definitions/MessageSentResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Message sent successfully",
+                "data": {
+                  "message_id": "3EB0ABC123DEF456789",
+                  "status": "sent",
+                  "timestamp": 1702129024
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 400,
+                "message": "Bad request",
+                "error": "Text field is required"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to send message"
+              }
+            }
+          }
         }
       },
       "get": {
@@ -1073,9 +2134,57 @@
           {"name": "after", "in": "query", "type": "string"}
         ],
         "responses": {
-          "200": {"description": "Messages retrieved", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Messages retrieved successfully",
+            "schema": {"$ref": "#/definitions/MessagesListResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Messages retrieved successfully",
+                "data": [
+                  {
+                    "message_id": "3EB0ABC123DEF456789",
+                    "from": "6281234567890@s.whatsapp.net",
+                    "text": "Hello, World!",
+                    "timestamp": 1702129024,
+                    "is_from_me": false
+                  },
+                  {
+                    "message_id": "3EB0ABC123DEF456790",
+                    "from": "me",
+                    "text": "Hi there!",
+                    "timestamp": 1702129030,
+                    "is_from_me": true
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to retrieve messages"
+              }
+            }
+          }
         }
       }
     },
@@ -1086,18 +2195,66 @@
         "summary": "Send Image",
         "consumes": ["multipart/form-data"],
         "parameters": [
-          {"name": "chat_jid", "in": "path", "required": true, "type": "string"},
-          {"name": "file", "in": "formData", "required": true, "type": "file"},
-          {"name": "caption", "in": "formData", "type": "string"},
-          {"name": "view_once", "in": "formData", "type": "boolean", "default": false},
+          {"name": "chat_jid", "in": "path", "required": true, "type": "string", "example": "6281234567890@s.whatsapp.net"},
+          {"name": "file", "in": "formData", "required": true, "type": "file", "description": "Image file (JPEG, PNG, GIF, WebP)"},
+          {"name": "caption", "in": "formData", "type": "string", "description": "Image caption"},
+          {"name": "view_once", "in": "formData", "type": "boolean", "default": false, "description": "Send as view once"},
           {"name": "typing_simulation", "in": "formData", "type": "boolean", "description": "Override typing simulation for this message (default: enabled)"},
           {"name": "presence_simulation", "in": "formData", "type": "boolean", "description": "Override presence wrapping for this message (default: enabled)"}
         ],
         "responses": {
-          "200": {"description": "OK", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Image sent successfully",
+            "schema": {"$ref": "#/definitions/MessageSentResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Image sent successfully",
+                "data": {
+                  "message_id": "3EB0ABC123DEF456789",
+                  "status": "sent",
+                  "timestamp": 1702129024
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 400,
+                "message": "Bad request",
+                "error": "File is required"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to send image"
+              }
+            }
+          }
         }
       }
     },
@@ -1108,17 +2265,65 @@
         "summary": "Send Document",
         "consumes": ["multipart/form-data"],
         "parameters": [
-          {"name": "chat_jid", "in": "path", "required": true, "type": "string"},
-          {"name": "file", "in": "formData", "required": true, "type": "file"},
-          {"name": "filename", "in": "formData", "type": "string"},
+          {"name": "chat_jid", "in": "path", "required": true, "type": "string", "example": "6281234567890@s.whatsapp.net"},
+          {"name": "file", "in": "formData", "required": true, "type": "file", "description": "Document file (PDF, DOC, XLS, etc.)"},
+          {"name": "filename", "in": "formData", "type": "string", "description": "Custom filename to display"},
           {"name": "typing_simulation", "in": "formData", "type": "boolean", "description": "Override typing simulation for this message (default: enabled)"},
           {"name": "presence_simulation", "in": "formData", "type": "boolean", "description": "Override presence wrapping for this message (default: enabled)"}
         ],
         "responses": {
-          "200": {"description": "OK", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Document sent successfully",
+            "schema": {"$ref": "#/definitions/MessageSentResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Document sent successfully",
+                "data": {
+                  "message_id": "3EB0ABC123DEF456789",
+                  "status": "sent",
+                  "timestamp": 1702129024
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 400,
+                "message": "Bad request",
+                "error": "File is required"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to send document"
+              }
+            }
+          }
         }
       }
     },
@@ -1163,13 +2368,52 @@
         "summary": "Mark Message as Read",
         "consumes": ["application/json"],
         "parameters": [
-          {"name": "message_id", "in": "path", "required": true, "type": "string"},
-          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"sender_jid": {"type": "string"}, "chat_jid": {"type": "string"}}}}
+          {"name": "message_id", "in": "path", "required": true, "type": "string", "example": "3EB0ABC123DEF456789"},
+          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"sender_jid": {"type": "string", "example": "6281234567890@s.whatsapp.net"}, "chat_jid": {"type": "string", "example": "6281234567890@s.whatsapp.net"}}}}
         ],
         "responses": {
-          "200": {"description": "Message marked as read", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Message marked as read",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "Message marked as read successfully"}
+              }
+            },
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Message marked as read successfully"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to mark message as read"
+              }
+            }
+          }
         }
       }
     },
@@ -1181,13 +2425,52 @@
         "description": "Add emoji reaction. Send empty string to remove.",
         "consumes": ["application/json"],
         "parameters": [
-          {"name": "message_id", "in": "path", "required": true, "type": "string"},
-          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"emoji": {"type": "string", "example": "👍"}}}}
+          {"name": "message_id", "in": "path", "required": true, "type": "string", "example": "3EB0ABC123DEF456789"},
+          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"emoji": {"type": "string", "example": "👍"}, "chat_jid": {"type": "string", "example": "6281234567890@s.whatsapp.net"}}}}
         ],
         "responses": {
-          "200": {"description": "Reaction added", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Reaction added successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "Reaction added successfully"}
+              }
+            },
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Reaction added successfully"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to add reaction"
+              }
+            }
+          }
         }
       }
     },
@@ -1199,14 +2482,75 @@
         "description": "Edit text message (within 15 minutes)",
         "consumes": ["application/json"],
         "parameters": [
-          {"name": "message_id", "in": "path", "required": true, "type": "string"},
-          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"text": {"type": "string"}, "chat_jid": {"type": "string"}}}}
+          {"name": "message_id", "in": "path", "required": true, "type": "string", "example": "3EB0ABC123DEF456789"},
+          {"name": "body", "in": "body", "schema": {"type": "object", "properties": {"text": {"type": "string", "example": "Updated message text"}, "chat_jid": {"type": "string", "example": "6281234567890@s.whatsapp.net"}}}}
         ],
         "responses": {
-          "200": {"description": "Message edited", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Message edited successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "Message edited successfully"},
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "message_id": {"type": "string", "example": "3EB0ABC123DEF456789"},
+                    "edited_at": {"type": "integer", "example": 1702129024}
+                  }
+                }
+              }
+            },
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Message edited successfully",
+                "data": {
+                  "message_id": "3EB0ABC123DEF456789",
+                  "edited_at": 1702129024
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 400,
+                "message": "Bad request",
+                "error": "Message can only be edited within 15 minutes"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to edit message"
+              }
+            }
+          }
         }
       },
       "delete": {
@@ -1214,11 +2558,50 @@
         "tags": ["07 - Message Actions"],
         "summary": "Delete Message",
         "description": "Delete message for everyone",
-        "parameters": [{"name": "message_id", "in": "path", "required": true, "type": "string"}],
+        "parameters": [{"name": "message_id", "in": "path", "required": true, "type": "string", "example": "3EB0ABC123DEF456789"}],
         "responses": {
-          "200": {"description": "Message deleted", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Message deleted successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "Message deleted successfully"}
+              }
+            },
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Message deleted successfully"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to delete message"
+              }
+            }
+          }
         }
       }
     },
@@ -1229,19 +2612,67 @@
         "summary": "Reply to Message",
         "consumes": ["application/json"],
         "parameters": [
-          {"name": "message_id", "in": "path", "required": true, "type": "string"},
+          {"name": "message_id", "in": "path", "required": true, "type": "string", "example": "3EB0ABC123DEF456789"},
           {"name": "body", "in": "body", "schema": {"type": "object", "properties": {
-            "chat_jid": {"type": "string"},
-            "text": {"type": "string"},
+            "chat_jid": {"type": "string", "example": "6281234567890@s.whatsapp.net"},
+            "text": {"type": "string", "example": "This is my reply"},
             "typing_simulation": {"type": "boolean", "description": "Override typing simulation for this reply (default: enabled)"},
             "presence_simulation": {"type": "boolean", "description": "Override presence wrapping for this reply (default: enabled)"}
           }}}
         ],
         "responses": {
-          "200": {"description": "OK", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Reply sent successfully",
+            "schema": {"$ref": "#/definitions/MessageSentResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Reply sent successfully",
+                "data": {
+                  "message_id": "3EB0ABC123DEF456790",
+                  "status": "sent",
+                  "timestamp": 1702129024
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 400,
+                "message": "Bad request",
+                "error": "text and chat_jid are required"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to send reply"
+              }
+            }
+          }
         }
       }
     },
@@ -1253,16 +2684,64 @@
         "description": "Forward a message to another chat",
         "consumes": ["application/json"],
         "parameters": [
-          {"name": "message_id", "in": "path", "required": true, "type": "string", "description": "ID of the message to forward"},
+          {"name": "message_id", "in": "path", "required": true, "type": "string", "description": "ID of the message to forward", "example": "3EB0ABC123DEF456789"},
           {"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["to_chat_jid"], "properties": {
             "to_chat_jid": {"type": "string", "example": "6281234567890@s.whatsapp.net", "description": "Target chat JID to forward the message to"}
           }}}
         ],
         "responses": {
-          "200": {"description": "Message forwarded successfully", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Message forwarded successfully",
+            "schema": {"$ref": "#/definitions/MessageSentResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Message forwarded successfully",
+                "data": {
+                  "message_id": "3EB0ABC123DEF456791",
+                  "status": "sent",
+                  "timestamp": 1702129024
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 400,
+                "message": "Bad request",
+                "error": "to_chat_jid is required"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to forward message"
+              }
+            }
+          }
         }
       }
     },
@@ -1272,9 +2751,60 @@
         "tags": ["08 - Group Management"],
         "summary": "List All Groups With Members",
         "responses": {
-          "200": {"description": "Groups with members retrieved", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Groups retrieved successfully",
+            "schema": {"$ref": "#/definitions/GroupsListResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Groups retrieved successfully",
+                "data": [
+                  {
+                    "jid": "120363123456789012@g.us",
+                    "name": "My Group",
+                    "participant_count": 25,
+                    "participants": [
+                      {"jid": "6281234567890@s.whatsapp.net", "is_admin": true, "is_super_admin": true},
+                      {"jid": "6289876543210@s.whatsapp.net", "is_admin": false, "is_super_admin": false}
+                    ]
+                  },
+                  {
+                    "jid": "120363123456789013@g.us",
+                    "name": "Work Team",
+                    "participant_count": 10,
+                    "participants": [
+                      {"jid": "6281234567890@s.whatsapp.net", "is_admin": true, "is_super_admin": false}
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to retrieve groups"
+              }
+            }
+          }
         }
       },
       "post": {
@@ -1297,10 +2827,65 @@
           }
         ],
         "responses": {
-          "200": {"description": "Group created", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Group created successfully",
+            "schema": {"$ref": "#/definitions/GroupInfoResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Group created successfully",
+                "data": {
+                  "jid": "120363123456789012@g.us",
+                  "name": "My Group",
+                  "description": "",
+                  "owner": "6281234567890@s.whatsapp.net",
+                  "created_at": 1702129024,
+                  "participant_count": 2,
+                  "participants": [
+                    {"jid": "6281234567890@s.whatsapp.net", "is_admin": true, "is_super_admin": true},
+                    {"jid": "6289876543210@s.whatsapp.net", "is_admin": false, "is_super_admin": false}
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 400,
+                "message": "Bad request",
+                "error": "Group name is required"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to create group"
+              }
+            }
+          }
         }
       }
     },
@@ -1309,12 +2894,68 @@
         "security": [{"BearerAuth": []}],
         "tags": ["08 - Group Management"],
         "summary": "Get Group Info",
-        "parameters": [{"name": "group_jid", "in": "path", "required": true, "type": "string"}],
+        "parameters": [{"name": "group_jid", "in": "path", "required": true, "type": "string", "example": "120363123456789012@g.us"}],
         "responses": {
-          "200": {"description": "Group info retrieved", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "404": {"description": "Group not found", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Group info retrieved successfully",
+            "schema": {"$ref": "#/definitions/GroupInfoResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Group info retrieved successfully",
+                "data": {
+                  "jid": "120363123456789012@g.us",
+                  "name": "My Group",
+                  "description": "Group description here",
+                  "owner": "6281234567890@s.whatsapp.net",
+                  "created_at": 1702129024,
+                  "participant_count": 25,
+                  "participants": [
+                    {"jid": "6281234567890@s.whatsapp.net", "is_admin": true, "is_super_admin": true},
+                    {"jid": "6289876543210@s.whatsapp.net", "is_admin": true, "is_super_admin": false},
+                    {"jid": "6287654321098@s.whatsapp.net", "is_admin": false, "is_super_admin": false}
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "404": {
+            "description": "Group not found",
+            "schema": {"$ref": "#/definitions/NotFoundResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 404,
+                "message": "Not found",
+                "error": "Group not found or you are not a member"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to retrieve group info"
+              }
+            }
+          }
         }
       }
     },
@@ -1807,9 +3448,57 @@
         "summary": "List Webhooks",
         "description": "Get all webhooks configured for the current device",
         "responses": {
-          "200": {"description": "Webhooks retrieved", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Webhooks retrieved successfully",
+            "schema": {"$ref": "#/definitions/WebhooksListResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Webhooks retrieved successfully",
+                "data": [
+                  {
+                    "id": 1,
+                    "url": "https://your-server.com/webhook",
+                    "events": ["message.received", "connection.connected"],
+                    "active": true,
+                    "created_at": "2025-01-01T00:00:00Z"
+                  },
+                  {
+                    "id": 2,
+                    "url": "https://backup-server.com/webhook",
+                    "events": [],
+                    "active": true,
+                    "created_at": "2025-02-15T00:00:00Z"
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to retrieve webhooks"
+              }
+            }
+          }
         }
       },
       "post": {
@@ -1834,10 +3523,60 @@
           }
         ],
         "responses": {
-          "201": {"description": "Webhook created", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "201": {
+            "description": "Webhook created successfully",
+            "schema": {"$ref": "#/definitions/WebhookResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 201,
+                "message": "Webhook created successfully",
+                "data": {
+                  "id": 1,
+                  "url": "https://your-server.com/webhook",
+                  "events": ["message.received", "connection.connected"],
+                  "active": true,
+                  "created_at": "2025-12-17T10:30:00Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 400,
+                "message": "Bad request",
+                "error": "URL must be HTTPS"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to create webhook"
+              }
+            }
+          }
         }
       }
     },
@@ -1926,10 +3665,58 @@
           {"name": "view_once", "in": "formData", "type": "boolean", "description": "Send as view once"}
         ],
         "responses": {
-          "200": {"description": "Video sent", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Video sent successfully",
+            "schema": {"$ref": "#/definitions/MessageSentResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Video sent successfully",
+                "data": {
+                  "message_id": "3EB0ABC123DEF456789",
+                  "status": "sent",
+                  "timestamp": 1702129024
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 400,
+                "message": "Bad request",
+                "error": "File is required"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to send video"
+              }
+            }
+          }
         }
       }
     },
@@ -1941,16 +3728,64 @@
         "description": "Send audio or voice note to a chat",
         "consumes": ["multipart/form-data"],
         "parameters": [
-          {"name": "chat_jid", "in": "path", "required": true, "type": "string"},
+          {"name": "chat_jid", "in": "path", "required": true, "type": "string", "example": "6281234567890@s.whatsapp.net"},
           {"name": "file", "in": "formData", "required": true, "type": "file", "description": "Audio file (MP3, OGG, WAV)"},
           {"name": "voice_note", "in": "formData", "type": "boolean", "description": "Send as voice note (PTT)"},
           {"name": "ptt", "in": "formData", "type": "boolean", "description": "Alias for voice_note"}
         ],
         "responses": {
-          "200": {"description": "Audio sent", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Audio sent successfully",
+            "schema": {"$ref": "#/definitions/MessageSentResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Audio sent successfully",
+                "data": {
+                  "message_id": "3EB0ABC123DEF456789",
+                  "status": "sent",
+                  "timestamp": 1702129024
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 400,
+                "message": "Bad request",
+                "error": "File is required"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to send audio"
+              }
+            }
+          }
         }
       }
     },
@@ -1962,14 +3797,62 @@
         "description": "Send a sticker to a chat (WebP format only)",
         "consumes": ["multipart/form-data"],
         "parameters": [
-          {"name": "chat_jid", "in": "path", "required": true, "type": "string"},
+          {"name": "chat_jid", "in": "path", "required": true, "type": "string", "example": "6281234567890@s.whatsapp.net"},
           {"name": "file", "in": "formData", "required": true, "type": "file", "description": "Sticker file (WebP format)"}
         ],
         "responses": {
-          "200": {"description": "Sticker sent", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Sticker sent successfully",
+            "schema": {"$ref": "#/definitions/MessageSentResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Sticker sent successfully",
+                "data": {
+                  "message_id": "3EB0ABC123DEF456789",
+                  "status": "sent",
+                  "timestamp": 1702129024
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 400,
+                "message": "Bad request",
+                "error": "File must be in WebP format"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to send sticker"
+              }
+            }
+          }
         }
       }
     },
@@ -1980,14 +3863,62 @@
         "summary": "Send Location",
         "description": "Send a location to a chat",
         "parameters": [
-          {"name": "chat_jid", "in": "path", "required": true, "type": "string"},
+          {"name": "chat_jid", "in": "path", "required": true, "type": "string", "example": "6281234567890@s.whatsapp.net"},
           {"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["latitude", "longitude"], "properties": {"latitude": {"type": "number", "example": -6.2088}, "longitude": {"type": "number", "example": 106.8456}, "name": {"type": "string", "example": "Jakarta"}, "address": {"type": "string", "example": "Central Jakarta, Indonesia"}}}}
         ],
         "responses": {
-          "200": {"description": "Location sent", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Location sent successfully",
+            "schema": {"$ref": "#/definitions/MessageSentResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Location sent successfully",
+                "data": {
+                  "message_id": "3EB0ABC123DEF456789",
+                  "status": "sent",
+                  "timestamp": 1702129024
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 400,
+                "message": "Bad request",
+                "error": "latitude and longitude are required"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to send location"
+              }
+            }
+          }
         }
       }
     },
@@ -1998,14 +3929,62 @@
         "summary": "Send Contact",
         "description": "Send a contact vCard to a chat",
         "parameters": [
-          {"name": "chat_jid", "in": "path", "required": true, "type": "string"},
+          {"name": "chat_jid", "in": "path", "required": true, "type": "string", "example": "6281234567890@s.whatsapp.net"},
           {"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["name", "phone"], "properties": {"name": {"type": "string", "example": "John Doe"}, "phone": {"type": "string", "example": "6281234567890"}}}}
         ],
         "responses": {
-          "200": {"description": "Contact sent", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Contact sent successfully",
+            "schema": {"$ref": "#/definitions/MessageSentResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Contact sent successfully",
+                "data": {
+                  "message_id": "3EB0ABC123DEF456789",
+                  "status": "sent",
+                  "timestamp": 1702129024
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 400,
+                "message": "Bad request",
+                "error": "name and phone are required"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to send contact"
+              }
+            }
+          }
         }
       }
     },
@@ -2016,14 +3995,62 @@
         "summary": "Create Poll",
         "description": "Create a poll in a chat",
         "parameters": [
-          {"name": "chat_jid", "in": "path", "required": true, "type": "string"},
+          {"name": "chat_jid", "in": "path", "required": true, "type": "string", "example": "6281234567890@s.whatsapp.net"},
           {"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["question", "options"], "properties": {"question": {"type": "string", "example": "What's your favorite color?"}, "options": {"type": "array", "items": {"type": "string"}, "example": ["Red", "Blue", "Green"]}, "multi_answer": {"type": "boolean", "example": false}}}}
         ],
         "responses": {
-          "200": {"description": "Poll created", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Poll created successfully",
+            "schema": {"$ref": "#/definitions/PollCreatedResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Poll created successfully",
+                "data": {
+                  "message_id": "3EB0ABC123DEF456789",
+                  "question": "What's your favorite color?",
+                  "options": ["Red", "Blue", "Green"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 400,
+                "message": "Bad request",
+                "error": "Poll must have at least 2 options"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to create poll"
+              }
+            }
+          }
         }
       }
     },
@@ -2084,9 +4111,57 @@
         "summary": "List Subscribed Newsletters",
         "description": "Get all newsletters/channels the device is subscribed to",
         "responses": {
-          "200": {"description": "Newsletters listed", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Newsletters retrieved successfully",
+            "schema": {"$ref": "#/definitions/NewslettersListResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Newsletters retrieved successfully",
+                "data": [
+                  {
+                    "jid": "120363123456789012@newsletter",
+                    "name": "Tech News Channel",
+                    "description": "Latest technology news and updates",
+                    "subscriber_count": 15000,
+                    "picture_url": "https://pps.whatsapp.net/v/..."
+                  },
+                  {
+                    "jid": "120363123456789013@newsletter",
+                    "name": "My Company Updates",
+                    "description": "Official company announcements",
+                    "subscriber_count": 5000,
+                    "picture_url": null
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to retrieve newsletters"
+              }
+            }
+          }
         }
       },
       "post": {
@@ -2096,10 +4171,60 @@
         "description": "Create a new newsletter/channel",
         "parameters": [{"name": "body", "in": "body", "required": true, "schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string", "example": "My Channel"}, "description": {"type": "string", "example": "Channel description"}}}}],
         "responses": {
-          "200": {"description": "Newsletter created", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Newsletter created successfully",
+            "schema": {"$ref": "#/definitions/NewsletterResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Newsletter created successfully",
+                "data": {
+                  "jid": "120363123456789012@newsletter",
+                  "name": "My Channel",
+                  "description": "Channel description",
+                  "subscriber_count": 1,
+                  "picture_url": null
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 400,
+                "message": "Bad request",
+                "error": "Channel name is required"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to create newsletter"
+              }
+            }
+          }
         }
       }
     },
@@ -2293,10 +4418,73 @@
           {"name": "type", "in": "formData", "type": "string", "enum": ["image", "video"], "description": "Media type"}
         ],
         "responses": {
-          "200": {"description": "Status posted", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Status posted successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "Status posted successfully"},
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "status_id": {"type": "string", "example": "3EB0ABC123DEF456789"},
+                    "type": {"type": "string", "example": "text"},
+                    "timestamp": {"type": "integer", "example": 1702129024}
+                  }
+                }
+              }
+            },
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Status posted successfully",
+                "data": {
+                  "status_id": "3EB0ABC123DEF456789",
+                  "type": "text",
+                  "timestamp": 1702129024
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 400,
+                "message": "Bad request",
+                "error": "Text or file is required"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to post status"
+              }
+            }
+          }
         }
       },
       "get": {
@@ -2305,9 +4493,57 @@
         "summary": "Get Status Updates",
         "description": "Get status updates (delivered via webhook events)",
         "responses": {
-          "200": {"description": "Status updates info", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Status updates info retrieved",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "Status updates are delivered via webhook events"},
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "info": {"type": "string", "example": "Configure a webhook to receive status.posted, status.viewed, and status.deleted events"}
+                  }
+                }
+              }
+            },
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Status updates are delivered via webhook events",
+                "data": {
+                  "info": "Configure a webhook to receive status.posted, status.viewed, and status.deleted events"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to retrieve status updates info"
+              }
+            }
+          }
         }
       }
     },
@@ -2362,10 +4598,60 @@
           }
         ],
         "responses": {
-          "200": {"description": "Call rejected successfully", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Call rejected successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "Call rejected successfully"}
+              }
+            },
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Call rejected successfully"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 400,
+                "message": "Bad request",
+                "error": "call_from and call_id are required"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to reject call"
+              }
+            }
+          }
         }
       }
     },
@@ -2377,10 +4663,61 @@
         "description": "Get the business profile of a WhatsApp Business account including description, category, website, email, and address.",
         "parameters": [{"name": "jid", "in": "path", "required": true, "type": "string", "description": "JID of the business account", "example": "6281234567890@s.whatsapp.net"}],
         "responses": {
-          "200": {"description": "Business profile retrieved", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "404": {"description": "Business not found", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Business profile retrieved successfully",
+            "schema": {"$ref": "#/definitions/BusinessProfileResponse"},
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Business profile retrieved successfully",
+                "data": {
+                  "jid": "6281234567890@s.whatsapp.net",
+                  "description": "Your trusted business partner for all technology needs",
+                  "category": "Technology",
+                  "website": ["https://example.com", "https://support.example.com"],
+                  "email": "contact@example.com",
+                  "address": "123 Business Street, Jakarta, Indonesia"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "404": {
+            "description": "Business not found",
+            "schema": {"$ref": "#/definitions/NotFoundResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 404,
+                "message": "Not found",
+                "error": "Business profile not found or not a business account"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to retrieve business profile"
+              }
+            }
+          }
         }
       }
     },
@@ -2406,9 +4743,61 @@
         "summary": "Get Available Bots",
         "description": "Get the list of available WhatsApp AI bots that can be interacted with.",
         "responses": {
-          "200": {"description": "Bot list retrieved", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Bot list retrieved successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "Bot list retrieved successfully"},
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "jid": {"type": "string", "example": "13135550100@s.whatsapp.net"},
+                      "name": {"type": "string", "example": "Meta AI"}
+                    }
+                  }
+                }
+              }
+            },
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Bot list retrieved successfully",
+                "data": [
+                  {"jid": "13135550100@s.whatsapp.net", "name": "Meta AI"}
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to retrieve bot list"
+              }
+            }
+          }
         }
       }
     },
@@ -2419,9 +4808,68 @@
         "summary": "Get Bot Profiles",
         "description": "Get detailed profiles of available WhatsApp AI bots.",
         "responses": {
-          "200": {"description": "Bot profiles retrieved", "schema": {"$ref": "#/definitions/SuccessResponse"}},
-          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
-          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+          "200": {
+            "description": "Bot profiles retrieved successfully",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "Bot profiles retrieved successfully"},
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "jid": {"type": "string", "example": "13135550100@s.whatsapp.net"},
+                      "name": {"type": "string", "example": "Meta AI"},
+                      "description": {"type": "string", "example": "AI assistant powered by Meta"},
+                      "persona_id": {"type": "string", "example": "meta_ai_v1"}
+                    }
+                  }
+                }
+              }
+            },
+            "examples": {
+              "application/json": {
+                "status": true,
+                "code": 200,
+                "message": "Bot profiles retrieved successfully",
+                "data": [
+                  {
+                    "jid": "13135550100@s.whatsapp.net",
+                    "name": "Meta AI",
+                    "description": "AI assistant powered by Meta",
+                    "persona_id": "meta_ai_v1"
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {"$ref": "#/definitions/UnauthorizedResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 401,
+                "message": "Unauthorized",
+                "error": "Invalid or expired JWT token"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "schema": {"$ref": "#/definitions/ErrorResponse"},
+            "examples": {
+              "application/json": {
+                "status": false,
+                "code": 500,
+                "message": "Internal server error",
+                "error": "Failed to retrieve bot profiles"
+              }
+            }
+          }
         }
       }
     },

@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2025-12-17
+
+### 🔄 Updated
+
+#### Dependencies
+- **whatsmeow**: Updated from `v0.0.0-20251203` to `v0.0.0-20251216102424-56a8e44b0cec` (Dec 16, 2024)
+  - Latest WhatsApp protocol updates
+  - Improved stability and bug fixes
+  - Enhanced `context.Context` support across API calls
+  - Updated `libsignal` and `util` dependencies
+
+### 📚 Documentation
+- Updated README badges to reflect latest whatsmeow version
+- Enhanced acknowledgments section with proper attribution to @tulir and mautrix ecosystem
+
+---
+
 ## [1.0.0] - 2025-12-11
 
 ### 🎉 First Official Release

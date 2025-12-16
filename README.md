@@ -3,10 +3,10 @@
 [![release version](https://img.shields.io/github/v/release/gdbrns/go-whatsapp-multi-session-rest-api)](https://github.com/gdbrns/go-whatsapp-multi-session-rest-api/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gdbrns/go-whatsapp-multi-session-rest-api)](https://goreportcard.com/report/github.com/gdbrns/go-whatsapp-multi-session-rest-api)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![whatsmeow](https://img.shields.io/badge/whatsmeow-v0.0.0--20251205-brightgreen.svg)](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20251205211405-fd6170ac96e5)
+[![whatsmeow](https://img.shields.io/badge/whatsmeow-v0.0.0--20251216-brightgreen.svg)](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20251216102424-56a8e44b0cec)
 [![API Docs](https://img.shields.io/badge/API%20Docs-Bump.sh-blue.svg)](https://bump.sh/gdbrns/doc/go-whatsapp-multi-session-rest)
 
-> A minimal REST API for WhatsApp Multi-Device and Multi-Session implementation built with Go and **[whatsmeow v0.0.0-20251205211405-fd6170ac96e5](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20251205211405-fd6170ac96e5)** (current latest). Supports multiple accounts and devices simultaneously with efficient memory use and production-ready deployments.
+> A minimal REST API for WhatsApp Multi-Device and Multi-Session implementation built with Go and **[whatsmeow v0.0.0-20251216102424-56a8e44b0cec](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20251216102424-56a8e44b0cec)** (current latest). Supports multiple accounts and devices simultaneously with efficient memory use and production-ready deployments.
 
 ## 📚 API Documentation
 
@@ -745,13 +745,20 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### Core Technologies
 
-- **[whatsmeow](https://pkg.go.dev/go.mau.fi/whatsmeow)** - WhatsApp Multi-Device protocol library
+- **[whatsmeow](https://pkg.go.dev/go.mau.fi/whatsmeow)** by [@tulir](https://github.com/tulir) - WhatsApp Multi-Device protocol library. This project wouldn't exist without this incredible reverse-engineering effort of the WhatsApp Web protocol. Currently using **v0.0.0-20251216** (Dec 16, 2025).
 - **[Fiber](https://github.com/gofiber/fiber)** - Express-inspired web framework for Go
+- **[libsignal](https://pkg.go.dev/go.mau.fi/libsignal)** - Signal Protocol implementation for E2E encryption
 
 ### Inspiration & Code References
 
 - **[aldinokemal/go-whatsapp-web-multidevice](https://github.com/aldinokemal/go-whatsapp-web-multidevice)** - Excellent WhatsApp API implementation
 - **[dimaskiddo/go-whatsapp-multidevice-rest](https://github.com/dimaskiddo/go-whatsapp-multidevice-rest)** - Clean REST API architecture patterns
+
+### Special Thanks
+
+- **[@tulir](https://github.com/tulir)** - Creator and maintainer of whatsmeow
+- **[mautrix](https://github.com/mautrix)** - Matrix bridges and Go libraries ecosystem
+- All contributors and users who report issues and help improve this project
 
 ---
 
