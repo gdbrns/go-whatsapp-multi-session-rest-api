@@ -2,10 +2,87 @@ package internal
 
 import (
 	"context"
+	mathrand "math/rand/v2"
+	"os"
+	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/log"
 	pkgWhatsApp "github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/whatsapp"
+	"go.mau.fi/whatsmeow/store"
 )
+
+func parseOptionalInt(envKey string, defaultVal int, minVal int) int {
+	raw, ok := os.LookupEnv(envKey)
+	if !ok {
+		return defaultVal
+	}
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return defaultVal
+	}
+	v, err := strconv.Atoi(raw)
+	if err != nil || v < minVal {
+		return defaultVal
+	}
+	return v
+}
+
+func parseOptionalDuration(envKey string, defaultVal time.Duration) time.Duration {
+	raw, ok := os.LookupEnv(envKey)
+	if !ok {
+		return defaultVal
+	}
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return defaultVal
+	}
+	d, err := time.ParseDuration(raw)
+	if err != nil || d < 0 {
+		return defaultVal
+	}
+	return d
+}
+
+func jitterSleep(max time.Duration) {
+	if max <= 0 {
+		return
+	}
+	ms := mathrand.Int64N(max.Milliseconds() + 1)
+	time.Sleep(time.Duration(ms) * time.Millisecond)
+}
+
+func reconnectWithRetry(jid string, deviceID string, retries int, baseBackoff time.Duration, maxBackoff time.Duration) error {
+	if retries <= 1 {
+		return pkgWhatsApp.WhatsAppReconnect(jid, deviceID)
+	}
+	if baseBackoff <= 0 {
+		baseBackoff = 2 * time.Second
+	}
+	if maxBackoff <= 0 {
+		maxBackoff = 30 * time.Second
+	}
+
+	var lastErr error
+	for attempt := 1; attempt <= retries; attempt++ {
+		lastErr = pkgWhatsApp.WhatsAppReconnect(jid, deviceID)
+		if lastErr == nil {
+			return nil
+		}
+
+		// Exponential backoff with small jitter.
+		backoff := baseBackoff * time.Duration(1<<(attempt-1))
+		if backoff > maxBackoff {
+			backoff = maxBackoff
+		}
+		jitter := time.Duration(mathrand.Int64N(int64(500*time.Millisecond) + 1))
+		time.Sleep(backoff + jitter)
+	}
+	return lastErr
+}
 
 func Startup() {
 	log.Print(nil).Info("Running Startup Tasks")
@@ -25,12 +102,21 @@ func Startup() {
 		return
 	}
 
-	var restored, reconnected, failed int
+	maxConcurrent := parseOptionalInt("WHATSAPP_STARTUP_RECONNECT_CONCURRENCY", 10, 1)
+	jitterMax := parseOptionalDuration("WHATSAPP_STARTUP_RECONNECT_JITTER_MAX", 5*time.Second)
+	retries := parseOptionalInt("WHATSAPP_STARTUP_RECONNECT_RETRIES", 3, 1)
+	baseBackoff := parseOptionalDuration("WHATSAPP_STARTUP_RECONNECT_BACKOFF_BASE", 2*time.Second)
+	maxBackoff := parseOptionalDuration("WHATSAPP_STARTUP_RECONNECT_BACKOFF_MAX", 30*time.Second)
+
+	var restored, reconnected, failed int64
+	sem := make(chan struct{}, maxConcurrent)
+	var wg sync.WaitGroup
 
 	for _, device := range devices {
-		if device.ID == nil {
+		if device == nil || device.ID == nil {
 			continue
 		}
+		dev := device
 		jid := pkgWhatsApp.WhatsAppDecomposeJID(device.ID.User)
 		if len(jid) < 4 {
 			continue
@@ -41,22 +127,40 @@ func Startup() {
 			continue
 		}
 		maskJID := jid[0:len(jid)-4] + "xxxx"
-		log.Print(nil).Info("Restoring WhatsApp Client for " + maskJID + " (" + deviceID + ")")
-		pkgWhatsApp.WhatsAppInitClient(device, jid, deviceID)
-		restored++
-		err = pkgWhatsApp.WhatsAppReconnect(jid, deviceID)
-		if err != nil {
-			log.Print(nil).Warn("Failed to reconnect " + maskJID + ": " + err.Error())
-			failed++
-		}
-		if err == nil {
-			reconnected++
-		}
+
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(dev *store.Device, jidVal string, deviceIDVal string, masked string) {
+			defer wg.Done()
+			defer func() { <-sem }()
+
+			jitterSleep(jitterMax)
+			log.Print(nil).Info("Restoring WhatsApp Client for " + masked + " (" + deviceIDVal + ")")
+
+			// Init client before attempting reconnect.
+			// The underlying function is idempotent and will no-op if client already exists.
+			pkgWhatsApp.WhatsAppInitClient(dev, jidVal, deviceIDVal)
+			atomic.AddInt64(&restored, 1)
+
+			err := reconnectWithRetry(jidVal, deviceIDVal, retries, baseBackoff, maxBackoff)
+			if err != nil {
+				log.Print(nil).Warn("Failed to reconnect " + masked + ": " + err.Error())
+				atomic.AddInt64(&failed, 1)
+				return
+			}
+			atomic.AddInt64(&reconnected, 1)
+		}(dev, jid, deviceID, maskJID)
 	}
 
-	log.Print(nil).WithField("restored", restored).WithField("reconnected", reconnected).WithField("failed", failed).Info("Startup reconnect pass complete")
+	wg.Wait()
+	log.Print(nil).
+		WithField("restored", restored).
+		WithField("reconnected", reconnected).
+		WithField("failed", failed).
+		WithField("concurrency", maxConcurrent).
+		WithField("retries", retries).
+		Info("Startup reconnect pass complete")
 }
-
 func getDeviceID(storeDeviceID string) (string, error) {
 	return pkgWhatsApp.GetDeviceIDByJID(context.Background(), storeDeviceID)
 }

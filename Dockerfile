@@ -51,6 +51,6 @@ EXPOSE 7001
 VOLUME ["/usr/app/${SERVICE_NAME}/dbs"]
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:7001/ || exit 1
+    CMD sh -c 'wget --no-verbose --tries=1 --spider "http://localhost:7001${HTTP_BASE_URL}/" || exit 1'
 
 CMD ["gowam-rest"]

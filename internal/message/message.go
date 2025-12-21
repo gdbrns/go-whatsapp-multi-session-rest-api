@@ -2,6 +2,8 @@ package message
 
 import (
 	"context"
+	"encoding/base64"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -246,4 +248,44 @@ func Forward(c *fiber.Ctx) error {
 	log.MessageOpCtx(c, "Forward", reqForward.ToChatJID).WithField("message_id", messageID).WithField("new_msg_id", newMsgID).Info("Message forwarded successfully")
 
 	return router.ResponseSuccessWithData(c, "Success forward message", map[string]interface{}{"message_id": newMsgID})
+}
+
+// SendMediaRetryReceipt sends a media retry receipt for failed media downloads
+func SendMediaRetryReceipt(c *fiber.Ctx) error {
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	deviceID, jid := getDeviceContext(c)
+
+	var req typWhatsApp.RequestSendMediaRetryReceipt
+	if err := c.BodyParser(&req); err != nil {
+		log.MessageOpCtx(c, "SendMediaRetryReceipt", "").Warn("Failed to parse body request")
+		return router.ResponseBadRequest(c, "Failed to parse body request")
+	}
+
+	// Validation
+	if strings.TrimSpace(req.ChatJID) == "" || strings.TrimSpace(req.SenderJID) == "" || strings.TrimSpace(req.MessageID) == "" || strings.TrimSpace(req.MediaKey) == "" {
+		log.MessageOpCtx(c, "SendMediaRetryReceipt", req.ChatJID).Warn("Missing required fields")
+		return router.ResponseBadRequest(c, "chat_jid, sender_jid, message_id and media_key are required")
+	}
+
+	mediaKey, err := base64.StdEncoding.DecodeString(strings.TrimSpace(req.MediaKey))
+	if err != nil {
+		log.MessageOpCtx(c, "SendMediaRetryReceipt", req.ChatJID).Warn("Invalid media_key (base64)")
+		return router.ResponseBadRequest(c, "media_key must be base64")
+	}
+
+	log.MessageOpCtx(c, "SendMediaRetryReceipt", req.ChatJID).WithField("message_id", req.MessageID).Info("Sending media retry receipt")
+
+	err = pkgWhatsApp.WhatsAppSendMediaRetryReceipt(ctx, jid, deviceID, req.ChatJID, req.SenderJID, req.MessageID, mediaKey)
+	if err != nil {
+		log.MessageOpCtx(c, "SendMediaRetryReceipt", req.ChatJID).WithField("message_id", req.MessageID).WithError(err).Error("Failed to send media retry receipt")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.MessageOpCtx(c, "SendMediaRetryReceipt", req.ChatJID).WithField("message_id", req.MessageID).Info("Media retry receipt sent successfully")
+
+	return router.ResponseSuccess(c, "Media retry receipt sent")
 }

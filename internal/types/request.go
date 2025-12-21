@@ -341,3 +341,84 @@ type RequestStoreLIDMapping struct {
 	FirstJID  string `json:"first_jid"`
 	SecondJID string `json:"second_jid"`
 }
+
+// ============================================================================
+// History Sync APIs
+// ============================================================================
+type RequestBuildHistorySync struct {
+	Count int `json:"count"` // Number of messages to sync
+}
+
+type ResponseHistorySync struct {
+	Requested bool   `json:"requested"`
+	Count     int    `json:"count"`
+	Message   string `json:"message"`
+}
+
+// ============================================================================
+// Per-Device Proxy APIs
+// ============================================================================
+type RequestSetProxy struct {
+	ProxyURL string `json:"proxy_url"` // Empty string to disable
+}
+
+type ResponseGetProxy struct {
+	ProxyURL string `json:"proxy_url"`
+	Active   bool   `json:"active"`
+}
+
+// ============================================================================
+// Poll Vote Decryption APIs
+// ============================================================================
+type RequestDecryptPollVote struct {
+	MessageID string `json:"message_id"`
+	ChatJID   string `json:"chat_jid"`
+}
+
+type ResponseDecryptPollVote struct {
+	SelectedOptions []string `json:"selected_options"`
+}
+
+// ============================================================================
+// Comment/Status Reply Encryption APIs
+// ============================================================================
+type RequestEncryptComment struct {
+	MessageID string `json:"message_id"`
+	Comment   string `json:"comment"`
+}
+
+type ResponseEncryptComment struct {
+	EncryptedPayload string `json:"encrypted_payload"` // base64
+}
+
+type RequestDecryptComment struct {
+	MessageID        string `json:"message_id"`
+	EncryptedPayload string `json:"encrypted_payload"` // base64
+}
+
+type ResponseDecryptComment struct {
+	Comment string `json:"comment"`
+}
+
+// ============================================================================
+// Media Retry APIs
+// ============================================================================
+type RequestSendMediaRetryReceipt struct {
+	ChatJID   string `json:"chat_jid"`
+	SenderJID string `json:"sender_jid"`
+	MessageID string `json:"message_id"`
+	MediaKey  string `json:"media_key"` // base64
+}
+
+// ============================================================================
+// Push Notification APIs
+// ============================================================================
+type RequestRegisterPushNotification struct {
+	Platform string `json:"platform"` // "fcm" | "apns" | "webhook"
+	Token    string `json:"token,omitempty"`
+}
+
+type ResponsePushNotificationStatus struct {
+	Registered bool   `json:"registered"`
+	Platform   string `json:"platform"`
+}

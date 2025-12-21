@@ -1,7 +1,7 @@
 package main
 
 // @title Go WhatsApp Multi-Device and Multi Session REST API
-// @version 2.0.0
+// @version 1.2.0
 // @description Enterprise-grade WhatsApp Multi-Device REST API with 111+ endpoints including messaging, polls, newsletters/channels, status/stories, and 31 webhook event types
 
 // @contact.name gdbrns

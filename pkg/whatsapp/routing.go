@@ -241,6 +241,48 @@ func openRoutingDB() (*sql.DB, error) {
 			routingErr = err
 			return
 		}
+
+		// Add per-device proxy configuration (migration)
+		_, err = db.Exec(`ALTER TABLE devices ADD COLUMN IF NOT EXISTS proxy_url TEXT`)
+		if err != nil {
+			routingErr = err
+			return
+		}
+		_, err = db.Exec(`CREATE INDEX IF NOT EXISTS idx_devices_proxy ON devices(device_id) WHERE proxy_url IS NOT NULL`)
+		if err != nil {
+			routingErr = err
+			return
+		}
+
+		// Add push notification registration (migration)
+		_, err = db.Exec(`ALTER TABLE devices ADD COLUMN IF NOT EXISTS push_notification_platform VARCHAR(20)`)
+		if err != nil {
+			routingErr = err
+			return
+		}
+		_, err = db.Exec(`ALTER TABLE devices ADD COLUMN IF NOT EXISTS push_notification_token TEXT`)
+		if err != nil {
+			routingErr = err
+			return
+		}
+		_, err = db.Exec(`ALTER TABLE devices ADD COLUMN IF NOT EXISTS push_notification_registered_at TIMESTAMP`)
+		if err != nil {
+			routingErr = err
+			return
+		}
+		_, err = db.Exec(`CREATE INDEX IF NOT EXISTS idx_devices_push ON devices(device_id) WHERE push_notification_platform IS NOT NULL`)
+		if err != nil {
+			routingErr = err
+			return
+		}
+
+		// Add passive mode toggle (migration)
+		_, err = db.Exec(`ALTER TABLE devices ADD COLUMN IF NOT EXISTS passive_mode BOOLEAN DEFAULT FALSE`)
+		if err != nil {
+			routingErr = err
+			return
+		}
+
 		routingDB = db
 	})
 	return routingDB, routingErr
@@ -1092,6 +1134,40 @@ func GetJIDByDeviceID(ctx context.Context, deviceID string) (string, error) {
 func GetDeviceIDByJIDLegacy(ctx context.Context, deviceID string) (string, error) {
 	jid, _, err := GetWhatsMeowJID(ctx, deviceID)
 	return jid, err
+}
+
+// ============================================================================
+// Per-Device Proxy Configuration Functions
+// ============================================================================
+
+// GetDeviceProxy retrieves the proxy URL for a device
+func GetDeviceProxy(ctx context.Context, deviceID string) (string, error) {
+	db, err := openRoutingDB()
+	if err != nil {
+		return "", err
+	}
+	var proxyURL sql.NullString
+	err = db.QueryRowContext(ctx, `SELECT proxy_url FROM devices WHERE device_id = $1`, deviceID).Scan(&proxyURL)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", errors.New("device not found")
+	}
+	if err != nil {
+		return "", err
+	}
+	if !proxyURL.Valid {
+		return "", nil // No proxy set
+	}
+	return proxyURL.String, nil
+}
+
+// SetDeviceProxy sets the proxy URL for a device
+func SetDeviceProxy(ctx context.Context, deviceID, proxyURL string) error {
+	db, err := openRoutingDB()
+	if err != nil {
+		return err
+	}
+	_, err = db.ExecContext(ctx, `UPDATE devices SET proxy_url = $2 WHERE device_id = $1`, deviceID, proxyURL)
+	return err
 }
 
 // ============================================================================

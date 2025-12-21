@@ -727,6 +727,14 @@ func WhatsAppInitClient(device *store.Device, jid string, deviceID string) {
 	store.DeviceProps.PlatformType = waCompanionReg.DeviceProps_CHROME.Enum()
 	store.DeviceProps.RequireFullSync = proto.Bool(false)
 
+	// Default to the globally configured WA Web version (may be refreshed at runtime).
+	// Env overrides below take precedence.
+	if v := store.GetWAVersion(); v != (store.WAVersionContainer{}) {
+		store.DeviceProps.Version.Primary = proto.Uint32(v[0])
+		store.DeviceProps.Version.Secondary = proto.Uint32(v[1])
+		store.DeviceProps.Version.Tertiary = proto.Uint32(v[2])
+	}
+
 	version.Major, err = env.GetEnvInt("WHATSAPP_VERSION_MAJOR")
 	if err == nil {
 		store.DeviceProps.Version.Primary = proto.Uint32(uint32(version.Major))
@@ -743,7 +751,11 @@ func WhatsAppInitClient(device *store.Device, jid string, deviceID string) {
 	baseLogger := waLog.Stdout("Client", whatsAppLogLevel, true)
 	client := whatsmeow.NewClient(device, newFilteredLogger(baseLogger))
 
-	if len(WhatsAppClientProxyURL) > 0 {
+	// Check per-device proxy first, fallback to global
+	deviceProxy, _ := GetDeviceProxy(context.Background(), deviceID)
+	if deviceProxy != "" {
+		_ = client.SetProxyAddress(deviceProxy)
+	} else if len(WhatsAppClientProxyURL) > 0 {
 		_ = client.SetProxyAddress(WhatsAppClientProxyURL)
 	}
 
@@ -1109,7 +1121,7 @@ func WhatsAppGenerateQR(ctx context.Context, qrChan <-chan whatsmeow.QRChannelIt
 			case evt.Event == whatsmeow.QRChannelErrUnexpectedEvent.Event:
 				return "", 0, false, errors.New("whatsapp qr channel entered an unexpected state")
 			case evt.Event == whatsmeow.QRChannelClientOutdated.Event:
-				return "", 0, false, errors.New("whatsapp client version is outdated for QR pairing")
+				return "", 0, false, ErrWAVersionOutdatedForQR
 			case evt.Event == whatsmeow.QRChannelScannedWithoutMultidevice.Event:
 				return "", 0, false, errors.New("whatsapp qr scanned without multi-device enabled")
 			case evt.Event == "error":
@@ -1174,6 +1186,10 @@ func consumeQRChannel(ctx context.Context, qrChan <-chan whatsmeow.QRChannelItem
 }
 
 func WhatsAppLogin(jid string, deviceID string) (string, int, error) {
+	return whatsAppLoginWithRefresh(jid, deviceID, true)
+}
+
+func whatsAppLoginWithRefresh(jid string, deviceID string, allowRefresh bool) (string, int, error) {
 	client, err := currentClient(jid, deviceID)
 	if err != nil {
 		return "", 0, err
@@ -1198,6 +1214,21 @@ func WhatsAppLogin(jid string, deviceID string) (string, int, error) {
 
 		qrImage, qrTimeout, paired, err := WhatsAppGenerateQR(ctx, qrChanGenerate)
 		if err != nil {
+			if allowRefresh && errors.Is(err, ErrWAVersionOutdatedForQR) {
+				refreshCtx, cancelRefresh := context.WithTimeout(context.Background(), 20*time.Second)
+				_, _, refreshErr := WhatsAppRefreshWAVersion(refreshCtx, true)
+				cancelRefresh()
+				cancel()
+				client.Disconnect()
+				if refreshErr != nil {
+					return "", 0, refreshErr
+				}
+				// Recreate client so new connections pick up the refreshed version.
+				device := client.Store
+				deleteClient(jid, deviceID)
+				WhatsAppInitClient(device, jid, deviceID)
+				return whatsAppLoginWithRefresh(jid, deviceID, false)
+			}
 			cancel()
 			return "", 0, err
 		}
@@ -4684,7 +4715,17 @@ func WhatsAppSetPassive(ctx context.Context, jid string, deviceID string, passiv
 		return err
 	}
 
-	return client.SetPassive(ctx, passive)
+	if err := client.SetPassive(ctx, passive); err != nil {
+		return err
+	}
+
+	// Best-effort: store passive mode in DB for observability.
+	db, err := openRoutingDB()
+	if err != nil {
+		return err
+	}
+	_, err = db.ExecContext(ctx, `UPDATE devices SET passive_mode = $2 WHERE device_id = $1`, deviceID, passive)
+	return err
 }
 
 // WhatsAppWaitForConnection waits for the client to be connected
@@ -4729,37 +4770,6 @@ func WhatsAppSendMediaRetryReceipt(ctx context.Context, jid string, deviceID str
 	}
 
 	return client.SendMediaRetryReceipt(ctx, msgInfo, mediaKey)
-}
-
-// WhatsAppBuildHistorySyncRequest builds a history sync request message
-func WhatsAppBuildHistorySyncRequest(jid string, deviceID string, chatJID string, senderJID string, lastMsgID string, count int) (*waE2E.Message, error) {
-	client, err := currentClient(jid, deviceID)
-	if err != nil {
-		return nil, err
-	}
-	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
-		return nil, err
-	}
-
-	chat, err := types.ParseJID(chatJID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid chat JID: %v", err)
-	}
-
-	sender, err := types.ParseJID(senderJID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid sender JID: %v", err)
-	}
-
-	msgInfo := &types.MessageInfo{
-		ID:        lastMsgID,
-		MessageSource: types.MessageSource{
-			Chat:   chat,
-			Sender: sender,
-		},
-	}
-
-	return client.BuildHistorySyncRequest(msgInfo, count), nil
 }
 
 // WhatsAppBuildUnavailableMessageRequest builds a request for an unavailable message
@@ -4870,4 +4880,112 @@ func WhatsAppStoreLIDPNMapping(ctx context.Context, jid string, deviceID string,
 
 	client.StoreLIDPNMapping(ctx, first, second)
 	return nil
+}
+
+// ============================================================================
+// History Sync
+// ============================================================================
+
+func WhatsAppBuildHistorySyncRequest(ctx context.Context, jid string, deviceID string, count int) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return err
+	}
+
+	if count <= 0 {
+		count = 25
+	}
+
+	// Build and send history sync request
+	// WhatsApp will respond via history sync event
+	_, err = client.SendMessage(ctx, types.NewJID(client.Store.ID.User, types.DefaultUserServer), &waE2E.Message{
+		ProtocolMessage: &waE2E.ProtocolMessage{
+			Type: waE2E.ProtocolMessage_HISTORY_SYNC_NOTIFICATION.Enum(),
+		},
+	})
+
+	return err
+}
+
+// ============================================================================
+// Per-Device Proxy Configuration
+// ============================================================================
+
+func WhatsAppSetDeviceProxy(ctx context.Context, jid string, deviceID string, proxyURL string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	// Validate proxy URL if not empty
+	if proxyURL != "" {
+		if !strings.HasPrefix(proxyURL, "http://") && !strings.HasPrefix(proxyURL, "https://") {
+			return errors.New("proxy URL must start with http:// or https://")
+		}
+	}
+
+	// Save to database
+	err := SetDeviceProxy(ctx, deviceID, proxyURL)
+	if err != nil {
+		return err
+	}
+
+	// Reconnect client with new proxy (if already connected)
+	client := getClient(jid, deviceID)
+	if client != nil && client.IsConnected() {
+		log.Evt("proxy", "reconnect", deviceID)
+		client.Disconnect()
+		// Client will reconnect automatically with new proxy on next request
+	}
+
+	return nil
+}
+
+func WhatsAppGetDeviceProxy(ctx context.Context, deviceID string) (string, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return GetDeviceProxy(ctx, deviceID)
+}
+
+// ============================================================================
+// Push Notification Registration
+// ============================================================================
+
+func WhatsAppRegisterPushNotification(ctx context.Context, jid string, deviceID string, platform string, token string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	db, err := openRoutingDB()
+	if err != nil {
+		return err
+	}
+
+	// Validate platform
+	validPlatforms := map[string]bool{"fcm": true, "apns": true, "webhook": true}
+	if !validPlatforms[platform] {
+		return errors.New("invalid platform: must be fcm, apns, or webhook")
+	}
+
+	// For webhook platform, no token needed
+	if platform == "webhook" {
+		token = ""
+	}
+
+	// Update database
+	_, err = db.ExecContext(ctx, `
+		UPDATE devices
+		SET push_notification_platform = $2,
+			push_notification_token = $3,
+			push_notification_registered_at = NOW()
+		WHERE device_id = $1
+	`, deviceID, platform, token)
+
+	return err
 }

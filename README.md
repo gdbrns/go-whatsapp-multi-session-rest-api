@@ -3,10 +3,10 @@
 [![release version](https://img.shields.io/github/v/release/gdbrns/go-whatsapp-multi-session-rest-api)](https://github.com/gdbrns/go-whatsapp-multi-session-rest-api/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gdbrns/go-whatsapp-multi-session-rest-api)](https://goreportcard.com/report/github.com/gdbrns/go-whatsapp-multi-session-rest-api)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![whatsmeow](https://img.shields.io/badge/whatsmeow-v0.0.0--20251216-brightgreen.svg)](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20251216102424-56a8e44b0cec)
+[![whatsmeow](https://img.shields.io/badge/whatsmeow-v0.0.0--20251217-brightgreen.svg)](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20251217143725-11cf47c62d32)
 [![API Docs](https://img.shields.io/badge/API%20Docs-Bump.sh-blue.svg)](https://bump.sh/gdbrns/doc/go-whatsapp-multi-session-rest)
 
-> A minimal REST API for WhatsApp Multi-Device and Multi-Session implementation built with Go and **[whatsmeow v0.0.0-20251216102424-56a8e44b0cec](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20251216102424-56a8e44b0cec)** (current latest). Supports multiple accounts and devices simultaneously with efficient memory use and production-ready deployments.
+> A minimal REST API for WhatsApp Multi-Device and Multi-Session implementation built with Go and **[whatsmeow v0.0.0-20251217143725-11cf47c62d32](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20251217143725-11cf47c62d32)**. Supports multiple accounts and devices simultaneously with efficient memory use and production-ready deployments.
 
 ## 📚 API Documentation
 
@@ -51,7 +51,14 @@
 - 🔄 **Message Operations** - Edit, react, delete, reply, forward, mark read
 - 📊 **Presence & Status** - Online status, typing indicators, disappearing messages, passive mode
 - 🔄 **App State Synchronization** - Fetch, send, and manage app state patches
-- 🪝 **Webhook Integration** - 31 event types with real-time notifications and retry support
+- 📜 **Message History Sync** - Request and download message history on demand
+- 🌐 **Per-Device Proxy** - Configure HTTP proxy per device (overrides global setting)
+- 📴 **Passive Mode** - Read-only mode to reduce bandwidth usage
+- 🔄 **Advanced Media Retry** - Handle media retry notifications automatically
+- 🔁 **WA Web Version Auto-Refresh** - Auto-refreshes WhatsApp Web version to handle "client outdated" during pairing
+- 🧯 **Startup Reconnect Storm Protection** - Concurrency limit + jitter + retry/backoff for 100s of sessions
+- 🔔 **Push Notifications** - Register for push notifications (reuses webhook system)
+- 🪝 **Webhook Integration** - 35+ event types with real-time notifications and retry support
 - 🏗️ **Production Ready** - Docker support, environment configuration, logging
 - 📖 **OpenAPI/Swagger** - Interactive API documentation at `/docs/`
 - 🔑 **Admin Dashboard Ready** - Manage API keys and devices with admin endpoints
@@ -60,7 +67,7 @@
 ## 💡 Why Teams Choose This API
 
 - **Stateless speed**: JWT-first flow eliminates per-request database lookups for messaging throughput.
-- **Auto-resilience**: Devices restore and reconnect on startup with health checks for steady uptime.
+- **Auto-resilience**: Devices restore and reconnect on startup with health checks for steady uptime (includes "client outdated" WA Web version auto-refresh).
 - **Operational control**: Admin endpoints manage API keys, devices, and webhook delivery visibility.
 - **Webhook reliability**: Built-in workers, retries, and per-device quotas keep downstream systems in sync.
 - **Deployment-ready**: Docker-compose defaults, environment-first config, and structured logging out of the box.
@@ -103,13 +110,33 @@ sudo apt install -y ffmpeg postgresql-client
 
 ### Using Docker (Recommended)
 
+#### Images & Tags
+
+This project publishes container images to:
+
+- **Docker Hub (stable releases):** `ghiovanidebrians/go-whatsapp-multi-session-rest-api`
+  - Tags: `vX.Y.Z`, `X.Y`, and `latest` (updated on each new release tag)
+- **GitHub Container Registry (edge/dev):** `ghcr.io/gdbrns/go-whatsapp-multi-session-rest-api`
+  - Tags: `latest` (on main/master), `sha-...`, and also `vX.Y.Z` on release tags
+
+Examples:
+
+```bash
+# Stable (recommended for production)
+docker pull ghiovanidebrians/go-whatsapp-multi-session-rest-api:latest
+docker pull ghiovanidebrians/go-whatsapp-multi-session-rest-api:v1.2.0
+
+# Edge/dev (latest main)
+docker pull ghcr.io/gdbrns/go-whatsapp-multi-session-rest-api:latest
+```
+
 #### Docker Compose
 ```yaml
 version: '3.8'
 
 services:
   whatsapp-api:
-    image: gdbrns/go-whatsapp-multi-session-rest-api
+    image: ghiovanidebrians/go-whatsapp-multi-session-rest-api:latest
     container_name: whatsapp-api
     restart: always
     ports:
@@ -331,6 +358,8 @@ curl -X POST "http://localhost:7001/webhooks" \
 | | | **Admin Dashboard** | | |
 | 1 | GET | `/admin/stats` | Admin | Get system statistics |
 | 2 | GET | `/admin/health` | Admin | Get system health info |
+| * | GET | `/admin/whatsapp/version` | Admin | Get WhatsApp Web version status |
+| * | POST | `/admin/whatsapp/version/refresh` | Admin | Refresh WhatsApp Web version (query `force=true|false`) |
 | 3 | GET | `/admin/devices` | Admin | List all devices (all API keys) |
 | 4 | GET | `/admin/devices/status` | Admin | Get live connection status for all devices |
 | 5 | POST | `/admin/devices/reconnect` | Admin | Reconnect all disconnected devices |
@@ -493,6 +522,8 @@ This API uses a **JWT Token** authentication system optimized for high-volume op
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  GET  /admin/stats             → System statistics (API keys, devices)      │
 │  GET  /admin/health            → System health (memory, uptime, DB status)  │
+│  GET  /admin/whatsapp/version   → WhatsApp Web version status                │
+│  POST /admin/whatsapp/version/refresh → Refresh WhatsApp Web version         │
 │  GET  /admin/devices           → List all devices (all customers)           │
 │  GET  /admin/devices/status    → Live connection status for all devices     │
 │  POST /admin/devices/reconnect → Batch reconnect all disconnected devices   │
@@ -598,6 +629,8 @@ curl -X POST "http://localhost:7001/devices/token" \
 ### Stability & health
 - Startup automatically restores devices from the datastore and attempts reconnect; see logs for `restored/reconnected/failed` summary.
 - Enable periodic health logging with `WHATSAPP_ENABLE_HEALTH_CHECK_CRON=true` (runs every 5 minutes).
+- To avoid reconnect storms on large deployments, tune `WHATSAPP_STARTUP_RECONNECT_CONCURRENCY` and jitter/backoff knobs.
+- To keep pairing stable across WhatsApp updates, use WA Web version refresh knobs (manual admin endpoints or optional cron).
 
 ## 🔧 Environment Variables
 
@@ -636,6 +669,15 @@ curl -X POST "http://localhost:7001/devices/token" \
 | `WHATSAPP_AUTO_DOWNLOAD_MEDIA` | Auto download media | `false` | `true` |
 | `WHATSAPP_AUTO_REPLY_ENABLED` | Enable auto-reply hook | `false` | `true` |
 | `WHATSAPP_ENABLE_HEALTH_CHECK_CRON` | Enable 5-min health check cron | `false` | `true` |
+| `WHATSAPP_WAVERSION_REFRESH_MIN_INTERVAL` | Minimum interval between WA Web version refresh attempts | `10m` | `10m` |
+| `WHATSAPP_ENABLE_WAVERSION_REFRESH_CRON` | Enable scheduled WA Web version refresh cron | `false` | `true` |
+| `WHATSAPP_WAVERSION_REFRESH_CRON_SPEC` | Cron spec (6 fields, includes seconds) for version refresh | `0 0 3 * * *` | `0 0 3 * * *` |
+| `WHATSAPP_WAVERSION_REFRESH_CRON_FORCE` | Force refresh even within min interval | `false` | `false` |
+| `WHATSAPP_STARTUP_RECONNECT_CONCURRENCY` | Max concurrent reconnects at startup | `10` | `10` |
+| `WHATSAPP_STARTUP_RECONNECT_JITTER_MAX` | Max random startup jitter per device | `5s` | `5s` |
+| `WHATSAPP_STARTUP_RECONNECT_RETRIES` | Reconnect retry attempts per device | `3` | `3` |
+| `WHATSAPP_STARTUP_RECONNECT_BACKOFF_BASE` | Base reconnect backoff | `2s` | `2s` |
+| `WHATSAPP_STARTUP_RECONNECT_BACKOFF_MAX` | Max reconnect backoff | `30s` | `30s` |
 | `X-Request-ID` | (Header) Correlate logs per request | - | `123e4567-e89b-12d3-a456-426614174000` |
 | **Webhooks** | | | |
 | `WEBHOOKS_ENABLED` | Enable webhook system | `true` | `true` |
@@ -745,7 +787,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### Core Technologies
 
-- **[whatsmeow](https://pkg.go.dev/go.mau.fi/whatsmeow)** by [@tulir](https://github.com/tulir) - WhatsApp Multi-Device protocol library. This project wouldn't exist without this incredible reverse-engineering effort of the WhatsApp Web protocol. Currently using **v0.0.0-20251216** (Dec 16, 2025).
+- **[whatsmeow](https://pkg.go.dev/go.mau.fi/whatsmeow)** by [@tulir](https://github.com/tulir) - WhatsApp Multi-Device protocol library. This project wouldn't exist without this incredible reverse-engineering effort of the WhatsApp Web protocol. Currently using **v0.0.0-20251217** (Dec 17, 2025).
 - **[Fiber](https://github.com/gofiber/fiber)** - Express-inspired web framework for Go
 - **[libsignal](https://pkg.go.dev/go.mau.fi/libsignal)** - Signal Protocol implementation for E2E encryption
 

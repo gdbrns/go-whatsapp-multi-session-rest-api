@@ -32,7 +32,7 @@ services:
           cpus: '0.5'
           memory: 128M
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:7001/"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider \"http://localhost:7001${HTTP_BASE_URL}/\" || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -15,6 +15,7 @@ import (
 	ctlCall "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/call"
 	ctlDevice "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/device"
 	ctlGroups "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/groups"
+	ctlHistory "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/history"
 	ctlIndex "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/index"
 	ctlMessage "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/message"
 	ctlMessaging "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/messaging"
@@ -60,6 +61,8 @@ func Routes(app *fiber.App) {
 	// Admin Dashboard APIs
 	app.Get(router.BaseURL+"/admin/stats", adminMiddleware, ctlAdmin.GetStats)
 	app.Get(router.BaseURL+"/admin/health", adminMiddleware, ctlAdmin.GetHealth)
+	app.Get(router.BaseURL+"/admin/whatsapp/version", adminMiddleware, ctlAdmin.GetWhatsAppWebVersion)
+	app.Post(router.BaseURL+"/admin/whatsapp/version/refresh", adminMiddleware, ctlAdmin.RefreshWhatsAppWebVersion)
 	app.Get(router.BaseURL+"/admin/devices", adminMiddleware, ctlAdmin.ListAllDevices)
 	app.Get(router.BaseURL+"/admin/devices/status", adminMiddleware, ctlAdmin.GetAllDevicesStatus)
 	app.Post(router.BaseURL+"/admin/devices/reconnect", adminMiddleware, ctlAdmin.ReconnectAllDevices)
@@ -101,6 +104,16 @@ func Routes(app *fiber.App) {
 	app.Delete(router.BaseURL+"/devices/me/session", deviceAuthMiddleware, ctlDevice.Logout)
 	app.Get(router.BaseURL+"/devices/me/contacts/:phone/registered", deviceAuthMiddleware, ctlDevice.CheckRegistered)
 
+	// Per-Device Proxy Configuration
+	app.Get(router.BaseURL+"/devices/me/proxy", deviceAuthMiddleware, ctlDevice.GetProxy)
+	app.Post(router.BaseURL+"/devices/me/proxy", deviceAuthMiddleware, ctlDevice.SetProxy)
+
+	// Push Notification Registration
+	app.Post(router.BaseURL+"/devices/me/push-notifications", deviceAuthMiddleware, ctlDevice.RegisterPushNotification)
+
+	// History Sync
+	app.Post(router.BaseURL+"/history/sync", deviceAuthMiddleware, ctlHistory.BuildHistorySyncRequest)
+
 	// User routes
 	app.Get(router.BaseURL+"/users/:user_jid", deviceAuthMiddleware, ctlUser.GetInfo)
 	app.Get(router.BaseURL+"/users/:user_jid/profile-picture", deviceAuthMiddleware, ctlUser.GetProfilePicture)
@@ -136,6 +149,9 @@ func Routes(app *fiber.App) {
 	app.Delete(router.BaseURL+"/messages/:message_id", deviceAuthMiddleware, ctlMessage.Delete)
 	app.Post(router.BaseURL+"/messages/:message_id/reply", deviceAuthMiddleware, ctlMessage.Reply)
 	app.Post(router.BaseURL+"/messages/:message_id/forward", deviceAuthMiddleware, ctlMessage.Forward)
+
+	// Media Retry
+	app.Post(router.BaseURL+"/messages/media/retry-receipt", deviceAuthMiddleware, ctlMessage.SendMediaRetryReceipt)
 
 	// Poll routes
 	app.Post(router.BaseURL+"/chats/:chat_jid/polls", deviceAuthMiddleware, ctlPoll.CreatePoll)

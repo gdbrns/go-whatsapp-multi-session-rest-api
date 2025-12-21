@@ -52,6 +52,11 @@ const (
 	// Media events
 	EventMediaReceived         EventType = "media.received"
 	EventMediaDownloaded       EventType = "media.downloaded"
+	// New event types for advanced features
+	EventHistorySyncComplete   EventType = "history.sync_complete"
+	EventMediaRetry            EventType = "media.retry"
+	EventPollVoteDecrypted     EventType = "poll.vote_decrypted"
+	EventStatusComment         EventType = "status.comment"
 )
 
 type DeliveryStatus string

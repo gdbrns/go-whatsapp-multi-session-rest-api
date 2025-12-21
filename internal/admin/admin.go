@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+	"fmt"
 	"runtime"
 	"strconv"
 	"time"
@@ -791,7 +792,7 @@ func GetHealth(c *fiber.Ctx) error {
 		"goroutines":        runtime.NumGoroutine(),
 		"uptime":            uptimeStr,
 		"uptime_seconds":    int64(uptime.Seconds()),
-		"version":           "2.0.0",
+		"version":           "1.2.0",
 		"go_version":        runtime.Version(),
 	}
 
@@ -920,6 +921,70 @@ func ReconnectAllDevices(c *fiber.Ctx) error {
 		"results": results,
 		"summary": summary,
 	})
+}
+
+// @Summary     Get WhatsApp Web Version
+// @Description Get the currently configured WhatsApp Web version and last refresh status (Admin only)
+// @Tags        Admin
+// @Produce     json
+// @Param       X-Admin-Secret header string true "Admin secret key"
+// @Success     200 {object} router.ResSuccess
+// @Failure     401 {object} router.ResError
+// @Router      /admin/whatsapp/version [get]
+func GetWhatsAppWebVersion(c *fiber.Ctx) error {
+	status := pkgWhatsApp.WhatsAppGetWAVersionRefreshStatus()
+	v := status.CurrentVersion
+
+	data := fiber.Map{
+		"wa_web_version": fiber.Map{
+			"array":  v,
+			"string": fmt.Sprintf("%d.%d.%d", v[0], v[1], v[2]),
+		},
+		"last_refreshed": status.LastRefreshed,
+		"last_error":     status.LastError,
+	}
+
+	return router.ResponseSuccessWithData(c, "WhatsApp Web version status retrieved successfully", data)
+}
+
+// @Summary     Refresh WhatsApp Web Version
+// @Description Fetch and apply the latest WhatsApp Web version via whatsmeow (Admin only)
+// @Tags        Admin
+// @Produce     json
+// @Param       X-Admin-Secret header string true "Admin secret key"
+// @Param       force query bool false "Force refresh even if recently refreshed" default(true)
+// @Success     200 {object} router.ResSuccess
+// @Failure     401 {object} router.ResError
+// @Failure     500 {object} router.ResError
+// @Router      /admin/whatsapp/version/refresh [post]
+func RefreshWhatsAppWebVersion(c *fiber.Ctx) error {
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	force := true
+	if q := c.Query("force"); q != "" {
+		force = c.QueryBool("force", true)
+	}
+
+	status, refreshed, err := pkgWhatsApp.WhatsAppRefreshWAVersion(ctx, force)
+	if err != nil {
+		return router.ResponseInternalError(c, "Failed to refresh WhatsApp Web version: "+err.Error())
+	}
+
+	v := status.CurrentVersion
+	data := fiber.Map{
+		"refreshed": refreshed,
+		"wa_web_version": fiber.Map{
+			"array":  v,
+			"string": fmt.Sprintf("%d.%d.%d", v[0], v[1], v[2]),
+		},
+		"last_refreshed": status.LastRefreshed,
+		"last_error":     status.LastError,
+	}
+
+	return router.ResponseSuccessWithData(c, "WhatsApp Web version refreshed successfully", data)
 }
 
 // Helper function to format duration

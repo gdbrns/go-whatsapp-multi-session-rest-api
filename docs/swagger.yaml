@@ -1,8 +1,8 @@
 swagger: "2.0"
 info:
   title: WhatsApp Multi-Device REST API
-  description: "Enterprise-grade RESTful API for WhatsApp Multi-Device and Multi-Session implementation.\n\n## Authentication\n\nThis API uses a **3-tier authentication system**:\n\n### 1. Admin Authentication (X-Admin-Secret)\nFor managing API keys and system administration.\n```\nX-Admin-Secret: your-admin-secret\n```\n\n### 2. API Key Authentication (X-API-Key)\nFor creating devices. Each API key can create up to `max_devices` devices.\n```\nX-API-Key: ak_xxxxxxxxxxxxxxxx\n```\n\n### 3. JWT Bearer Token (Authorization)\nFor all device operations. Obtained when creating a device.\n```\nAuthorization: Bearer eyJhbGciOiJIUzI1NiIs...\n```\n\n## Quick Start\n\n1. **Admin creates API Key** → `POST /admin/api-keys`\n2. **Customer creates Device** → `POST /devices` (returns JWT)\n3. **Customer uses JWT** → All `/devices/me/*` endpoints\n\n## Features\n\n- 60+ endpoints for complete WhatsApp automation\n- JWT tokens with no expiry (regenerate anytime)\n- Multi-tenant support via API keys\n- Webhook integration for real-time events"
-  version: 2.0.0
+  description: "Enterprise-grade RESTful API for WhatsApp Multi-Device and Multi-Session implementation.\n\n## Authentication\n\nThis API uses a **3-tier authentication system**:\n\n### 1. Admin Authentication (X-Admin-Secret)\nFor managing API keys and system administration.\n```\nX-Admin-Secret: your-admin-secret\n```\n\n### 2. API Key Authentication (X-API-Key)\nFor creating devices. Each API key can create up to `max_devices` devices.\n```\nX-API-Key: wam_xxxxxxxxxxxxxxxx\n```\n\n### 3. JWT Bearer Token (Authorization)\nFor all device operations. Obtained when creating a device.\n```\nAuthorization: Bearer eyJhbGciOiJIUzI1NiIs...\n```\n\n## Quick Start\n\n1. **Admin creates API Key** → `POST /admin/api-keys`\n2. **Customer creates Device** → `POST /devices` (returns JWT)\n3. **Customer uses JWT** → All `/devices/me/*` endpoints\n\n## Features\n\n- 60+ endpoints for complete WhatsApp automation\n- JWT tokens with no expiry (regenerate anytime)\n- Multi-tenant support via API keys\n- Webhook integration for real-time events"
+  version: 1.2.0
   contact:
     name: API Support
     url: "https://github.com/gdbrns/go-whatsapp-multi-session-rest-api"
@@ -20,12 +20,12 @@ securityDefinitions:
     type: apiKey
     name: X-Admin-Secret
     in: header
-    description: Admin secret key for managing API keys. Set in .env as ADMIN_SECRET
+    description: Admin secret key for managing API keys. Set in .env as ADMIN_SECRET_KEY
   APIKeyAuth:
     type: apiKey
     name: X-API-Key
     in: header
-    description: "API key for creating devices. Format: ak_xxxxxxxxxxxxxxxx"
+    description: "API key for creating devices. Format: wam_xxxxxxxxxxxxxxxx"
   BearerAuth:
     type: apiKey
     name: Authorization
@@ -107,6 +107,10 @@ tags:
   -
     name: 18 - Contact QR
     description: Contact QR code link generation and resolution
+
+  -
+    name: 19 - History Sync
+    description: Request and manage message history synchronization
 
 definitions:
   ErrorResponse:
@@ -881,6 +885,158 @@ paths:
           description: Unauthorized - Invalid admin secret
           schema:
             $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  "/admin/whatsapp/version":
+    get:
+      security:
+        -
+          AdminAuth: []
+
+      tags:
+        - 02 - Admin
+      summary: Get WhatsApp Web Version
+      description: Get the currently configured WhatsApp Web version and the last refresh status used by whatsmeow.
+      responses:
+        200:
+          description: WhatsApp Web version status retrieved successfully
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              code:
+                type: integer
+                example: 200
+              message:
+                type: string
+                example: WhatsApp Web version status retrieved successfully
+              data:
+                type: object
+                properties:
+                  wa_web_version:
+                    type: object
+                    properties:
+                      array:
+                        type: array
+                        items:
+                          type: integer
+                        example:
+                          - 2
+                          - 3000
+                          - 1012345678
+                      string:
+                        type: string
+                        example: 2.3000.1012345678
+                  last_refreshed:
+                    type: string
+                    example: "2025-12-21T10:30:00Z"
+                  last_error:
+                    type: string
+                    example: ""
+          examples:
+            "application/json":
+              status: true
+              code: 200
+              message: WhatsApp Web version status retrieved successfully
+              data:
+                wa_web_version:
+                  array:
+                    - 2
+                    - 3000
+                    - 1012345678
+                  string: 2.3000.1012345678
+                last_refreshed: "2025-12-21T10:30:00Z"
+                last_error: ""
+        401:
+          description: Unauthorized - Invalid admin secret
+          schema:
+            $ref: "#/definitions/UnauthorizedResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  "/admin/whatsapp/version/refresh":
+    post:
+      security:
+        -
+          AdminAuth: []
+
+      tags:
+        - 02 - Admin
+      summary: Refresh WhatsApp Web Version
+      description: Fetch and apply the latest WhatsApp Web version via whatsmeow. This affects new connections globally.
+      parameters:
+        -
+          name: force
+          in: query
+          required: false
+          type: boolean
+          default: true
+          description: Force refresh even if recently refreshed
+      responses:
+        200:
+          description: WhatsApp Web version refreshed successfully
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              code:
+                type: integer
+                example: 200
+              message:
+                type: string
+                example: WhatsApp Web version refreshed successfully
+              data:
+                type: object
+                properties:
+                  refreshed:
+                    type: boolean
+                    example: true
+                  wa_web_version:
+                    type: object
+                    properties:
+                      array:
+                        type: array
+                        items:
+                          type: integer
+                        example:
+                          - 2
+                          - 3000
+                          - 1012345678
+                      string:
+                        type: string
+                        example: 2.3000.1012345678
+                  last_refreshed:
+                    type: string
+                    example: "2025-12-21T10:30:00Z"
+                  last_error:
+                    type: string
+                    example: ""
+          examples:
+            "application/json":
+              status: true
+              code: 200
+              message: WhatsApp Web version refreshed successfully
+              data:
+                refreshed: true
+                wa_web_version:
+                  array:
+                    - 2
+                    - 3000
+                    - 1012345678
+                  string: 2.3000.1012345678
+                last_refreshed: "2025-12-21T10:30:00Z"
+                last_error: ""
+        401:
+          description: Unauthorized - Invalid admin secret
+          schema:
+            $ref: "#/definitions/UnauthorizedResponse"
         500:
           description: Internal server error
           schema:
@@ -2134,6 +2290,157 @@ paths:
               code: 500
               message: Internal server error
               error: Failed to logout device
+  "/devices/me/proxy":
+    get:
+      security:
+        -
+          BearerAuth: []
+
+      tags:
+        - 04 - Device Operations
+      summary: Get Device Proxy Configuration
+      description: Retrieve the current HTTP proxy configuration for this device. Per-device proxy overrides global WHATSAPP_CLIENT_PROXY_URL setting.
+      responses:
+        200:
+          description: Proxy configuration retrieved
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              code:
+                type: integer
+                example: 200
+              message:
+                type: string
+                example: Device proxy configuration
+              data:
+                type: object
+                properties:
+                  proxy_url:
+                    type: string
+                    example: http://proxy.example.com:8080
+                  active:
+                    type: boolean
+                    example: true
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/UnauthorizedResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+    post:
+      security:
+        -
+          BearerAuth: []
+
+      tags:
+        - 04 - Device Operations
+      summary: Set Device Proxy Configuration
+      description: Configure HTTP proxy for this device. Overrides global WHATSAPP_CLIENT_PROXY_URL. Use empty string to disable per-device proxy. Device will reconnect automatically.
+      parameters:
+        -
+          name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - proxy_url
+            properties:
+              proxy_url:
+                type: string
+                example: http://proxy.example.com:8080
+                description: HTTP/HTTPS proxy URL. Empty string to disable.
+      responses:
+        200:
+          description: Proxy configured successfully
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              code:
+                type: integer
+                example: 200
+              message:
+                type: string
+                example: Device proxy configured successfully
+        400:
+          description: Bad request
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/UnauthorizedResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  "/devices/me/push-notifications":
+    post:
+      security:
+        -
+          BearerAuth: []
+
+      tags:
+        - 04 - Device Operations
+      summary: Register for Push Notifications
+      description: Register device for push notifications. Supports FCM (Firebase), APNs (Apple), or webhook-based notifications.
+      parameters:
+        -
+          name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - platform
+            properties:
+              platform:
+                type: string
+                enum:
+                  - fcm
+                  - apns
+                  - webhook
+                example: webhook
+                description: Push notification platform
+              token:
+                type: string
+                example: ""
+                description: Push token (required for fcm/apns, not needed for webhook)
+      responses:
+        200:
+          description: Push notifications registered
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              code:
+                type: integer
+                example: 200
+              message:
+                type: string
+                example: Push notifications registered successfully
+        400:
+          description: Bad request
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/UnauthorizedResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
   "/devices/me/contacts/{phone}/registered":
     get:
       security:
@@ -2209,6 +2516,70 @@ paths:
               code: 500
               message: Internal server error
               error: Failed to check registration status
+  "/history/sync":
+    post:
+      security:
+        -
+          BearerAuth: []
+
+      tags:
+        - 19 - History Sync
+      summary: Build History Sync Request
+      description: Request message history from WhatsApp servers. History will be delivered asynchronously via history.sync_complete webhook event. WhatsApp has rate limits on history sync requests.
+      parameters:
+        -
+          name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              count:
+                type: integer
+                example: 25
+                default: 25
+                minimum: 1
+                maximum: 100
+                description: Number of messages to sync
+      responses:
+        200:
+          description: History sync requested
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              code:
+                type: integer
+                example: 200
+              message:
+                type: string
+                example: History sync requested
+              data:
+                type: object
+                properties:
+                  requested:
+                    type: boolean
+                    example: true
+                  count:
+                    type: integer
+                    example: 25
+                  note:
+                    type: string
+                    example: History will be delivered via history.sync_complete webhook event
+        400:
+          description: Bad request
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/UnauthorizedResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
   "/users/{user_jid}":
     get:
       security:
@@ -3622,6 +3993,72 @@ paths:
               code: 500
               message: Internal server error
               error: Failed to forward message
+  "/messages/media/retry-receipt":
+    post:
+      security:
+        -
+          BearerAuth: []
+
+      tags:
+        - 07 - Message Actions
+      summary: Send Media Retry Receipt
+      description: Send a media retry receipt to request re-delivery of failed media. Requires sender_jid and media_key (base64) so WhatsApp can verify the request.
+      parameters:
+        -
+          name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            required:
+              - chat_jid
+              - sender_jid
+              - message_id
+              - media_key
+            properties:
+              chat_jid:
+                type: string
+                example: 6281234567890@s.whatsapp.net
+                description: WhatsApp JID of the chat
+              sender_jid:
+                type: string
+                example: 6281234567890@s.whatsapp.net
+                description: WhatsApp JID of the message sender
+              message_id:
+                type: string
+                example: 3EB0C127...
+                description: Message ID of the media message
+              media_key:
+                type: string
+                example: ZHVtbXktbWVkaWEta2V5LWJhc2U2NA==
+                description: Media key (base64) from the failed media message
+      responses:
+        200:
+          description: Media retry receipt sent
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: true
+              code:
+                type: integer
+                example: 200
+              message:
+                type: string
+                example: Media retry receipt sent
+        400:
+          description: Bad request
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/UnauthorizedResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
   "/groups":
     get:
       security:

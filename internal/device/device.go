@@ -345,3 +345,96 @@ func GetDeviceMe(c *fiber.Ctx) error {
 		"last_active":   device.LastActiveAt,
 	})
 }
+
+// SetProxy sets per-device proxy configuration
+func SetProxy(c *fiber.Ctx) error {
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	deviceID, jid := getDeviceContext(c)
+
+	var req typWhatsApp.RequestSetProxy
+	if err := c.BodyParser(&req); err != nil {
+		log.DeviceOpCtx(c, "SetProxy").Warn("Failed to parse body request")
+		return router.ResponseBadRequest(c, "Failed to parse body request")
+	}
+
+	log.DeviceOpCtx(c, "SetProxy").WithField("proxy_url", req.ProxyURL).Info("Setting device proxy")
+
+	err := pkgWhatsApp.WhatsAppSetDeviceProxy(ctx, jid, deviceID, req.ProxyURL)
+	if err != nil {
+		log.DeviceOpCtx(c, "SetProxy").WithError(err).Error("Failed to set proxy")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.DeviceOpCtx(c, "SetProxy").Info("Device proxy configured successfully")
+
+	return router.ResponseSuccess(c, "Device proxy configured successfully")
+}
+
+// GetProxy gets current device proxy configuration
+func GetProxy(c *fiber.Ctx) error {
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	deviceID, _ := getDeviceContext(c)
+
+	log.DeviceOpCtx(c, "GetProxy").Info("Retrieving device proxy configuration")
+
+	proxyURL, err := pkgWhatsApp.WhatsAppGetDeviceProxy(ctx, deviceID)
+	if err != nil {
+		log.DeviceOpCtx(c, "GetProxy").WithError(err).Error("Failed to get proxy")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.DeviceOpCtx(c, "GetProxy").WithField("proxy_url", proxyURL).Info("Device proxy configuration retrieved")
+
+	return router.ResponseSuccessWithData(c, "Device proxy configuration", typWhatsApp.ResponseGetProxy{
+		ProxyURL: proxyURL,
+		Active:   proxyURL != "",
+	})
+}
+
+// RegisterPushNotification registers device for push notifications
+func RegisterPushNotification(c *fiber.Ctx) error {
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	deviceID, jid := getDeviceContext(c)
+
+	var req typWhatsApp.RequestRegisterPushNotification
+	if err := c.BodyParser(&req); err != nil {
+		log.DeviceOpCtx(c, "RegisterPushNotification").Warn("Failed to parse body request")
+		return router.ResponseBadRequest(c, "Failed to parse body request")
+	}
+
+	// Validation
+	validPlatforms := map[string]bool{"fcm": true, "apns": true, "webhook": true}
+	if !validPlatforms[req.Platform] {
+		log.DeviceOpCtx(c, "RegisterPushNotification").Warn("Invalid platform provided")
+		return router.ResponseBadRequest(c, "platform must be one of: fcm, apns, webhook")
+	}
+
+	if req.Platform != "webhook" && req.Token == "" {
+		log.DeviceOpCtx(c, "RegisterPushNotification").Warn("Token required for fcm/apns platforms")
+		return router.ResponseBadRequest(c, "token is required for fcm/apns platforms")
+	}
+
+	log.DeviceOpCtx(c, "RegisterPushNotification").WithField("platform", req.Platform).Info("Registering push notifications")
+
+	err := pkgWhatsApp.WhatsAppRegisterPushNotification(ctx, jid, deviceID, req.Platform, req.Token)
+	if err != nil {
+		log.DeviceOpCtx(c, "RegisterPushNotification").WithError(err).Error("Failed to register push notifications")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.DeviceOpCtx(c, "RegisterPushNotification").Info("Push notifications registered successfully")
+
+	return router.ResponseSuccess(c, "Push notifications registered successfully")
+}
