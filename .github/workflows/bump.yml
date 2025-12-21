@@ -12,9 +12,12 @@ permissions:
   contents: read
   pull-requests: write
 
+env:
+  BUMP_TOKEN: ${{ secrets.BUMP_TOKEN }}
+
 jobs:
   deploy-doc:
-    if: ${{ github.event_name == 'push' && secrets.BUMP_TOKEN != '' }}
+    if: ${{ github.event_name == 'push' && env.BUMP_TOKEN != '' }}
     name: Deploy API documentation on Bump.sh
     runs-on: ubuntu-latest
     steps:
@@ -25,11 +28,11 @@ jobs:
         uses: bump-sh/github-action@v1
         with:
           doc: 3379e663-b934-4fcd-8823-975312dedfbd
-          token: ${{ secrets.BUMP_TOKEN }}
+          token: ${{ env.BUMP_TOKEN }}
           file: docs/swagger.yaml
 
   api-diff:
-    if: ${{ github.event_name == 'pull_request' && secrets.BUMP_TOKEN != '' }}
+    if: ${{ github.event_name == 'pull_request' && env.BUMP_TOKEN != '' }}
     name: Comment PR with API diff (Bump.sh)
     runs-on: ubuntu-latest
     steps:
@@ -40,7 +43,7 @@ jobs:
         uses: bump-sh/github-action@v1
         with:
           doc: 3379e663-b934-4fcd-8823-975312dedfbd
-          token: ${{ secrets.BUMP_TOKEN }}
+          token: ${{ env.BUMP_TOKEN }}
           file: docs/swagger.yaml
           command: diff
         env:

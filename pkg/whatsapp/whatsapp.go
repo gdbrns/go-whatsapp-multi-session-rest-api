@@ -2018,7 +2018,7 @@ func WhatsAppSendText(ctx context.Context, jid string, deviceID string, rjid str
 	return msgExtra.ID, nil
 }
 
-func WhatsAppSendDocument(ctx context.Context, jid string, deviceID string, rjid string, documentBytes []byte, documentType string, documentName string, opts *SendOptions) (string, error) {
+func WhatsAppSendDocument(ctx context.Context, jid string, deviceID string, rjid string, documentBytes []byte, documentType string, documentName string, documentCaption string, opts *SendOptions) (string, error) {
 	client, err := currentClient(jid, deviceID)
 	if err != nil {
 		return "", err
@@ -2067,6 +2067,7 @@ func WhatsAppSendDocument(ctx context.Context, jid string, deviceID string, rjid
 			URL:           proto.String(documentUploaded.URL),
 			DirectPath:    proto.String(documentUploaded.DirectPath),
 			Mimetype:      proto.String(documentMime),
+			Caption:       proto.String(documentCaption),
 			FileName:      proto.String(documentName),
 			FileLength:    proto.Uint64(documentUploaded.FileLength),
 			FileSHA256:    documentUploaded.FileSHA256,

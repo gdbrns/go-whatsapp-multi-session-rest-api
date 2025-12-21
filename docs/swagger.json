@@ -3,7 +3,7 @@
   "info": {
     "title": "WhatsApp Multi-Device REST API",
     "description": "Enterprise-grade RESTful API for WhatsApp Multi-Device and Multi-Session implementation.\n\n## Authentication\n\nThis API uses a **3-tier authentication system**:\n\n### 1. Admin Authentication (X-Admin-Secret)\nFor managing API keys and system administration.\n```\nX-Admin-Secret: your-admin-secret\n```\n\n### 2. API Key Authentication (X-API-Key)\nFor creating devices. Each API key can create up to `max_devices` devices.\n```\nX-API-Key: wam_xxxxxxxxxxxxxxxx\n```\n\n### 3. JWT Bearer Token (Authorization)\nFor all device operations. Obtained when creating a device.\n```\nAuthorization: Bearer eyJhbGciOiJIUzI1NiIs...\n```\n\n## Quick Start\n\n1. **Admin creates API Key** → `POST /admin/api-keys`\n2. **Customer creates Device** → `POST /devices` (returns JWT)\n3. **Customer uses JWT** → All `/devices/me/*` endpoints\n\n## Features\n\n- 60+ endpoints for complete WhatsApp automation\n- JWT tokens with no expiry (regenerate anytime)\n- Multi-tenant support via API keys\n- Webhook integration for real-time events",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "contact": {
       "name": "API Support",
       "url": "https://github.com/gdbrns/go-whatsapp-multi-session-rest-api"
@@ -2563,6 +2563,7 @@
           {"name": "chat_jid", "in": "path", "required": true, "type": "string", "example": "6281234567890@s.whatsapp.net"},
           {"name": "file", "in": "formData", "required": true, "type": "file", "description": "Document file (PDF, DOC, XLS, etc.)"},
           {"name": "filename", "in": "formData", "type": "string", "description": "Custom filename to display"},
+          {"name": "caption", "in": "formData", "type": "string", "description": "Optional caption for the document"},
           {"name": "typing_simulation", "in": "formData", "type": "boolean", "description": "Override typing simulation for this message (default: enabled)"},
           {"name": "presence_simulation", "in": "formData", "type": "boolean", "description": "Override presence wrapping for this message (default: enabled)"}
         ],
