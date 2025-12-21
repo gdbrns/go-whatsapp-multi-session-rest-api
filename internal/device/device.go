@@ -177,12 +177,15 @@ func CheckRegistered(c *fiber.Ctx) error {
 	var reqCheckPhone typWhatsApp.RequestCheckPhone
 	reqCheckPhone.Phone = phone
 
-	_, err := pkgWhatsApp.WhatsAppCheckJID(ctx, jid, deviceID, reqCheckPhone.Phone)
+	resolvedJID, err := pkgWhatsApp.WhatsAppCheckJID(ctx, jid, deviceID, reqCheckPhone.Phone)
 
 	var resCheckPhone typWhatsApp.ResponseCheckPhone
 	resCheckPhone.IsRegistered = err == nil
+	if resCheckPhone.IsRegistered && !resolvedJID.IsEmpty() {
+		resCheckPhone.JID = resolvedJID.String()
+	}
 
-	log.DeviceOpCtx(c, "CheckRegistered").WithField("phone", phone).WithField("is_registered", resCheckPhone.IsRegistered).Info("Phone registration check complete")
+	log.DeviceOpCtx(c, "CheckRegistered").WithField("phone", phone).WithField("is_registered", resCheckPhone.IsRegistered).WithField("jid", resCheckPhone.JID).Info("Phone registration check complete")
 
 	return router.ResponseSuccessWithData(c, "Success check registered phone", resCheckPhone)
 }
