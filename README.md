@@ -641,56 +641,133 @@ curl -X POST "http://localhost:7001/devices/token" \
 
 ## 🔧 Environment Variables
 
-| Variable | Description | Default | Example |
-|----------|-------------|---------|---------|
-| **Authentication** | | | |
-| `ADMIN_SECRET_KEY` | Admin secret for /admin/* endpoints | - | `your-admin-secret-key` |
-| `JWT_SECRET_KEY` | JWT signing secret (min 32 chars) | - | `your-jwt-secret-32-chars` |
-| **Server** | | | |
-| `SERVER_ADDRESS` | Server listening address | `127.0.0.1` | `0.0.0.0` |
-| `SERVER_PORT` | Server listening port | `7001` | `3000` |
-| **HTTP Configuration** | | | |
-| `HTTP_BASE_URL` | Base URL path for API | `` | `` |
-| `HTTP_CORS_ORIGIN` | CORS allowed origins | `*` | `https://example.com` |
-| `HTTP_BODY_LIMIT_SIZE` | Max request body size | `8M` | `8M` |
-| `HTTP_GZIP_LEVEL` | GZIP compression level (1-9) | `1` | `6` |
-| `HTTP_CACHE_CAPACITY` | In-memory cache capacity | `100` | `500` |
-| `HTTP_CACHE_TTL_SECONDS` | Cache TTL in seconds | `5` | `300` |
-| **Logging** | | | |
-| `LOG_LEVEL` | Log verbosity (`debug`, `info`, `warn`, `error`) | `info` | `debug` |
-| `LOG_FORMAT` | Log format (`json` for structured) | `text` | `json` |
-| **WhatsApp** | | | |
-| `WHATSAPP_DATASTORE_TYPE` | Database type | - | `postgres` |
-| `WHATSAPP_DATASTORE_URI` | Database connection URI | - | `postgres://user:pass@host:5432/db` |
-| `WHATSAPP_CLIENT_PROXY_URL` | HTTP proxy for WhatsApp | `""` | `http://proxy:8080` |
-| `WHATSAPP_MEDIA_IMAGE_CONVERT_WEBP` | Convert images to WebP uploads to PNG | `false` | `true` |
-| `WHATSAPP_MEDIA_IMAGE_COMPRESSION` | Enable image compression | `false` | `true` |
-| `WHATSAPP_DEVICE_OS_NAME` | Advertised device OS name | `Chrome` | `Linux` |
-| `WHATSAPP_LOG_LEVEL` | whatsmeow client log level | `ERROR` | `DEBUG` |
-| `WHATSAPP_VERSION_MAJOR` | Override client version (major) | unset | `2` |
-| `WHATSAPP_VERSION_MINOR` | Override client version (minor) | unset | `3000` |
-| `WHATSAPP_VERSION_PATCH` | Override client version (patch) | unset | `1019175440` |
-| `WHATSAPP_GROUP_LIST_CACHE_TTL` | Cache TTL for group list | `5m` | `10m` |
-| `WHATSAPP_GROUP_LIST_CACHE_DISABLED` | Disable group list cache | `false` | `true` |
-| `WHATSAPP_AUTO_MARK_READ` | Auto mark messages as read | `false` | `true` |
-| `WHATSAPP_AUTO_DOWNLOAD_MEDIA` | Auto download media | `false` | `true` |
-| `WHATSAPP_AUTO_REPLY_ENABLED` | Enable auto-reply hook | `false` | `true` |
-| `WHATSAPP_ENABLE_HEALTH_CHECK_CRON` | Enable 5-min health check cron | `false` | `true` |
-| `WHATSAPP_WAVERSION_REFRESH_MIN_INTERVAL` | Minimum interval between WA Web version refresh attempts | `10m` | `10m` |
-| `WHATSAPP_ENABLE_WAVERSION_REFRESH_CRON` | Enable scheduled WA Web version refresh cron | `false` | `true` |
-| `WHATSAPP_WAVERSION_REFRESH_CRON_SPEC` | Cron spec (6 fields, includes seconds) for version refresh | `0 0 3 * * *` | `0 0 3 * * *` |
-| `WHATSAPP_WAVERSION_REFRESH_CRON_FORCE` | Force refresh even within min interval | `false` | `false` |
-| `WHATSAPP_STARTUP_RECONNECT_CONCURRENCY` | Max concurrent reconnects at startup | `10` | `10` |
-| `WHATSAPP_STARTUP_RECONNECT_JITTER_MAX` | Max random startup jitter per device | `5s` | `5s` |
-| `WHATSAPP_STARTUP_RECONNECT_RETRIES` | Reconnect retry attempts per device | `3` | `3` |
-| `WHATSAPP_STARTUP_RECONNECT_BACKOFF_BASE` | Base reconnect backoff | `2s` | `2s` |
-| `WHATSAPP_STARTUP_RECONNECT_BACKOFF_MAX` | Max reconnect backoff | `30s` | `30s` |
-| `X-Request-ID` | (Header) Correlate logs per request | - | `123e4567-e89b-12d3-a456-426614174000` |
-| **Webhooks** | | | |
-| `WEBHOOKS_ENABLED` | Enable webhook system | `true` | `true` |
-| `WEBHOOK_WORKERS` | Number of webhook workers | `4` | `8` |
-| `WEBHOOK_RETRY_LIMIT` | Max retry attempts | `3` | `5` |
-| `WEBHOOK_MAX_PER_DEVICE` | Max webhooks per device | `5` | `10` |
+### Quick Start (Minimum Required)
+
+Only **3 variables are required** — everything else has sensible defaults:
+
+```bash
+docker run -d \
+  -e ADMIN_SECRET_KEY=YourSecretKey32CharsMinimum \
+  -e JWT_SECRET_KEY=YourJWTSecret32CharsMinimum \
+  -e WHATSAPP_DATASTORE_URI=postgres://user:pass@host:5432/db \
+  -p 7001:7001 \
+  ghiovanidebrians/go-whatsapp-multi-session-rest-api
+```
+
+### Complete Environment Variables Reference
+
+| Variable | Required | Default | Possible Values | Description |
+|----------|:--------:|---------|-----------------|-------------|
+| **🔐 Authentication** | | | | |
+| `ADMIN_SECRET_KEY` | ✅ | - | Any string (32+ chars recommended) | Admin secret for `/admin/*` endpoints. Generate with: `openssl rand -base64 32` |
+| `JWT_SECRET_KEY` | ✅ | - | Any string (32+ chars minimum) | JWT signing key for device tokens. Generate with: `openssl rand -base64 32` |
+| **🖥️ Server** | | | | |
+| `SERVER_ADDRESS` | ❌ | `0.0.0.0` | `0.0.0.0`, `127.0.0.1`, any IP | Bind address. Use `0.0.0.0` for Docker, `127.0.0.1` for local only |
+| `SERVER_PORT` | ❌ | `7001` | `1024`-`65535` | HTTP port to listen on |
+| **🌐 HTTP Configuration** | | | | |
+| `HTTP_BASE_URL` | ❌ | `` (empty) | `/api/v1`, `/whatsapp`, etc. | API path prefix (e.g., `/api/v1` → all routes at `/api/v1/*`) |
+| `HTTP_CORS_ORIGIN` | ❌ | `*` | `*`, `https://example.com`, comma-separated | Allowed CORS origins. Use `*` for any, or specific domains |
+| `HTTP_BODY_LIMIT_SIZE` | ❌ | `8M` | `1M`, `8M`, `50M`, `100M` | Max request body size (K/M/G suffix) |
+| `HTTP_GZIP_LEVEL` | ❌ | `1` | `1`-`9` | GZIP compression level. 1=fastest, 9=smallest |
+| `HTTP_CACHE_CAPACITY` | ❌ | `100` | `50`-`10000` | In-memory cache max entries |
+| `HTTP_CACHE_TTL_SECONDS` | ❌ | `5` | `1`-`3600` | Cache TTL in seconds |
+| **💾 Database** | | | | |
+| `WHATSAPP_DATASTORE_TYPE` | ❌ | `postgres` | `postgres`, `sqlite3` | Database driver type |
+| `WHATSAPP_DATASTORE_URI` | ✅ | - | PostgreSQL/SQLite connection string | Database connection URI |
+| `WHATSAPP_KEYS_DATASTORE_URI` | ❌ | `` (empty) | PostgreSQL connection string | Separate DB for encryption keys (optional, advanced) |
+| **📱 WhatsApp Core** | | | | |
+| `WHATSAPP_CLIENT_PROXY_URL` | ❌ | `` (empty) | `http://proxy:8080`, `socks5://...` | HTTP/SOCKS proxy for WhatsApp connections |
+| `WHATSAPP_DEVICE_OS_NAME` | ❌ | `Chrome` | `Chrome`, `Firefox`, `Safari`, etc. | Advertised device OS name |
+| `WHATSAPP_LOG_LEVEL` | ❌ | `ERROR` | `DEBUG`, `INFO`, `WARN`, `ERROR` | whatsmeow library log level |
+| **🖼️ Media Handling** | | | | |
+| `WHATSAPP_MEDIA_IMAGE_COMPRESSION` | ❌ | `true` | `true`, `false` | Enable image compression before upload |
+| `WHATSAPP_MEDIA_IMAGE_CONVERT_WEBP` | ❌ | `true` | `true`, `false` | Convert WebP images to PNG |
+| **🤖 Behavior Simulation (Anti-Detection)** | | | | |
+| `WHATSAPP_AUTO_PRESENCE_ENABLED` | ❌ | `true` | `true`, `false` | Simulate online presence when sending |
+| `WHATSAPP_AUTO_TYPING_ENABLED` | ❌ | `true` | `true`, `false` | Simulate typing indicator before messages |
+| `WHATSAPP_TYPING_DELAY_MIN` | ❌ | `1s` | Duration (`500ms`, `1s`, `2s`) | Minimum typing simulation delay |
+| `WHATSAPP_TYPING_DELAY_MAX` | ❌ | `3s` | Duration (`1s`, `3s`, `5s`) | Maximum typing simulation delay |
+| `WHATSAPP_READ_RECEIPT_JITTER_ENABLED` | ❌ | `true` | `true`, `false` | Add random delay to read receipts |
+| `WHATSAPP_READ_RECEIPT_DELAY_MIN` | ❌ | `500ms` | Duration (`100ms`, `500ms`, `1s`) | Minimum read receipt delay |
+| `WHATSAPP_READ_RECEIPT_DELAY_MAX` | ❌ | `2s` | Duration (`1s`, `2s`, `5s`) | Maximum read receipt delay |
+| `WHATSAPP_AUTO_MARK_READ` | ❌ | `false` | `true`, `false` | Auto mark incoming messages as read |
+| **⚡ Rate Limiting** | | | | |
+| `WHATSAPP_RATE_LIMIT_ENABLED` | ❌ | `false` | `true`, `false` | Enable per-device rate limiting |
+| `WHATSAPP_RATE_LIMIT_MSG_PER_MINUTE` | ❌ | `20` | `1`-`100` | Max messages per minute per device |
+| `WHATSAPP_RATE_LIMIT_BURST_SIZE` | ❌ | `5` | `1`-`50` | Burst allowance before rate limiting |
+| **🔄 WA Web Version Management** | | | | |
+| `WHATSAPP_VERSION_MAJOR` | ❌ | auto | `2` | Override WA Web major version |
+| `WHATSAPP_VERSION_MINOR` | ❌ | auto | `3000`+ | Override WA Web minor version |
+| `WHATSAPP_VERSION_PATCH` | ❌ | auto | `1019175440`+ | Override WA Web patch version |
+| `WHATSAPP_WAVERSION_REFRESH_MIN_INTERVAL` | ❌ | `10m` | Duration (`5m`, `10m`, `30m`) | Throttle between version refresh attempts |
+| `WHATSAPP_ENABLE_WAVERSION_REFRESH_CRON` | ❌ | `false` | `true`, `false` | Enable scheduled version refresh |
+| `WHATSAPP_WAVERSION_REFRESH_CRON_SPEC` | ❌ | `0 0 3 * * *` | Cron (6 fields with seconds) | Cron schedule for version refresh (daily 3am) |
+| `WHATSAPP_WAVERSION_REFRESH_CRON_FORCE` | ❌ | `false` | `true`, `false` | Force refresh ignoring min interval |
+| **🧯 Startup Reconnect (Storm Protection)** | | | | |
+| `WHATSAPP_STARTUP_RECONNECT_CONCURRENCY` | ❌ | `10` | `1`-`100` | Max concurrent reconnects at startup |
+| `WHATSAPP_STARTUP_RECONNECT_JITTER_MAX` | ❌ | `5s` | Duration (`1s`, `5s`, `10s`) | Random jitter before each reconnect |
+| `WHATSAPP_STARTUP_RECONNECT_RETRIES` | ❌ | `3` | `1`-`10` | Retry attempts per device |
+| `WHATSAPP_STARTUP_RECONNECT_BACKOFF_BASE` | ❌ | `2s` | Duration (`1s`, `2s`, `5s`) | Base backoff between retries |
+| `WHATSAPP_STARTUP_RECONNECT_BACKOFF_MAX` | ❌ | `30s` | Duration (`10s`, `30s`, `60s`) | Maximum backoff cap |
+| **📊 Caching** | | | | |
+| `WHATSAPP_GROUP_LIST_CACHE_TTL` | ❌ | `5m` | Duration (`1m`, `5m`, `15m`) | Group list cache TTL |
+| `WHATSAPP_GROUP_LIST_CACHE_DISABLED` | ❌ | `false` | `true`, `false` | Disable group list caching |
+| `WHATSAPP_ISON_CACHE_ENABLED` | ❌ | `false` | `true`, `false` | Enable IsOnWhatsApp result caching |
+| `WHATSAPP_ISON_CACHE_TTL` | ❌ | `5m` | Duration (`1m`, `5m`, `30m`) | IsOnWhatsApp cache TTL |
+| **🪝 Webhooks** | | | | |
+| `WEBHOOKS_ENABLED` | ❌ | `true` | `true`, `false` | Enable webhook delivery system |
+| `WEBHOOK_WORKERS` | ❌ | `4` | `1`-`32` | Concurrent webhook delivery workers |
+| `WEBHOOK_RETRY_LIMIT` | ❌ | `3` | `1`-`10` | Max delivery retry attempts |
+| `WEBHOOK_MAX_PER_DEVICE` | ❌ | `5` | `1`-`20` | Max webhooks per device |
+| `WHATSAPP_APPSTATE_WEBHOOK_ENABLED` | ❌ | `false` | `true`, `false` | Send app state events to webhooks |
+| **📦 Third Party** | | | | |
+| `LIBWEBP_VERSION` | ❌ | `0.6.1` | `0.6.1`, `1.0.0`+ | libwebp version for image processing |
+
+### Legend
+
+| Symbol | Meaning |
+|:------:|---------|
+| ✅ | **Required** - App will fail to start without this |
+| ❌ | **Optional** - Has sensible default, can be omitted |
+
+### Configuration Examples
+
+**Minimal Production Setup:**
+```env
+ADMIN_SECRET_KEY=K8sSecretFromVault123456789012
+JWT_SECRET_KEY=AnotherSecretFromVault12345678
+WHATSAPP_DATASTORE_URI=postgres://user:pass@db.example.com:5432/whatsapp?sslmode=require
+```
+
+**High-Volume Setup (1000+ sessions):**
+```env
+ADMIN_SECRET_KEY=...
+JWT_SECRET_KEY=...
+WHATSAPP_DATASTORE_URI=...
+
+# Increase reconnect capacity
+WHATSAPP_STARTUP_RECONNECT_CONCURRENCY=50
+WHATSAPP_STARTUP_RECONNECT_JITTER_MAX=10s
+
+# Enable rate limiting
+WHATSAPP_RATE_LIMIT_ENABLED=true
+WHATSAPP_RATE_LIMIT_MSG_PER_MINUTE=30
+
+# More webhook workers
+WEBHOOK_WORKERS=16
+```
+
+**Development Setup:**
+```env
+ADMIN_SECRET_KEY=dev-admin-secret-key-for-testing
+JWT_SECRET_KEY=dev-jwt-secret-key-32-characters
+WHATSAPP_DATASTORE_URI=postgres://postgres:postgres@localhost:5432/whatsapp
+
+# Disable anti-detection for faster testing
+WHATSAPP_AUTO_TYPING_ENABLED=false
+WHATSAPP_AUTO_PRESENCE_ENABLED=false
+WHATSAPP_READ_RECEIPT_JITTER_ENABLED=false
+```
 
 ### Example `.env` File
 

@@ -1,0 +1,118 @@
+# =============================================================================
+# WhatsApp Multi-Session REST API - Docker Compose
+# =============================================================================
+#
+# REQUIRED ENVIRONMENT VARIABLES (must be set):
+#   - ADMIN_SECRET_KEY: Admin secret for /admin/* endpoints (min 32 chars recommended)
+#   - JWT_SECRET_KEY: JWT signing key for device tokens (min 32 chars required)
+#   - WHATSAPP_DATASTORE_URI: PostgreSQL connection string
+#
+# Optional variables have sensible defaults and can be omitted.
+#
+# Usage:
+#   1. Copy this file or create a .env file with required variables
+#   2. Run: docker-compose up -d
+#
+# =============================================================================
+
+services:
+  whatsapp-api:
+    image: gdbrns/whatsapp-api-multisession:latest
+    container_name: whatsapp-api
+    restart: unless-stopped
+    ports:
+      - "${SERVER_PORT:-7001}:7001"
+    environment:
+      # -------------------------------------------------------------------
+      # REQUIRED - Application will fail to start without these
+      # -------------------------------------------------------------------
+      ADMIN_SECRET_KEY: ${ADMIN_SECRET_KEY:?ADMIN_SECRET_KEY is required}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
+      WHATSAPP_DATASTORE_URI: ${WHATSAPP_DATASTORE_URI:?WHATSAPP_DATASTORE_URI is required}
+
+      # -------------------------------------------------------------------
+      # Server Configuration (safe defaults)
+      # -------------------------------------------------------------------
+      SERVER_ADDRESS: ${SERVER_ADDRESS:-0.0.0.0}
+      SERVER_PORT: ${SERVER_PORT:-7001}
+
+      # -------------------------------------------------------------------
+      # HTTP Configuration (safe defaults)
+      # -------------------------------------------------------------------
+      HTTP_BASE_URL: ${HTTP_BASE_URL:-}
+      HTTP_CORS_ORIGIN: ${HTTP_CORS_ORIGIN:-*}
+      HTTP_BODY_LIMIT_SIZE: ${HTTP_BODY_LIMIT_SIZE:-8M}
+      HTTP_GZIP_LEVEL: ${HTTP_GZIP_LEVEL:-1}
+      HTTP_CACHE_CAPACITY: ${HTTP_CACHE_CAPACITY:-100}
+      HTTP_CACHE_TTL_SECONDS: ${HTTP_CACHE_TTL_SECONDS:-5}
+
+      # -------------------------------------------------------------------
+      # WhatsApp Configuration (safe defaults)
+      # -------------------------------------------------------------------
+      WHATSAPP_DATASTORE_TYPE: ${WHATSAPP_DATASTORE_TYPE:-postgres}
+      WHATSAPP_KEYS_DATASTORE_URI: ${WHATSAPP_KEYS_DATASTORE_URI:-}
+      WHATSAPP_CLIENT_PROXY_URL: ${WHATSAPP_CLIENT_PROXY_URL:-}
+
+      # Media handling
+      WHATSAPP_MEDIA_IMAGE_COMPRESSION: ${WHATSAPP_MEDIA_IMAGE_COMPRESSION:-true}
+      WHATSAPP_MEDIA_IMAGE_CONVERT_WEBP: ${WHATSAPP_MEDIA_IMAGE_CONVERT_WEBP:-true}
+
+      # Presence & typing simulation (anti-detection)
+      WHATSAPP_AUTO_PRESENCE_ENABLED: ${WHATSAPP_AUTO_PRESENCE_ENABLED:-true}
+      WHATSAPP_AUTO_TYPING_ENABLED: ${WHATSAPP_AUTO_TYPING_ENABLED:-true}
+      WHATSAPP_TYPING_DELAY_MIN: ${WHATSAPP_TYPING_DELAY_MIN:-1s}
+      WHATSAPP_TYPING_DELAY_MAX: ${WHATSAPP_TYPING_DELAY_MAX:-3s}
+
+      # Read receipt jitter (anti-detection)
+      WHATSAPP_READ_RECEIPT_JITTER_ENABLED: ${WHATSAPP_READ_RECEIPT_JITTER_ENABLED:-true}
+      WHATSAPP_READ_RECEIPT_DELAY_MIN: ${WHATSAPP_READ_RECEIPT_DELAY_MIN:-500ms}
+      WHATSAPP_READ_RECEIPT_DELAY_MAX: ${WHATSAPP_READ_RECEIPT_DELAY_MAX:-2s}
+
+      # App state webhooks
+      WHATSAPP_APPSTATE_WEBHOOK_ENABLED: ${WHATSAPP_APPSTATE_WEBHOOK_ENABLED:-false}
+
+      # Rate limiting (disabled by default)
+      WHATSAPP_RATE_LIMIT_ENABLED: ${WHATSAPP_RATE_LIMIT_ENABLED:-false}
+      WHATSAPP_RATE_LIMIT_MSG_PER_MINUTE: ${WHATSAPP_RATE_LIMIT_MSG_PER_MINUTE:-20}
+      WHATSAPP_RATE_LIMIT_BURST_SIZE: ${WHATSAPP_RATE_LIMIT_BURST_SIZE:-5}
+
+      # WA Web version refresh
+      WHATSAPP_WAVERSION_REFRESH_MIN_INTERVAL: ${WHATSAPP_WAVERSION_REFRESH_MIN_INTERVAL:-10m}
+
+      # Startup reconnect storm protection
+      WHATSAPP_STARTUP_RECONNECT_CONCURRENCY: ${WHATSAPP_STARTUP_RECONNECT_CONCURRENCY:-10}
+      WHATSAPP_STARTUP_RECONNECT_JITTER_MAX: ${WHATSAPP_STARTUP_RECONNECT_JITTER_MAX:-5s}
+      WHATSAPP_STARTUP_RECONNECT_RETRIES: ${WHATSAPP_STARTUP_RECONNECT_RETRIES:-3}
+      WHATSAPP_STARTUP_RECONNECT_BACKOFF_BASE: ${WHATSAPP_STARTUP_RECONNECT_BACKOFF_BASE:-2s}
+      WHATSAPP_STARTUP_RECONNECT_BACKOFF_MAX: ${WHATSAPP_STARTUP_RECONNECT_BACKOFF_MAX:-30s}
+
+      # Scheduled WA Web version refresh (cron)
+      WHATSAPP_ENABLE_WAVERSION_REFRESH_CRON: ${WHATSAPP_ENABLE_WAVERSION_REFRESH_CRON:-false}
+      WHATSAPP_WAVERSION_REFRESH_CRON_SPEC: ${WHATSAPP_WAVERSION_REFRESH_CRON_SPEC:-0 0 3 * * *}
+      WHATSAPP_WAVERSION_REFRESH_CRON_FORCE: ${WHATSAPP_WAVERSION_REFRESH_CRON_FORCE:-false}
+
+      # -------------------------------------------------------------------
+      # 3rd Party Configuration
+      # -------------------------------------------------------------------
+      LIBWEBP_VERSION: ${LIBWEBP_VERSION:-0.6.1}
+
+      # -------------------------------------------------------------------
+      # Webhook Configuration (safe defaults)
+      # -------------------------------------------------------------------
+      WEBHOOKS_ENABLED: ${WEBHOOKS_ENABLED:-true}
+      WEBHOOK_WORKERS: ${WEBHOOK_WORKERS:-4}
+      WEBHOOK_RETRY_LIMIT: ${WEBHOOK_RETRY_LIMIT:-3}
+      WEBHOOK_MAX_PER_DEVICE: ${WEBHOOK_MAX_PER_DEVICE:-5}
+
+    volumes:
+      - whatsapp-data:/usr/app/gowam-rest/dbs
+    healthcheck:
+      test: ["CMD", "sh", "-c", "wget --no-verbose --tries=1 --spider http://localhost:7001${HTTP_BASE_URL:-}/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+
+volumes:
+  whatsapp-data:
+    driver: local

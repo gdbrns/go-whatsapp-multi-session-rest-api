@@ -38,22 +38,26 @@ type deliveryTask struct {
 }
 
 func NewEngine(store *Store) *Engine {
-	workers, _ := env.GetEnvInt("WEBHOOK_WORKERS")
+	// WEBHOOK_WORKERS: default 4
+	workers := env.GetEnvIntOrDefault("WEBHOOK_WORKERS", 4)
 	if workers <= 0 {
 		workers = 4
 	}
-	retryLimit, _ := env.GetEnvInt("WEBHOOK_RETRY_LIMIT")
+
+	// WEBHOOK_RETRY_LIMIT: default 3
+	retryLimit := env.GetEnvIntOrDefault("WEBHOOK_RETRY_LIMIT", 3)
 	if retryLimit <= 0 {
 		retryLimit = 3
 	}
-	maxPerDevice, _ := env.GetEnvInt("WEBHOOK_MAX_PER_DEVICE")
+
+	// WEBHOOK_MAX_PER_DEVICE: default 5
+	maxPerDevice := env.GetEnvIntOrDefault("WEBHOOK_MAX_PER_DEVICE", 5)
 	if maxPerDevice <= 0 {
 		maxPerDevice = 5
 	}
-	enabled, err := env.GetEnvBool("WEBHOOKS_ENABLED")
-	if err != nil {
-		enabled = true
-	}
+
+	// WEBHOOKS_ENABLED: default true
+	enabled := env.GetEnvBoolOrDefault("WEBHOOKS_ENABLED", true)
 
 	ctx, cancel := context.WithCancel(context.Background())
 

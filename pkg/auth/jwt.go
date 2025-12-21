@@ -10,10 +10,12 @@ import (
 )
 
 // JWTSecretKey for signing device tokens
+// REQUIRED: Application will panic if not set
 var JWTSecretKey string
 
 func init() {
-	JWTSecretKey, _ = env.GetEnvString("JWT_SECRET_KEY")
+	// JWT_SECRET_KEY is REQUIRED (min 32 chars) - app will panic if not configured
+	JWTSecretKey = env.MustGetEnvString("JWT_SECRET_KEY")
 }
 
 // DeviceTokenClaims represents the claims in a device JWT

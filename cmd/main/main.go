@@ -117,18 +117,14 @@ func main() {
 	// Running Routines Tasks
 	internal.Routines(c)
 
-	// Get Server Configuration
+	// Get Server Configuration with defaults
 	var serverConfig Server
 
-	serverConfig.Address, err = env.GetEnvString("SERVER_ADDRESS")
-	if err != nil {
-		serverConfig.Address = "127.0.0.1"
-	}
+	// SERVER_ADDRESS: default "0.0.0.0" (all interfaces)
+	serverConfig.Address = env.GetEnvStringOrDefault("SERVER_ADDRESS", "0.0.0.0")
 
-	serverConfig.Port, err = env.GetEnvString("SERVER_PORT")
-	if err != nil {
-		serverConfig.Port = "8000"
-	}
+	// SERVER_PORT: default "7001"
+	serverConfig.Port = env.GetEnvStringOrDefault("SERVER_PORT", "7001")
 
 	// Start Server
 	go func() {

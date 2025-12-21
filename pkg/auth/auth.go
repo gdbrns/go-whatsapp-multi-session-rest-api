@@ -5,8 +5,10 @@ import (
 )
 
 // AdminSecretKey for admin API endpoints (/admin/*)
+// REQUIRED: Application will panic if not set
 var AdminSecretKey string
 
 func init() {
-	AdminSecretKey, _ = env.GetEnvString("ADMIN_SECRET_KEY")
+	// ADMIN_SECRET_KEY is REQUIRED - app will panic if not configured
+	AdminSecretKey = env.MustGetEnvString("ADMIN_SECRET_KEY")
 }

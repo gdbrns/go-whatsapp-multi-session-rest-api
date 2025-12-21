@@ -13,46 +13,31 @@ var CacheCapacity, CacheTTLSeconds int
 var bodyLimitBytes int
 
 func init() {
-	var err error
-
-	BaseURL, err = env.GetEnvString("HTTP_BASE_URL")
-	if err != nil {
-		BaseURL = ""
+	// HTTP_BASE_URL: empty by default (no prefix)
+	BaseURL = env.GetEnvStringOrDefault("HTTP_BASE_URL", "")
+	BaseURL = strings.TrimSpace(BaseURL)
+	BaseURL = strings.TrimRight(BaseURL, "/")
+	if BaseURL != "" && BaseURL != "/" {
+		BaseURL = "/" + strings.TrimLeft(BaseURL, "/")
 	} else {
-		BaseURL = strings.TrimSpace(BaseURL)
-		BaseURL = strings.TrimRight(BaseURL, "/")
-		if BaseURL == "" || BaseURL == "/" {
-			BaseURL = ""
-		} else {
-			BaseURL = "/" + strings.TrimLeft(BaseURL, "/")
-		}
+		BaseURL = ""
 	}
 
-	CORSOrigin, err = env.GetEnvString("HTTP_CORS_ORIGIN")
-	if err != nil {
-		CORSOrigin = "*"
-	}
+	// HTTP_CORS_ORIGIN: default "*" (allow all)
+	CORSOrigin = env.GetEnvStringOrDefault("HTTP_CORS_ORIGIN", "*")
 
-	BodyLimit, err = env.GetEnvString("HTTP_BODY_LIMIT_SIZE")
-	if err != nil {
-		BodyLimit = "8M"
-	}
+	// HTTP_BODY_LIMIT_SIZE: default "8M"
+	BodyLimit = env.GetEnvStringOrDefault("HTTP_BODY_LIMIT_SIZE", "8M")
 	bodyLimitBytes = parseBodyLimit(BodyLimit)
 
-	GZipLevel, err = env.GetEnvInt("HTTP_GZIP_LEVEL")
-	if err != nil {
-		GZipLevel = 1
-	}
+	// HTTP_GZIP_LEVEL: default 1
+	GZipLevel = env.GetEnvIntOrDefault("HTTP_GZIP_LEVEL", 1)
 
-	CacheCapacity, err = env.GetEnvInt("HTTP_CACHE_CAPACITY")
-	if err != nil {
-		CacheCapacity = 100
-	}
+	// HTTP_CACHE_CAPACITY: default 100
+	CacheCapacity = env.GetEnvIntOrDefault("HTTP_CACHE_CAPACITY", 100)
 
-	CacheTTLSeconds, err = env.GetEnvInt("HTTP_CACHE_TTL_SECONDS")
-	if err != nil {
-		CacheTTLSeconds = 5
-	}
+	// HTTP_CACHE_TTL_SECONDS: default 5
+	CacheTTLSeconds = env.GetEnvIntOrDefault("HTTP_CACHE_TTL_SECONDS", 5)
 }
 
 func BodyLimitBytes() int {
