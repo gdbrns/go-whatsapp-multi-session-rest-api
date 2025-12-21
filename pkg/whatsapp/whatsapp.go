@@ -4867,10 +4867,6 @@ func WhatsAppBuildHistorySyncRequest(ctx context.Context, jid string, deviceID s
 		return err
 	}
 
-	if count <= 0 {
-		count = 25
-	}
-
 	// Build and send history sync request
 	// WhatsApp will respond via history sync event
 	_, err = client.SendMessage(ctx, types.NewJID(client.Store.ID.User, types.DefaultUserServer), &waE2E.Message{
