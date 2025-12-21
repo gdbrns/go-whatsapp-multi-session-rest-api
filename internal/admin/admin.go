@@ -792,7 +792,7 @@ func GetHealth(c *fiber.Ctx) error {
 		"goroutines":        runtime.NumGoroutine(),
 		"uptime":            uptimeStr,
 		"uptime_seconds":    int64(uptime.Seconds()),
-		"version":           "1.2.0",
+		"version":           "1.2.1",
 		"go_version":        runtime.Version(),
 	}
 

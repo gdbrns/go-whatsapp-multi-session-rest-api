@@ -288,6 +288,13 @@ curl -X POST "http://localhost:7001/chats/6281234567890@s.whatsapp.net/images" \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..." \
   -F "file=@/path/to/image.jpg" \
   -F "caption=Check this out!"
+
+# Send document (with optional caption)
+curl -X POST "http://localhost:7001/chats/6281234567890@s.whatsapp.net/documents" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..." \
+  -F "file=@/path/to/document.pdf" \
+  -F "filename=document.pdf" \
+  -F "caption=Here is the document."
 ```
 
 ### 7. Regenerate Token (When Needed)
