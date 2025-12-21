@@ -1,6 +1,7 @@
 # Go WhatsApp Multi-Session REST API
 
 [![release version](https://img.shields.io/github/v/release/gdbrns/go-whatsapp-multi-session-rest-api)](https://github.com/gdbrns/go-whatsapp-multi-session-rest-api/releases)
+[![Docker Image](https://img.shields.io/docker/v/ghiovanidebrians/go-whatsapp-multi-session-rest-api?label=Docker&logo=docker&sort=semver)](https://hub.docker.com/r/ghiovanidebrians/go-whatsapp-multi-session-rest-api)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gdbrns/go-whatsapp-multi-session-rest-api)](https://goreportcard.com/report/github.com/gdbrns/go-whatsapp-multi-session-rest-api)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![whatsmeow](https://img.shields.io/badge/whatsmeow-v0.0.0--20251217-brightgreen.svg)](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20251217143725-11cf47c62d32)
