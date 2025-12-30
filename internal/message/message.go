@@ -289,3 +289,47 @@ func SendMediaRetryReceipt(c *fiber.Ctx) error {
 
 	return router.ResponseSuccess(c, "Media retry receipt sent")
 }
+
+// StarMessage stars or unstars a message (keep in chat / starred messages)
+func StarMessage(c *fiber.Ctx) error {
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	deviceID, jid := getDeviceContext(c)
+	messageID := c.Params("message_id")
+
+	var req typWhatsApp.RequestStarMessage
+	if err := c.BodyParser(&req); err != nil {
+		log.MessageOpCtx(c, "StarMessage", "").Warn("Failed to parse body request")
+		return router.ResponseBadRequest(c, "Failed to parse body request")
+	}
+
+	req.MessageID = messageID
+
+	if strings.TrimSpace(req.ChatJID) == "" {
+		log.MessageOpCtx(c, "StarMessage", "").Warn("Missing chat_jid")
+		return router.ResponseBadRequest(c, "chat_jid is required")
+	}
+
+	log.MessageOpCtx(c, "StarMessage", req.ChatJID).
+		WithField("message_id", messageID).
+		WithField("star", req.Star).
+		Info("Starring/unstarring message")
+
+	err := pkgWhatsApp.WhatsAppStarMessage(ctx, jid, deviceID, req.ChatJID, messageID, req.Star)
+	if err != nil {
+		log.MessageOpCtx(c, "StarMessage", req.ChatJID).WithField("message_id", messageID).WithError(err).Error("Failed to star/unstar message")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	action := "starred"
+	if !req.Star {
+		action = "unstarred"
+	}
+
+	log.MessageOpCtx(c, "StarMessage", req.ChatJID).WithField("message_id", messageID).Info("Message " + action + " successfully")
+
+	return router.ResponseSuccess(c, "Message "+action+" successfully")
+}

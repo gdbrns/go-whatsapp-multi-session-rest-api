@@ -562,3 +562,48 @@ func SendContact(c *fiber.Ctx) error {
 
 	return router.ResponseSuccessWithData(c, "Success send contact", map[string]interface{}{"message_id": msgID})
 }
+
+// SendLinkPreview sends a text message with link preview metadata
+func SendLinkPreview(c *fiber.Ctx) error {
+	deviceID, jid := getDeviceContext(c)
+	chatJID := c.Params("chat_jid")
+
+	if err := validation.ValidateChatJID(chatJID); err != nil {
+		log.MessageOpCtx(c, "SendLinkPreview", chatJID).Warn("Invalid chat_jid")
+		return router.ResponseBadRequest(c, err.Error())
+	}
+
+	var req typWhatsApp.RequestSendLinkPreview
+	err := c.BodyParser(&req)
+	if err != nil {
+		log.MessageOpCtx(c, "SendLinkPreview", chatJID).Warn("Failed to parse body request")
+		return router.ResponseBadRequest(c, "Failed parse body request")
+	}
+
+	if strings.TrimSpace(req.Text) == "" {
+		log.MessageOpCtx(c, "SendLinkPreview", chatJID).Warn("Text is required")
+		return router.ResponseBadRequest(c, "text is required")
+	}
+	if strings.TrimSpace(req.URL) == "" {
+		log.MessageOpCtx(c, "SendLinkPreview", chatJID).Warn("URL is required")
+		return router.ResponseBadRequest(c, "url is required")
+	}
+
+	log.MessageOpCtx(c, "SendLinkPreview", chatJID).WithField("url", req.URL).Info("Sending message with link preview")
+
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	opts := &pkgWhatsApp.SendOptions{}
+	msgID, err := pkgWhatsApp.WhatsAppSendTextWithLinkPreview(ctx, jid, deviceID, chatJID, req.Text, req.URL, req.Title, req.Description, req.Thumbnail, opts)
+	if err != nil {
+		log.MessageOpCtx(c, "SendLinkPreview", chatJID).WithError(err).Error("Failed to send link preview")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.MessageOpCtx(c, "SendLinkPreview", chatJID).WithField("message_id", msgID).Info("Link preview message sent successfully")
+
+	return router.ResponseSuccessWithData(c, "Success send link preview", map[string]interface{}{"message_id": msgID})
+}

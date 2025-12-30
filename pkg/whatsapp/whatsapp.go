@@ -4954,3 +4954,195 @@ func WhatsAppRegisterPushNotification(ctx context.Context, jid string, deviceID 
 
 	return err
 }
+
+// ============================================================================
+// Link Preview Messages
+// ============================================================================
+
+// WhatsAppSendTextWithLinkPreview sends a text message with link preview metadata
+func WhatsAppSendTextWithLinkPreview(ctx context.Context, jid string, deviceID string, rjid string, text string, url string, title string, description string, thumbnailBase64 string, opts *SendOptions) (string, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return "", err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(text) == "" {
+		return "", errors.New("text cannot be empty")
+	}
+	if strings.TrimSpace(url) == "" {
+		return "", errors.New("url cannot be empty for link preview")
+	}
+
+	remoteJID, err := WhatsAppCheckJID(ctx, jid, deviceID, rjid)
+	if err != nil {
+		return "", err
+	}
+
+	if err := waitRateLimit(ctx, deviceID); err != nil {
+		return "", err
+	}
+
+	cleanup := beginPresenceSimulation(ctx, jid, deviceID, remoteJID, false, opts)
+	defer cleanup()
+
+	// Build ExtendedTextMessage with link preview
+	extendedText := &waE2E.ExtendedTextMessage{
+		Text:        proto.String(text),
+		MatchedText: proto.String(url),
+		Title:       proto.String(title),
+		Description: proto.String(description),
+		PreviewType: waE2E.ExtendedTextMessage_NONE.Enum(),
+	}
+
+	// Add thumbnail if provided
+	if thumbnailBase64 != "" {
+		thumbnailBytes, err := base64.StdEncoding.DecodeString(thumbnailBase64)
+		if err == nil && len(thumbnailBytes) > 0 {
+			extendedText.JPEGThumbnail = thumbnailBytes
+		}
+	}
+
+	msgExtra := whatsmeow.SendRequestExtra{ID: client.GenerateMessageID()}
+	msgContent := &waE2E.Message{
+		ExtendedTextMessage: extendedText,
+	}
+
+	_, err = client.SendMessage(ctx, remoteJID, msgContent, msgExtra)
+	if err != nil {
+		return "", err
+	}
+
+	return msgExtra.ID, nil
+}
+
+// ============================================================================
+// Newsletter Comments
+// ============================================================================
+
+// WhatsAppSendNewsletterComment sends a comment on a newsletter message
+func WhatsAppSendNewsletterComment(ctx context.Context, jid string, deviceID string, newsletterJID string, messageServerID int, comment string) (string, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return "", err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(comment) == "" {
+		return "", errors.New("comment cannot be empty")
+	}
+
+	parsedJID, err := types.ParseJID(newsletterJID)
+	if err != nil {
+		return "", fmt.Errorf("invalid newsletter JID: %v", err)
+	}
+
+	if err := waitRateLimit(ctx, deviceID); err != nil {
+		return "", err
+	}
+
+	// Build the target message key
+	targetKey := &waCommon.MessageKey{
+		RemoteJID: proto.String(parsedJID.String()),
+		FromMe:    proto.Bool(false),
+		ID:        proto.String(fmt.Sprintf("%d", messageServerID)),
+	}
+
+	// Build comment message
+	msgExtra := whatsmeow.SendRequestExtra{ID: client.GenerateMessageID()}
+	msgContent := &waE2E.Message{
+		ExtendedTextMessage: &waE2E.ExtendedTextMessage{
+			Text: proto.String(comment),
+			ContextInfo: &waE2E.ContextInfo{
+				StanzaID:      proto.String(fmt.Sprintf("%d", messageServerID)),
+				Participant:   proto.String(parsedJID.String()),
+				QuotedMessage: &waE2E.Message{},
+			},
+		},
+	}
+
+	// Note: Newsletter comments use a special encrypted comment format
+	// For channels that support comments, we need to use the comment message type
+	// If the newsletter supports comments, try using CommentMessage
+	commentMsg := &waE2E.Message{
+		CommentMessage: &waE2E.CommentMessage{
+			Message:          msgContent,
+			TargetMessageKey: targetKey,
+		},
+	}
+
+	_, err = client.SendMessage(ctx, parsedJID, commentMsg, msgExtra)
+	if err != nil {
+		// Fallback: try regular reply format
+		_, err = client.SendMessage(ctx, parsedJID, msgContent, msgExtra)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return msgExtra.ID, nil
+}
+
+// ============================================================================
+// Starred/Kept Messages
+// ============================================================================
+
+// WhatsAppStarMessage stars or unstars a message (keep in chat)
+func WhatsAppStarMessage(ctx context.Context, jid string, deviceID string, chatJID string, messageID string, star bool) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return err
+	}
+
+	parsedChatJID, err := types.ParseJID(chatJID)
+	if err != nil {
+		return fmt.Errorf("invalid chat JID: %v", err)
+	}
+
+	if err := waitRateLimit(ctx, deviceID); err != nil {
+		return err
+	}
+
+	// Build the message key for the target message
+	targetKey := &waCommon.MessageKey{
+		RemoteJID: proto.String(parsedChatJID.String()),
+		FromMe:    proto.Bool(true), // Assuming own message, can be adjusted
+		ID:        proto.String(messageID),
+	}
+
+	// Determine keep type
+	var keepType waE2E.KeepType
+	if star {
+		keepType = waE2E.KeepType_KEEP_FOR_ALL
+	} else {
+		keepType = waE2E.KeepType_UNDO_KEEP_FOR_ALL
+	}
+
+	// Build KeepInChatMessage
+	timestamp := time.Now().UnixMilli()
+	msgContent := &waE2E.Message{
+		KeepInChatMessage: &waE2E.KeepInChatMessage{
+			Key:         targetKey,
+			KeepType:    &keepType,
+			TimestampMS: &timestamp,
+		},
+	}
+
+	msgExtra := whatsmeow.SendRequestExtra{ID: client.GenerateMessageID()}
+	_, err = client.SendMessage(ctx, parsedChatJID, msgContent, msgExtra)
+	return err
+}

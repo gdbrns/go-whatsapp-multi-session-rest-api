@@ -6,3 +6,9 @@ vendor
 !*.gitkeep
 *.exe
 main
+
+# Frontend application (separate repository)
+frontend/
+
+# Release template (local reference only)
+docs/RELEASE_TEMPLATE.md

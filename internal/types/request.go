@@ -422,3 +422,31 @@ type ResponsePushNotificationStatus struct {
 	Registered bool   `json:"registered"`
 	Platform   string `json:"platform"`
 }
+
+// ============================================================================
+// Link Preview Message APIs
+// ============================================================================
+type RequestSendLinkPreview struct {
+	Text        string `json:"text"`
+	URL         string `json:"url"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Thumbnail   string `json:"thumbnail"` // base64 JPEG
+}
+
+// ============================================================================
+// Newsletter Comment APIs
+// ============================================================================
+type RequestNewsletterComment struct {
+	MessageServerID int    `json:"message_server_id"`
+	Comment         string `json:"comment"`
+}
+
+// ============================================================================
+// Star/Keep Message APIs
+// ============================================================================
+type RequestStarMessage struct {
+	ChatJID   string `json:"chat_jid"`
+	MessageID string `json:"message_id"`
+	Star      bool   `json:"star"`
+}

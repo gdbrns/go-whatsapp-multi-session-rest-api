@@ -138,6 +138,7 @@ func Routes(app *fiber.App) {
 	app.Post(router.BaseURL+"/chats/:chat_jid/locations", deviceAuthMiddleware, ctlMessaging.SendLocation)
 	app.Post(router.BaseURL+"/chats/:chat_jid/contacts", deviceAuthMiddleware, ctlMessaging.SendContact)
 	app.Post(router.BaseURL+"/chats/:chat_jid/documents", deviceAuthMiddleware, ctlMessaging.SendDocument)
+	app.Post(router.BaseURL+"/chats/:chat_jid/link-preview", deviceAuthMiddleware, ctlMessaging.SendLinkPreview)
 	app.Get(router.BaseURL+"/chats/:chat_jid/messages", deviceAuthMiddleware, ctlMessaging.GetMessages)
 	app.Post(router.BaseURL+"/chats/:chat_jid/archive", deviceAuthMiddleware, ctlMessaging.ArchiveChat)
 	app.Post(router.BaseURL+"/chats/:chat_jid/pin", deviceAuthMiddleware, ctlMessaging.PinChat)
@@ -149,6 +150,9 @@ func Routes(app *fiber.App) {
 	app.Delete(router.BaseURL+"/messages/:message_id", deviceAuthMiddleware, ctlMessage.Delete)
 	app.Post(router.BaseURL+"/messages/:message_id/reply", deviceAuthMiddleware, ctlMessage.Reply)
 	app.Post(router.BaseURL+"/messages/:message_id/forward", deviceAuthMiddleware, ctlMessage.Forward)
+
+	// Star/Unstar Messages
+	app.Post(router.BaseURL+"/messages/:message_id/star", deviceAuthMiddleware, ctlMessage.StarMessage)
 
 	// Media Retry
 	app.Post(router.BaseURL+"/messages/media/retry-receipt", deviceAuthMiddleware, ctlMessage.SendMediaRetryReceipt)
@@ -168,6 +172,7 @@ func Routes(app *fiber.App) {
 	app.Get(router.BaseURL+"/newsletters/:jid/messages", deviceAuthMiddleware, ctlNewsletter.GetNewsletterMessages)
 	app.Post(router.BaseURL+"/newsletters/:jid/messages", deviceAuthMiddleware, ctlNewsletter.SendNewsletterMessage)
 	app.Post(router.BaseURL+"/newsletters/:jid/reaction", deviceAuthMiddleware, ctlNewsletter.ReactToNewsletterMessage)
+	app.Post(router.BaseURL+"/newsletters/:jid/comments", deviceAuthMiddleware, ctlNewsletter.SendNewsletterComment)
 	app.Post(router.BaseURL+"/newsletters/:jid/mute", deviceAuthMiddleware, ctlNewsletter.ToggleNewsletterMute)
 	app.Post(router.BaseURL+"/newsletters/:jid/viewed", deviceAuthMiddleware, ctlNewsletter.MarkNewsletterViewed)
 	app.Get(router.BaseURL+"/newsletters/invite/:code", deviceAuthMiddleware, ctlNewsletter.GetNewsletterInfoFromInvite)

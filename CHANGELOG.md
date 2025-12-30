@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Star/Keep Messages API** - Star or unstar messages to keep them in chat (`POST /messages/:message_id/star`)
+- **Link Preview Messages API** - Send text messages with rich URL previews including title, description, and thumbnail (`POST /chats/:chat_jid/link-preview`)
+- **Newsletter Comments API** - Send comments on WhatsApp channel/newsletter posts (`POST /newsletters/:jid/comments`)
+
+### Changed
+- Updated `.gitignore` to exclude release template
+
+### Fixed
+- Minor workflow adjustments in `release.yml`
+
+---
+
 ## [1.2.4] - 2025-12-22
 
 ### 🐛 Fixes

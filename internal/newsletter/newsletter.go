@@ -482,3 +482,51 @@ func AcceptTOSNotice(c *fiber.Ctx) error {
 	return router.ResponseSuccess(c, "Success accept TOS notice")
 }
 
+// SendNewsletterComment sends a comment on a newsletter message
+func SendNewsletterComment(c *fiber.Ctx) error {
+	deviceID, jid := getDeviceContext(c)
+	newsletterJID := c.Params("jid")
+
+	var req struct {
+		MessageServerID int    `json:"message_server_id"`
+		Comment         string `json:"comment"`
+	}
+	err := c.BodyParser(&req)
+	if err != nil {
+		log.Newsletter(c, "SendNewsletterComment", newsletterJID).Warn("Failed to parse body request")
+		return router.ResponseBadRequest(c, "Failed parse body request")
+	}
+
+	if req.MessageServerID == 0 {
+		log.Newsletter(c, "SendNewsletterComment", newsletterJID).Warn("message_server_id is required")
+		return router.ResponseBadRequest(c, "message_server_id is required")
+	}
+
+	if req.Comment == "" {
+		log.Newsletter(c, "SendNewsletterComment", newsletterJID).Warn("comment is required")
+		return router.ResponseBadRequest(c, "comment is required")
+	}
+
+	log.Newsletter(c, "SendNewsletterComment", newsletterJID).
+		WithField("message_server_id", req.MessageServerID).
+		WithField("comment_length", len(req.Comment)).
+		Info("Sending newsletter comment")
+
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	msgID, err := pkgWhatsApp.WhatsAppSendNewsletterComment(ctx, jid, deviceID, newsletterJID, req.MessageServerID, req.Comment)
+	if err != nil {
+		log.Newsletter(c, "SendNewsletterComment", newsletterJID).WithError(err).Error("Failed to send newsletter comment")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.Newsletter(c, "SendNewsletterComment", newsletterJID).
+		WithField("message_id", msgID).
+		Info("Newsletter comment sent successfully")
+
+	return router.ResponseSuccessWithData(c, "Success send newsletter comment", map[string]interface{}{"message_id": msgID})
+}
+

@@ -2175,6 +2175,7 @@
         "security": [{"BearerAuth": []}],
         "tags": ["05 - User Management"],
         "summary": "Get Status Privacy",
+        "description": "Get status/story privacy settings - who receives your status broadcasts",
         "responses": {
           "200": {"description": "Status privacy retrieved", "schema": {"$ref": "#/definitions/SuccessResponse"}},
           "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
@@ -2623,6 +2624,40 @@
         }
       }
     },
+    "/chats/{chat_jid}/link-preview": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["06 - Messaging"],
+        "summary": "Send Text with Link Preview",
+        "description": "Send a text message with custom link preview metadata (title, description, thumbnail)",
+        "consumes": ["application/json"],
+        "parameters": [
+          {"name": "chat_jid", "in": "path", "required": true, "type": "string", "example": "6281234567890@s.whatsapp.net"},
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["text", "url"],
+              "properties": {
+                "text": {"type": "string", "example": "Check out this link!", "description": "Message text"},
+                "url": {"type": "string", "example": "https://example.com", "description": "URL for link preview"},
+                "title": {"type": "string", "example": "Example Website", "description": "Link preview title"},
+                "description": {"type": "string", "example": "This is an example website description", "description": "Link preview description"},
+                "thumbnail": {"type": "string", "description": "Base64 encoded JPEG thumbnail image"}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {"description": "Link preview message sent", "schema": {"$ref": "#/definitions/MessageSentResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
     "/chats/{chat_jid}/archive": {
       "post": {
         "security": [{"BearerAuth": []}],
@@ -3038,6 +3073,37 @@
               }
             }
           }
+        }
+      }
+    },
+    "/messages/{message_id}/star": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["07 - Message Actions"],
+        "summary": "Star/Unstar Message",
+        "description": "Star or unstar a message (keep in chat / starred messages). Starred messages are saved for quick access.",
+        "consumes": ["application/json"],
+        "parameters": [
+          {"name": "message_id", "in": "path", "required": true, "type": "string", "description": "ID of the message to star/unstar", "example": "3EB0ABC123DEF456789"},
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["chat_jid"],
+              "properties": {
+                "chat_jid": {"type": "string", "example": "6281234567890@s.whatsapp.net", "description": "JID of the chat containing the message"},
+                "star": {"type": "boolean", "example": true, "description": "true to star, false to unstar"}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {"description": "Message starred/unstarred successfully", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
         }
       }
     },
@@ -4668,6 +4734,37 @@
         ],
         "responses": {
           "200": {"description": "Reaction sent", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/newsletters/{jid}/comments": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["13 - Newsletter/Channels"],
+        "summary": "Comment on Newsletter Message",
+        "description": "Send a comment on a newsletter/channel message. Only works for newsletters that have comments enabled.",
+        "consumes": ["application/json"],
+        "parameters": [
+          {"name": "jid", "in": "path", "required": true, "type": "string", "description": "Newsletter JID"},
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["message_server_id", "comment"],
+              "properties": {
+                "message_server_id": {"type": "integer", "example": 123, "description": "Server ID of the message to comment on"},
+                "comment": {"type": "string", "example": "Great post!", "description": "Comment text"}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {"description": "Comment sent", "schema": {"$ref": "#/definitions/MessageSentResponse"}},
           "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
           "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
           "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
