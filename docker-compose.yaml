@@ -1,3 +1,16 @@
+# =============================================================================
+# WhatsApp Multi-Session REST API - Docker Compose (Development/Local Build)
+# =============================================================================
+#
+# This file builds from source and includes resource limits and security options.
+# For production with pre-built images, use docker-compose.yml instead.
+#
+# Usage:
+#   1. Create a .env file with required variables (see .env.example)
+#   2. Run: docker-compose -f docker-compose.yaml up -d --build
+#
+# =============================================================================
+
 networks:
   whatsapp:
     driver: bridge
@@ -12,7 +25,7 @@ services:
     networks:
       - whatsapp
     ports:
-      - "7001:7001"
+      - "${SERVER_PORT:-7001}:7001"
     env_file:
       - ./.env
     environment:
@@ -32,7 +45,7 @@ services:
           cpus: '0.5'
           memory: 128M
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider \"http://localhost:7001${HTTP_BASE_URL}/\" || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider \"http://localhost:7001${HTTP_BASE_URL:-}/\" || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

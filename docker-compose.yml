@@ -1,5 +1,5 @@
 # =============================================================================
-# WhatsApp Multi-Session REST API - Docker Compose
+# WhatsApp Multi-Session REST API - Docker Compose (Production)
 # =============================================================================
 #
 # REQUIRED ENVIRONMENT VARIABLES (must be set):
@@ -47,11 +47,19 @@ services:
       HTTP_CACHE_TTL_SECONDS: ${HTTP_CACHE_TTL_SECONDS:-5}
 
       # -------------------------------------------------------------------
+      # Logging Configuration
+      # -------------------------------------------------------------------
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: ${LOG_FORMAT:-text}
+
+      # -------------------------------------------------------------------
       # WhatsApp Configuration (safe defaults)
       # -------------------------------------------------------------------
       WHATSAPP_DATASTORE_TYPE: ${WHATSAPP_DATASTORE_TYPE:-postgres}
       WHATSAPP_KEYS_DATASTORE_URI: ${WHATSAPP_KEYS_DATASTORE_URI:-}
       WHATSAPP_CLIENT_PROXY_URL: ${WHATSAPP_CLIENT_PROXY_URL:-}
+      WHATSAPP_DEVICE_OS_NAME: ${WHATSAPP_DEVICE_OS_NAME:-Chrome}
+      WHATSAPP_LOG_LEVEL: ${WHATSAPP_LOG_LEVEL:-ERROR}
 
       # Media handling
       WHATSAPP_MEDIA_IMAGE_COMPRESSION: ${WHATSAPP_MEDIA_IMAGE_COMPRESSION:-true}
@@ -68,6 +76,9 @@ services:
       WHATSAPP_READ_RECEIPT_DELAY_MIN: ${WHATSAPP_READ_RECEIPT_DELAY_MIN:-500ms}
       WHATSAPP_READ_RECEIPT_DELAY_MAX: ${WHATSAPP_READ_RECEIPT_DELAY_MAX:-2s}
 
+      # Auto mark read (disabled by default)
+      WHATSAPP_AUTO_MARK_READ: ${WHATSAPP_AUTO_MARK_READ:-false}
+
       # App state webhooks
       WHATSAPP_APPSTATE_WEBHOOK_ENABLED: ${WHATSAPP_APPSTATE_WEBHOOK_ENABLED:-false}
 
@@ -76,7 +87,20 @@ services:
       WHATSAPP_RATE_LIMIT_MSG_PER_MINUTE: ${WHATSAPP_RATE_LIMIT_MSG_PER_MINUTE:-20}
       WHATSAPP_RATE_LIMIT_BURST_SIZE: ${WHATSAPP_RATE_LIMIT_BURST_SIZE:-5}
 
-      # WA Web version refresh
+      # Group list caching
+      WHATSAPP_GROUP_LIST_CACHE_TTL: ${WHATSAPP_GROUP_LIST_CACHE_TTL:-5m}
+      WHATSAPP_GROUP_LIST_CACHE_DISABLED: ${WHATSAPP_GROUP_LIST_CACHE_DISABLED:-false}
+
+      # IsOnWhatsApp caching
+      WHATSAPP_ISON_CACHE_ENABLED: ${WHATSAPP_ISON_CACHE_ENABLED:-false}
+      WHATSAPP_ISON_CACHE_TTL: ${WHATSAPP_ISON_CACHE_TTL:-5m}
+      WHATSAPP_ISON_CACHE_MAX: ${WHATSAPP_ISON_CACHE_MAX:-10000}
+      WHATSAPP_ISON_BATCH_SIZE: ${WHATSAPP_ISON_BATCH_SIZE:-50}
+
+      # WA Web version management (optional overrides)
+      # WHATSAPP_VERSION_MAJOR: ${WHATSAPP_VERSION_MAJOR:-}
+      # WHATSAPP_VERSION_MINOR: ${WHATSAPP_VERSION_MINOR:-}
+      # WHATSAPP_VERSION_PATCH: ${WHATSAPP_VERSION_PATCH:-}
       WHATSAPP_WAVERSION_REFRESH_MIN_INTERVAL: ${WHATSAPP_WAVERSION_REFRESH_MIN_INTERVAL:-10m}
 
       # Startup reconnect storm protection
@@ -85,6 +109,9 @@ services:
       WHATSAPP_STARTUP_RECONNECT_RETRIES: ${WHATSAPP_STARTUP_RECONNECT_RETRIES:-3}
       WHATSAPP_STARTUP_RECONNECT_BACKOFF_BASE: ${WHATSAPP_STARTUP_RECONNECT_BACKOFF_BASE:-2s}
       WHATSAPP_STARTUP_RECONNECT_BACKOFF_MAX: ${WHATSAPP_STARTUP_RECONNECT_BACKOFF_MAX:-30s}
+
+      # Health check cron (enabled by default)
+      WHATSAPP_ENABLE_HEALTH_CHECK_CRON: ${WHATSAPP_ENABLE_HEALTH_CHECK_CRON:-true}
 
       # Scheduled WA Web version refresh (cron)
       WHATSAPP_ENABLE_WAVERSION_REFRESH_CRON: ${WHATSAPP_ENABLE_WAVERSION_REFRESH_CRON:-false}

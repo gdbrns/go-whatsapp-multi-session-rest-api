@@ -16,7 +16,8 @@ type APIKey struct {
 	ID               int64      `json:"id"`
 	APIKey           string     `json:"api_key"`
 	CustomerName     string     `json:"customer_name"`
-	CustomerEmail    string     `json:"customer_email,omitempty"`
+	CustomerEmail    string     `json:"customer_email"`
+	CustomerPhone    string     `json:"customer_phone"`
 	MaxDevices       int        `json:"max_devices"`
 	RateLimitPerHour int        `json:"rate_limit_per_hour"`
 	IsActive         bool       `json:"is_active"`
@@ -194,13 +195,20 @@ func openRoutingDB() (*sql.DB, error) {
 			id SERIAL PRIMARY KEY,
 			api_key VARCHAR(64) UNIQUE NOT NULL,
 			customer_name VARCHAR(255) NOT NULL,
-			customer_email VARCHAR(255),
-			max_devices INT DEFAULT 5,
+			customer_email VARCHAR(255) NOT NULL,
+			customer_phone VARCHAR(50) NOT NULL,
+			max_devices INT DEFAULT 1,
 			rate_limit_per_hour INT DEFAULT 1000,
 			is_active BOOLEAN DEFAULT TRUE,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)`)
+		if err != nil {
+			routingErr = err
+			return
+		}
+		// Migration: Add customer_phone column if it doesn't exist (for existing databases)
+		_, _ = db.Exec(`ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS customer_phone VARCHAR(50) NOT NULL DEFAULT ''`)
 		if err != nil {
 			routingErr = err
 			return
@@ -559,7 +567,8 @@ func GenerateDeviceSecret() (string, error) {
 }
 
 // CreateAPIKey creates a new API key for a customer
-func CreateAPIKey(ctx context.Context, customerName, customerEmail string, maxDevices, rateLimitPerHour int) (*APIKey, error) {
+// All parameters are required: customerName, customerEmail, customerPhone, maxDevices (default 1), rateLimitPerHour
+func CreateAPIKey(ctx context.Context, customerName, customerEmail, customerPhone string, maxDevices, rateLimitPerHour int) (*APIKey, error) {
 	db, err := openRoutingDB()
 	if err != nil {
 		return nil, err
@@ -570,8 +579,9 @@ func CreateAPIKey(ctx context.Context, customerName, customerEmail string, maxDe
 		return nil, fmt.Errorf("failed to generate API key: %w", err)
 	}
 
+	// Default max_devices to 1 if not specified (but validation should catch this)
 	if maxDevices <= 0 {
-		maxDevices = 5
+		maxDevices = 1
 	}
 	if rateLimitPerHour <= 0 {
 		rateLimitPerHour = 1000
@@ -580,10 +590,10 @@ func CreateAPIKey(ctx context.Context, customerName, customerEmail string, maxDe
 	var id int64
 	var createdAt time.Time
 	err = db.QueryRowContext(ctx, `
-		INSERT INTO api_keys (api_key, customer_name, customer_email, max_devices, rate_limit_per_hour)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO api_keys (api_key, customer_name, customer_email, customer_phone, max_devices, rate_limit_per_hour)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, created_at
-	`, apiKey, customerName, customerEmail, maxDevices, rateLimitPerHour).Scan(&id, &createdAt)
+	`, apiKey, customerName, customerEmail, customerPhone, maxDevices, rateLimitPerHour).Scan(&id, &createdAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create API key: %w", err)
 	}
@@ -593,6 +603,7 @@ func CreateAPIKey(ctx context.Context, customerName, customerEmail string, maxDe
 		APIKey:           apiKey,
 		CustomerName:     customerName,
 		CustomerEmail:    customerEmail,
+		CustomerPhone:    customerPhone,
 		MaxDevices:       maxDevices,
 		RateLimitPerHour: rateLimitPerHour,
 		IsActive:         true,
@@ -617,12 +628,12 @@ func GetAPIKeyByKey(ctx context.Context, apiKey string) (*APIKey, error) {
 	}
 
 	var ak APIKey
-	var email sql.NullString
+	var email, phone sql.NullString
 	var updatedAt sql.NullTime
 	err = db.QueryRowContext(ctx, `
-		SELECT id, api_key, customer_name, customer_email, max_devices, rate_limit_per_hour, is_active, created_at, updated_at
+		SELECT id, api_key, customer_name, customer_email, customer_phone, max_devices, rate_limit_per_hour, is_active, created_at, updated_at
 		FROM api_keys WHERE api_key = $1
-	`, apiKey).Scan(&ak.ID, &ak.APIKey, &ak.CustomerName, &email, &ak.MaxDevices, &ak.RateLimitPerHour, &ak.IsActive, &ak.CreatedAt, &updatedAt)
+	`, apiKey).Scan(&ak.ID, &ak.APIKey, &ak.CustomerName, &email, &phone, &ak.MaxDevices, &ak.RateLimitPerHour, &ak.IsActive, &ak.CreatedAt, &updatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, errors.New("API key not found")
 	}
@@ -631,6 +642,9 @@ func GetAPIKeyByKey(ctx context.Context, apiKey string) (*APIKey, error) {
 	}
 	if email.Valid {
 		ak.CustomerEmail = email.String
+	}
+	if phone.Valid {
+		ak.CustomerPhone = phone.String
 	}
 	if updatedAt.Valid {
 		ak.UpdatedAt = &updatedAt.Time
@@ -663,12 +677,12 @@ func GetAPIKeyByID(ctx context.Context, id int64) (*APIKey, error) {
 	}
 
 	var ak APIKey
-	var email sql.NullString
+	var email, phone sql.NullString
 	var updatedAt sql.NullTime
 	err = db.QueryRowContext(ctx, `
-		SELECT id, api_key, customer_name, customer_email, max_devices, rate_limit_per_hour, is_active, created_at, updated_at
+		SELECT id, api_key, customer_name, customer_email, customer_phone, max_devices, rate_limit_per_hour, is_active, created_at, updated_at
 		FROM api_keys WHERE id = $1
-	`, id).Scan(&ak.ID, &ak.APIKey, &ak.CustomerName, &email, &ak.MaxDevices, &ak.RateLimitPerHour, &ak.IsActive, &ak.CreatedAt, &updatedAt)
+	`, id).Scan(&ak.ID, &ak.APIKey, &ak.CustomerName, &email, &phone, &ak.MaxDevices, &ak.RateLimitPerHour, &ak.IsActive, &ak.CreatedAt, &updatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, errors.New("API key not found")
 	}
@@ -677,6 +691,9 @@ func GetAPIKeyByID(ctx context.Context, id int64) (*APIKey, error) {
 	}
 	if email.Valid {
 		ak.CustomerEmail = email.String
+	}
+	if phone.Valid {
+		ak.CustomerPhone = phone.String
 	}
 	if updatedAt.Valid {
 		ak.UpdatedAt = &updatedAt.Time
@@ -692,7 +709,7 @@ func ListAPIKeys(ctx context.Context) ([]APIKey, error) {
 	}
 
 	rows, err := db.QueryContext(ctx, `
-		SELECT id, api_key, customer_name, customer_email, max_devices, rate_limit_per_hour, is_active, created_at, updated_at
+		SELECT id, api_key, customer_name, customer_email, customer_phone, max_devices, rate_limit_per_hour, is_active, created_at, updated_at
 		FROM api_keys ORDER BY created_at DESC
 	`)
 	if err != nil {
@@ -703,13 +720,16 @@ func ListAPIKeys(ctx context.Context) ([]APIKey, error) {
 	var keys []APIKey
 	for rows.Next() {
 		var ak APIKey
-		var email sql.NullString
+		var email, phone sql.NullString
 		var updatedAt sql.NullTime
-		if err := rows.Scan(&ak.ID, &ak.APIKey, &ak.CustomerName, &email, &ak.MaxDevices, &ak.RateLimitPerHour, &ak.IsActive, &ak.CreatedAt, &updatedAt); err != nil {
+		if err := rows.Scan(&ak.ID, &ak.APIKey, &ak.CustomerName, &email, &phone, &ak.MaxDevices, &ak.RateLimitPerHour, &ak.IsActive, &ak.CreatedAt, &updatedAt); err != nil {
 			return nil, err
 		}
 		if email.Valid {
 			ak.CustomerEmail = email.String
+		}
+		if phone.Valid {
+			ak.CustomerPhone = phone.String
 		}
 		if updatedAt.Valid {
 			ak.UpdatedAt = &updatedAt.Time
@@ -720,7 +740,7 @@ func ListAPIKeys(ctx context.Context) ([]APIKey, error) {
 }
 
 // UpdateAPIKey updates an API key
-func UpdateAPIKey(ctx context.Context, id int64, customerName, customerEmail string, maxDevices, rateLimitPerHour int, isActive bool) error {
+func UpdateAPIKey(ctx context.Context, id int64, customerName, customerEmail, customerPhone string, maxDevices, rateLimitPerHour int, isActive bool) error {
 	db, err := openRoutingDB()
 	if err != nil {
 		return err
@@ -735,9 +755,9 @@ func UpdateAPIKey(ctx context.Context, id int64, customerName, customerEmail str
 
 	_, err = db.ExecContext(ctx, `
 		UPDATE api_keys 
-		SET customer_name = $2, customer_email = $3, max_devices = $4, rate_limit_per_hour = $5, is_active = $6, updated_at = NOW()
+		SET customer_name = $2, customer_email = $3, customer_phone = $4, max_devices = $5, rate_limit_per_hour = $6, is_active = $7, updated_at = NOW()
 		WHERE id = $1
-	`, id, customerName, customerEmail, maxDevices, rateLimitPerHour, isActive)
+	`, id, customerName, customerEmail, customerPhone, maxDevices, rateLimitPerHour, isActive)
 	return err
 }
 

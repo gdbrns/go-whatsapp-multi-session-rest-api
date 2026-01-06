@@ -21,6 +21,7 @@ var startTime = time.Now()
 type CreateAPIKeyRequest struct {
 	CustomerName  string `json:"customer_name" form:"customer_name"`
 	CustomerEmail string `json:"customer_email" form:"customer_email"`
+	CustomerPhone string `json:"customer_phone" form:"customer_phone"`
 	MaxDevices    int    `json:"max_devices" form:"max_devices"`
 	RateLimit     int    `json:"rate_limit_per_hour" form:"rate_limit_per_hour"`
 }
@@ -28,6 +29,7 @@ type CreateAPIKeyRequest struct {
 type UpdateAPIKeyRequest struct {
 	CustomerName  string `json:"customer_name" form:"customer_name"`
 	CustomerEmail string `json:"customer_email" form:"customer_email"`
+	CustomerPhone string `json:"customer_phone" form:"customer_phone"`
 	MaxDevices    int    `json:"max_devices" form:"max_devices"`
 	RateLimit     int    `json:"rate_limit_per_hour" form:"rate_limit_per_hour"`
 	IsActive      *bool  `json:"is_active" form:"is_active"`
@@ -64,33 +66,44 @@ func CreateAPIKey(c *fiber.Ctx) error {
 		return router.ResponseBadRequest(c, "Invalid request body")
 	}
 
+	// Validate all required fields
 	if req.CustomerName == "" {
 		log.AdminOp(c, "CreateAPIKey").Warn("Missing customer_name")
 		return router.ResponseBadRequest(c, "customer_name is required")
 	}
-
-	// Set defaults
+	if req.CustomerEmail == "" {
+		log.AdminOp(c, "CreateAPIKey").Warn("Missing customer_email")
+		return router.ResponseBadRequest(c, "customer_email is required")
+	}
+	if req.CustomerPhone == "" {
+		log.AdminOp(c, "CreateAPIKey").Warn("Missing customer_phone")
+		return router.ResponseBadRequest(c, "customer_phone is required")
+	}
 	if req.MaxDevices <= 0 {
-		req.MaxDevices = 5
+		log.AdminOp(c, "CreateAPIKey").Warn("Missing or invalid max_devices")
+		return router.ResponseBadRequest(c, "max_devices is required and must be greater than 0")
 	}
 	if req.RateLimit <= 0 {
-		req.RateLimit = 1000
+		log.AdminOp(c, "CreateAPIKey").Warn("Missing or invalid rate_limit_per_hour")
+		return router.ResponseBadRequest(c, "rate_limit_per_hour is required and must be greater than 0")
 	}
 
 	log.AdminOp(c, "CreateAPIKey").WithField("customer_name", req.CustomerName).WithField("max_devices", req.MaxDevices).Info("Creating API key for customer")
 
-	apiKey, err := pkgWhatsApp.CreateAPIKey(ctx, req.CustomerName, req.CustomerEmail, req.MaxDevices, req.RateLimit)
+	apiKey, err := pkgWhatsApp.CreateAPIKey(ctx, req.CustomerName, req.CustomerEmail, req.CustomerPhone, req.MaxDevices, req.RateLimit)
 	if err != nil {
 		log.AdminOp(c, "CreateAPIKey").WithError(err).Error("Failed to create API key")
 		return router.ResponseInternalError(c, "Failed to create API key: "+err.Error())
 	}
 
 	response := typAuth.ResponseAPIKeyCreated{
-		ID:           int(apiKey.ID),
-		APIKey:       apiKey.APIKey,
-		CustomerName: apiKey.CustomerName,
-		MaxDevices:   apiKey.MaxDevices,
-		RateLimit:    apiKey.RateLimitPerHour,
+		ID:            int(apiKey.ID),
+		APIKey:        apiKey.APIKey,
+		CustomerName:  apiKey.CustomerName,
+		CustomerEmail: apiKey.CustomerEmail,
+		CustomerPhone: apiKey.CustomerPhone,
+		MaxDevices:    apiKey.MaxDevices,
+		RateLimit:     apiKey.RateLimitPerHour,
 	}
 
 	log.AdminOp(c, "CreateAPIKey").WithField("api_key_id", apiKey.ID).WithField("customer_name", req.CustomerName).Info("API key created successfully")
@@ -123,14 +136,15 @@ func ListAPIKeys(c *fiber.Ctx) error {
 
 	// Mask API keys in response (only show first/last 4 chars)
 	type MaskedAPIKey struct {
-		ID              int    `json:"id"`
-		APIKeyMasked    string `json:"api_key_masked"`
-		CustomerName    string `json:"customer_name"`
-		CustomerEmail   string `json:"customer_email"`
-		MaxDevices      int    `json:"max_devices"`
-		RateLimitPerHour int   `json:"rate_limit_per_hour"`
-		IsActive        bool   `json:"is_active"`
-		DeviceCount     int    `json:"device_count"`
+		ID               int    `json:"id"`
+		APIKeyMasked     string `json:"api_key_masked"`
+		CustomerName     string `json:"customer_name"`
+		CustomerEmail    string `json:"customer_email"`
+		CustomerPhone    string `json:"customer_phone"`
+		MaxDevices       int    `json:"max_devices"`
+		RateLimitPerHour int    `json:"rate_limit_per_hour"`
+		IsActive         bool   `json:"is_active"`
+		DeviceCount      int    `json:"device_count"`
 	}
 
 	var masked []MaskedAPIKey
@@ -138,14 +152,15 @@ func ListAPIKeys(c *fiber.Ctx) error {
 		deviceCount, _ := pkgWhatsApp.CountDevicesByAPIKey(ctx, ak.ID)
 		maskedKey := ak.APIKey[:8] + "..." + ak.APIKey[len(ak.APIKey)-4:]
 		masked = append(masked, MaskedAPIKey{
-			ID:              int(ak.ID),
-			APIKeyMasked:    maskedKey,
-			CustomerName:    ak.CustomerName,
-			CustomerEmail:   ak.CustomerEmail,
-			MaxDevices:      ak.MaxDevices,
+			ID:               int(ak.ID),
+			APIKeyMasked:     maskedKey,
+			CustomerName:     ak.CustomerName,
+			CustomerEmail:    ak.CustomerEmail,
+			CustomerPhone:    ak.CustomerPhone,
+			MaxDevices:       ak.MaxDevices,
 			RateLimitPerHour: ak.RateLimitPerHour,
-			IsActive:        ak.IsActive,
-			DeviceCount:     deviceCount,
+			IsActive:         ak.IsActive,
+			DeviceCount:      deviceCount,
 		})
 	}
 
@@ -196,6 +211,7 @@ func GetAPIKey(c *fiber.Ctx) error {
 		"api_key_masked":      apiKey.APIKey[:8] + "..." + apiKey.APIKey[len(apiKey.APIKey)-4:],
 		"customer_name":       apiKey.CustomerName,
 		"customer_email":      apiKey.CustomerEmail,
+		"customer_phone":      apiKey.CustomerPhone,
 		"max_devices":         apiKey.MaxDevices,
 		"rate_limit_per_hour": apiKey.RateLimitPerHour,
 		"is_active":           apiKey.IsActive,
@@ -258,6 +274,9 @@ func UpdateAPIKey(c *fiber.Ctx) error {
 	if req.CustomerEmail == "" {
 		req.CustomerEmail = existing.CustomerEmail
 	}
+	if req.CustomerPhone == "" {
+		req.CustomerPhone = existing.CustomerPhone
+	}
 	if req.MaxDevices <= 0 {
 		req.MaxDevices = existing.MaxDevices
 	}
@@ -270,7 +289,7 @@ func UpdateAPIKey(c *fiber.Ctx) error {
 		isActive = *req.IsActive
 	}
 
-	err = pkgWhatsApp.UpdateAPIKey(ctx, id, req.CustomerName, req.CustomerEmail, req.MaxDevices, req.RateLimit, isActive)
+	err = pkgWhatsApp.UpdateAPIKey(ctx, id, req.CustomerName, req.CustomerEmail, req.CustomerPhone, req.MaxDevices, req.RateLimit, isActive)
 	if err != nil {
 		log.AdminOp(c, "UpdateAPIKey").WithField("api_key_id", id).WithError(err).Error("Failed to update API key")
 		return router.ResponseInternalError(c, "Failed to update API key: "+err.Error())

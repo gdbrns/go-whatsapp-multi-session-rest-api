@@ -1,5 +1,6 @@
 # Builder Image
 # ---------------------------------------------------
+# Go 1.24.x as specified in go.mod (toolchain go1.24.5)
 FROM golang:1.24-alpine AS go-builder
 
 WORKDIR /usr/src/app
@@ -14,6 +15,7 @@ RUN go mod download && go mod verify
 COPY . ./
 
 # Build with optimizations
+# CGO_ENABLED=0 for static binary, -trimpath for reproducible builds
 RUN CGO_ENABLED=0 GOOS=linux go build \
     -ldflags="-s -w -extldflags '-static'" \
     -trimpath \
@@ -39,6 +41,7 @@ RUN apk --no-cache --no-scripts add ca-certificates tzdata wget && \
     mkdir -p dbs && \
     chown -R appuser:appgroup /usr/app/${SERVICE_NAME}
 
+# Copy .env.example as .env (will be overridden by docker-compose environment)
 COPY --from=go-builder --chown=appuser:appgroup /usr/src/app/.env.example ./.env
 COPY --from=go-builder --chown=appuser:appgroup /usr/src/app/main ./gowam-rest
 COPY --from=go-builder --chown=appuser:appgroup /usr/src/app/docs ./docs

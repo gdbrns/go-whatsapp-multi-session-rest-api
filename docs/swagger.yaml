@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   title: WhatsApp Multi-Device REST API
-  description: "Enterprise-grade RESTful API for WhatsApp Multi-Device and Multi-Session implementation.\n\n## Authentication\n\nThis API uses a **3-tier authentication system**:\n\n### 1. Admin Authentication (X-Admin-Secret)\nFor managing API keys and system administration.\n```\nX-Admin-Secret: your-admin-secret\n```\n\n### 2. API Key Authentication (X-API-Key)\nFor creating devices. Each API key can create up to `max_devices` devices.\n```\nX-API-Key: wam_xxxxxxxxxxxxxxxx\n```\n\n### 3. JWT Bearer Token (Authorization)\nFor all device operations. Obtained when creating a device.\n```\nAuthorization: Bearer eyJhbGciOiJIUzI1NiIs...\n```\n\n## Quick Start\n\n1. **Admin creates API Key** → `POST /admin/api-keys`\n2. **Customer creates Device** → `POST /devices` (returns JWT)\n3. **Customer uses JWT** → All `/devices/me/*` endpoints\n\n## Features\n\n- 60+ endpoints for complete WhatsApp automation\n- JWT tokens with no expiry (regenerate anytime)\n- Multi-tenant support via API keys\n- Webhook integration for real-time events"
+  description: "Enterprise-grade RESTful API for WhatsApp Multi-Device and Multi-Session implementation built with Go and whatsmeow.\n\n## Authentication\n\nThis API uses a **3-tier authentication system**:\n\n### 1. Admin Authentication (X-Admin-Secret)\nFor managing API keys and system administration.\n```\nX-Admin-Secret: your-admin-secret\n```\n\n### 2. API Key Authentication (X-API-Key)\nFor creating devices. Each API key can create up to `max_devices` devices.\n```\nX-API-Key: wam_xxxxxxxxxxxxxxxx\n```\n\n### 3. JWT Bearer Token (Authorization)\nFor all device operations. Obtained when creating a device.\n```\nAuthorization: Bearer eyJhbGciOiJIUzI1NiIs...\n```\n\n## Quick Start\n\n1. **Admin creates API Key** → `POST /admin/api-keys`\n2. **Customer creates Device** → `POST /devices` (returns JWT)\n3. **Customer uses JWT** → All `/devices/me/*` endpoints\n\n## Features\n\n- 127+ production-ready endpoints for complete WhatsApp automation\n- JWT tokens with stateless authentication (no DB lookup per request)\n- Multi-tenant support via API keys with device quotas\n- 35+ webhook event types for real-time notifications\n- Rich messaging: text, images, videos, audio, stickers, documents, contacts, locations\n- Polls, newsletters/channels, status/stories support\n- Group management with community support\n- Anti-detection features: typing simulation, presence, read receipt jitter"
   version: 1.2.1
   contact:
     name: API Support
@@ -681,16 +681,19 @@ definitions:
         example: 1
       api_key:
         type: string
-        example: ak_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
+        example: wam_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
       customer_name:
         type: string
         example: Acme Corp
       customer_email:
         type: string
         example: admin@acme.com
+      customer_phone:
+        type: string
+        example: "+6281234567890"
       max_devices:
         type: integer
-        example: 10
+        example: 1
       rate_limit_per_hour:
         type: integer
         example: 1000
@@ -1408,18 +1411,27 @@ paths:
             type: object
             required:
               - customer_name
+              - customer_email
+              - customer_phone
+              - max_devices
+              - rate_limit_per_hour
             properties:
               customer_name:
                 type: string
                 example: Acme Corp
-                description: Customer/company name
+                description: Customer/company name (required)
               customer_email:
                 type: string
                 example: admin@acme.com
-                description: Contact email (optional)
+                description: Contact email (required)
+              customer_phone:
+                type: string
+                example: "+6281234567890"
+                description: Customer phone number (required)
               max_devices:
                 type: integer
-                example: 10
+                example: 1
+                minimum: 1
                 default: 5
                 description: Maximum devices this key can create
               rate_limit_per_hour:
@@ -1451,14 +1463,20 @@ paths:
                     example: 1
                   api_key:
                     type: string
-                    example: ak_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
+                    example: wam_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
                     description: Save this! Only shown once
                   customer_name:
                     type: string
                     example: Acme Corp
+                  customer_email:
+                    type: string
+                    example: admin@acme.com
+                  customer_phone:
+                    type: string
+                    example: "+6281234567890"
                   max_devices:
                     type: integer
-                    example: 10
+                    example: 1
                   rate_limit_per_hour:
                     type: integer
                     example: 1000
@@ -1494,18 +1512,22 @@ paths:
                       example: 1
                     api_key_masked:
                       type: string
-                      example: ak_a1b2...o5p6
+                      example: wam_a1b2...o5p6
                     customer_name:
                       type: string
                       example: Acme Corp
                     customer_email:
                       type: string
                       example: admin@acme.com
+                    customer_phone:
+                      type: string
+                      example: "+6281234567890"
                     device_count:
                       type: integer
                       example: 3
                     max_devices:
                       type: integer
+                      example: 1
                       example: 10
                     rate_limit_per_hour:
                       type: integer
@@ -1572,12 +1594,19 @@ paths:
             properties:
               customer_name:
                 type: string
+                description: Customer/company name
               customer_email:
                 type: string
+                description: Contact email
+              customer_phone:
+                type: string
+                description: Customer phone number
               max_devices:
                 type: integer
+                description: Maximum devices allowed
               rate_limit_per_hour:
                 type: integer
+                description: API rate limit per hour
               is_active:
                 type: boolean
                 description: Set to false to disable all requests with this key

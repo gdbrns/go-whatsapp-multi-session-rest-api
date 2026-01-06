@@ -13,18 +13,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Newsletter Comments API** - Send comments on WhatsApp channel/newsletter posts (`POST /newsletters/:jid/comments`)
 
 ### Changed
+- **API Key Creation** - All parameters are now mandatory when creating API keys:
+  - `customer_name` (required)
+  - `customer_email` (required)
+  - `customer_phone` (required, **new field**)
+  - `max_devices` (required, default changed from 5 to 1)
+  - `rate_limit_per_hour` (required)
 - Updated `.gitignore` to exclude release template
+- Updated Docker and release configuration files for consistency
 
 ### Fixed
 - Minor workflow adjustments in `release.yml`
 
 ---
 
-## [1.2.4] - 2025-12-22
+## [1.2.7] - 2026-01-06
+
+### 🐛 Fixes
+
+- **Device Status Sync** - Fixed device status to sync with actual WhatsApp connection state
+  - Update device status to "active" on QR scan success
+  - Add fallback status update on Connected event when Store.ID is nil
+  - Health check cron now syncs DB status with real client state every 5 minutes
+  - Enable health check by default (`WHATSAPP_ENABLE_HEALTH_CHECK_CRON=true`)
+
+---
+
+## [1.2.5] - 2025-12-22
 
 ### 🐛 Fixes
 
 - Return JID in `GET /devices/me/contacts/:phone/registered` so participant verification can add validated numbers; include JID in logs for easier debugging.
+
+---
+
+## [1.2.3] - 2025-12-21
+
+### 🚀 Features
+
+- **Environment Variable Defaults** - Added sensible defaults and required validation for environment variables
+
+---
 
 ## [1.2.1] - 2025-12-21
 

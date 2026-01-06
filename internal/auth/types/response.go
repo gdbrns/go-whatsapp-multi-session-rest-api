@@ -18,9 +18,11 @@ type ResponseTokenRegenerated struct {
 
 // ResponseAPIKeyCreated is the response for API key creation (admin only)
 type ResponseAPIKeyCreated struct {
-	ID           int    `json:"id"`
-	APIKey       string `json:"api_key"`
-	CustomerName string `json:"customer_name"`
-	MaxDevices   int    `json:"max_devices"`
-	RateLimit    int    `json:"rate_limit_per_hour"`
+	ID            int    `json:"id"`
+	APIKey        string `json:"api_key"`
+	CustomerName  string `json:"customer_name"`
+	CustomerEmail string `json:"customer_email"`
+	CustomerPhone string `json:"customer_phone"`
+	MaxDevices    int    `json:"max_devices"`
+	RateLimit     int    `json:"rate_limit_per_hour"`
 }

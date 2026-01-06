@@ -1,3 +1,10 @@
+# =============================================================================
+# GoReleaser Configuration for WhatsApp Multi-Session REST API
+# =============================================================================
+# Requires Go 1.24+ (as specified in go.mod)
+# Documentation: https://goreleaser.com/customization/
+# =============================================================================
+
 version: 2
 
 project_name: whatsapp-api-multisession
@@ -30,6 +37,7 @@ builds:
       - amd64
       - arm64
     ignore:
+      # Windows ARM64 is not commonly used
       - goos: windows
         goarch: arm64
 
@@ -66,19 +74,27 @@ changelog:
       - '^docs:'
       - '^test:'
       - '^chore:'
+      - '^ci:'
+      - '^style:'
       - Merge pull request
       - Merge branch
   groups:
-    - title: Features
+    - title: '🚀 Features'
       regexp: "^.*feat[(\\w)]*:+.*$"
       order: 0
-    - title: Bug Fixes
+    - title: '🐛 Bug Fixes'
       regexp: "^.*fix[(\\w)]*:+.*$"
       order: 1
-    - title: Performance
+    - title: '⚡ Performance'
       regexp: "^.*perf[(\\w)]*:+.*$"
       order: 2
-    - title: Others
+    - title: '🔒 Security'
+      regexp: "^.*security[(\\w)]*:+.*$"
+      order: 3
+    - title: '📦 Dependencies'
+      regexp: "^.*deps[(\\w)]*:+.*$"
+      order: 4
+    - title: '🔧 Others'
       order: 999
 
 release:
@@ -87,8 +103,27 @@ release:
   header: |
     ## WhatsApp API Multi-Session {{ .Version }}
 
-    ### Installation
+    Enterprise-grade WhatsApp Multi-Device REST API with 127+ endpoints.
 
-    Download the appropriate binary for your platform below.
+    ### 📦 Installation
+
+    Download the appropriate binary for your platform below, or use Docker:
+
+    ```bash
+    # Docker (recommended)
+    docker pull gdbrns/whatsapp-api-multisession:{{ .Version }}
+
+    # Or use latest
+    docker pull gdbrns/whatsapp-api-multisession:latest
+    ```
+
+    ### 📚 Documentation
+
+    - [API Documentation](https://bump.sh/gdbrns/doc/go-whatsapp-multi-session-rest)
+    - [README](https://github.com/gdbrns/go-whatsapp-multi-session-rest-api#readme)
   footer: |
+    ---
+
     **Full Changelog**: https://github.com/gdbrns/go-whatsapp-multi-session-rest-api/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+    **Docker Hub**: https://hub.docker.com/r/gdbrns/whatsapp-api-multisession
