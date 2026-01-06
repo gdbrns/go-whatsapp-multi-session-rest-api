@@ -808,6 +808,9 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 				_ = SaveDeviceRouting(context.Background(), deviceID, client.Store.ID.String())
 				_ = UpdateDeviceJID(context.Background(), deviceID, client.Store.ID.String())
 				attachKeysStore(client)
+			} else {
+				// Even if Store.ID is nil, mark as active since we received Connected event
+				_ = UpdateDeviceStatus(context.Background(), deviceID, "active")
 			}
 			isLoggedIn := false
 			isConnected := false
@@ -1127,6 +1130,7 @@ func consumeQRChannel(ctx context.Context, qrChan <-chan whatsmeow.QRChannelItem
 					if client != nil && client.Store.ID != nil {
 						newJID := WhatsAppDecomposeJID(client.Store.ID.User)
 						_ = SaveDeviceRouting(context.Background(), deviceID, client.Store.ID.String())
+						_ = UpdateDeviceJID(context.Background(), deviceID, client.Store.ID.String())
 						log.EvtOK("qr", "paired", deviceID, newJID)
 					} else {
 						log.EvtOK("qr", "paired", deviceID)

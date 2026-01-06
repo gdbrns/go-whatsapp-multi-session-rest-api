@@ -30,10 +30,16 @@ func Routines(cron *cron.Cron) {
 					return
 				}
 				maskJID := jid[0:len(jid)-4] + "xxxx"
-				if !client.IsConnected() || !client.IsLoggedIn() {
+				isConnected := client.IsConnected()
+				isLoggedIn := client.IsLoggedIn()
+				if !isConnected || !isLoggedIn {
 					log.Print(nil).Warn("Client unhealthy: " + maskJID + " (" + deviceID + ")")
+					// Sync DB status to disconnected if client is not healthy
+					_ = pkgWhatsApp.UpdateDeviceStatus(context.Background(), deviceID, "disconnected")
 				} else {
 					log.Print(nil).Info("Client healthy: " + maskJID + " (" + deviceID + ")")
+					// Sync DB status to active if client is healthy
+					_ = pkgWhatsApp.UpdateDeviceStatus(context.Background(), deviceID, "active")
 				}
 			})
 		})
@@ -72,12 +78,13 @@ func Routines(cron *cron.Cron) {
 func isHealthCheckEnabled() bool {
 	envValue, ok := os.LookupEnv("WHATSAPP_ENABLE_HEALTH_CHECK_CRON")
 	if !ok {
-		return false
+		// Default to true - ensures DB status stays in sync with actual client state
+		return true
 	}
 	enabled, err := strconv.ParseBool(envValue)
 	if err != nil {
-		log.Print(nil).Warn("Invalid WHATSAPP_ENABLE_HEALTH_CHECK_CRON value; defaulting to disabled")
-		return false
+		log.Print(nil).Warn("Invalid WHATSAPP_ENABLE_HEALTH_CHECK_CRON value; defaulting to enabled")
+		return true
 	}
 	return enabled
 }
