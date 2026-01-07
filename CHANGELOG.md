@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Star/Keep Messages API** - Star or unstar messages to keep them in chat (`POST /messages/:message_id/star`)
 - **Link Preview Messages API** - Send text messages with rich URL previews including title, description, and thumbnail (`POST /chats/:chat_jid/link-preview`)
 - **Newsletter Comments API** - Send comments on WhatsApp channel/newsletter posts (`POST /newsletters/:jid/comments`)
+- **Device Recovery Cron** - New background job to automatically recover disconnected devices every 10 minutes
+  - Queries disconnected devices from database
+  - Restores clients from whatsmeow store if not in memory
+  - Reconnects and updates status automatically
+  - Enabled by default (`WHATSAPP_ENABLE_DEVICE_RECOVERY_CRON=true`)
+  - Configurable schedule via `WHATSAPP_DEVICE_RECOVERY_CRON_SPEC`
 
 ### Changed
 - **API Key Creation** - All parameters are now mandatory when creating API keys:
@@ -21,9 +27,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `rate_limit_per_hour` (required)
 - Updated `.gitignore` to exclude release template
 - Updated Docker and release configuration files for consistency
+- **WA Version Refresh Cron** - Now enabled by default (was disabled)
+  - `WHATSAPP_ENABLE_WAVERSION_REFRESH_CRON` defaults to `true`
+  - `WHATSAPP_WAVERSION_REFRESH_CRON_FORCE` defaults to `true`
+  - Runs daily at 3 AM by default
+- **Startup Reconnect** - Increased default retries from 3 to 5 for better recovery
+- **Health Check Cron** - Now attempts auto-reconnect for unhealthy clients instead of just updating DB status
 
 ### Fixed
 - Minor workflow adjustments in `release.yml`
+- **StreamReplaced Session Loss** - Fixed issue where sessions became invalid after ~2 days
+  - `StreamReplaced` event now attempts reconnection with 3 retries and exponential backoff
+  - Only deletes client from memory if all reconnection attempts fail
+  - Properly syncs device status with actual WhatsApp server state
+- **Session Persistence After Reboot** - Sessions now survive system restarts
+  - Failed startup reconnections are marked as "disconnected" for later recovery
+  - Device recovery cron picks up and reconnects failed devices periodically
 
 ---
 

@@ -1038,6 +1038,56 @@ func GetDeviceByID(ctx context.Context, deviceID string) (*Device, error) {
 	return &d, nil
 }
 
+// GetDisconnectedDevices retrieves all devices with status "disconnected" that have a valid whatsmeow_jid
+// These are devices that should be recovered/reconnected
+func GetDisconnectedDevices(ctx context.Context) ([]Device, error) {
+	db, err := openRoutingDB()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := db.QueryContext(ctx, `
+		SELECT device_id, api_key_id, device_name, whatsmeow_jid, status, created_at, last_active_at
+		FROM devices
+		WHERE status = 'disconnected' AND whatsmeow_jid IS NOT NULL AND whatsmeow_jid != ''
+		ORDER BY last_active_at DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var devices []Device
+	for rows.Next() {
+		var d Device
+		var apiKeyID sql.NullInt64
+		var name sql.NullString
+		var jid sql.NullString
+		var lastActive sql.NullTime
+
+		if err := rows.Scan(&d.DeviceID, &apiKeyID, &name, &jid, &d.Status, &d.CreatedAt, &lastActive); err != nil {
+			continue
+		}
+
+		if apiKeyID.Valid {
+			d.APIKeyID = apiKeyID.Int64
+		}
+		if name.Valid {
+			d.DeviceName = name.String
+		}
+		if jid.Valid {
+			d.WhatsMeowJID = jid.String
+		}
+		if lastActive.Valid {
+			d.LastActiveAt = &lastActive.Time
+		}
+
+		devices = append(devices, d)
+	}
+
+	return devices, nil
+}
+
 // ListDevicesByAPIKey lists all devices for an API key
 func ListDevicesByAPIKey(ctx context.Context, apiKeyID int64) ([]Device, error) {
 	db, err := openRoutingDB()

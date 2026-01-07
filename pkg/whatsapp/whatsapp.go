@@ -673,6 +673,16 @@ func WhatsAppRangeClients(fn func(jid string, deviceID string, client *whatsmeow
 	})
 }
 
+// WhatsAppClientExists checks if a client exists in memory for the given jid and deviceID
+func WhatsAppClientExists(jid string, deviceID string) bool {
+	return getClient(jid, deviceID) != nil
+}
+
+// WhatsAppGetClient returns a client from memory (may be nil if not found)
+func WhatsAppGetClient(jid string, deviceID string) *whatsmeow.Client {
+	return getClient(jid, deviceID)
+}
+
 func currentClient(jid string, deviceID string) (*whatsmeow.Client, error) {
 	client := getClient(jid, deviceID)
 	if client == nil {
@@ -788,17 +798,60 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 			cancelCleanup()
 			WhatsAppInitClient(nil, "", deviceID)
 		case *events.StreamReplaced:
-			client, err := currentClient(jid, deviceID)
-			if err == nil {
-				client.Disconnect()
-			}
-			deleteClient(jid, deviceID)
-			routingCtx, routingCancel := context.WithTimeout(context.Background(), routingCleanupTimeout)
-			_ = DeleteDeviceRouting(routingCtx, deviceID)
-			routingCancel()
+			log.Conn("stream-replaced", deviceID, currentJID)
 			dispatchWebhook(deviceID, webhook.EventConnectionReconnecting, map[string]interface{}{
-				"jid": currentJID,
+				"jid":    currentJID,
+				"reason": "stream_replaced",
 			})
+			// Attempt to reconnect instead of deleting the client
+			go func(jidVal, deviceIDVal, curJID string) {
+				client, err := currentClient(jidVal, deviceIDVal)
+				if err != nil {
+					log.Conn("stream-replaced-no-client", deviceIDVal, curJID)
+					return
+				}
+				// Store the device before disconnecting for potential re-init
+				device := client.Store
+				client.Disconnect()
+
+				// Attempt reconnect with exponential backoff
+				maxRetries := 3
+				baseBackoff := 2 * time.Second
+				maxBackoff := 30 * time.Second
+
+				for attempt := 1; attempt <= maxRetries; attempt++ {
+					if device != nil && device.ID != nil {
+						err = client.Connect()
+						if err == nil {
+							log.Conn("stream-replaced-reconnected", deviceIDVal, curJID)
+							_ = SaveDeviceRouting(context.Background(), deviceIDVal, device.ID.String())
+							_ = UpdateDeviceStatus(context.Background(), deviceIDVal, "active")
+							dispatchWebhook(deviceIDVal, webhook.EventConnectionConnected, map[string]interface{}{
+								"jid":    curJID,
+								"reason": "stream_replaced_reconnect",
+							})
+							return
+						}
+						log.Conn("stream-replaced-reconnect-failed", deviceIDVal, fmt.Sprintf("attempt %d: %v", attempt, err))
+					}
+
+					// Exponential backoff
+					backoff := baseBackoff * time.Duration(1<<(attempt-1))
+					if backoff > maxBackoff {
+						backoff = maxBackoff
+					}
+					time.Sleep(backoff)
+				}
+
+				// All retries failed - delete client and update status
+				log.Conn("stream-replaced-reconnect-exhausted", deviceIDVal, curJID)
+				deleteClient(jidVal, deviceIDVal)
+				_ = UpdateDeviceStatus(context.Background(), deviceIDVal, "disconnected")
+				dispatchWebhook(deviceIDVal, webhook.EventConnectionDisconnected, map[string]interface{}{
+					"jid":    curJID,
+					"reason": "stream_replaced_reconnect_failed",
+				})
+			}(jid, deviceID, currentJID)
 		case *events.Connected:
 			// Get the JID from client store after connection
 			client, err := currentClient(jid, deviceID)

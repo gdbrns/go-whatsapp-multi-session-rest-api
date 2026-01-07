@@ -104,7 +104,7 @@ func Startup() {
 
 	maxConcurrent := parseOptionalInt("WHATSAPP_STARTUP_RECONNECT_CONCURRENCY", 10, 1)
 	jitterMax := parseOptionalDuration("WHATSAPP_STARTUP_RECONNECT_JITTER_MAX", 5*time.Second)
-	retries := parseOptionalInt("WHATSAPP_STARTUP_RECONNECT_RETRIES", 3, 1)
+	retries := parseOptionalInt("WHATSAPP_STARTUP_RECONNECT_RETRIES", 5, 1) // Increased default to 5 for better recovery
 	baseBackoff := parseOptionalDuration("WHATSAPP_STARTUP_RECONNECT_BACKOFF_BASE", 2*time.Second)
 	maxBackoff := parseOptionalDuration("WHATSAPP_STARTUP_RECONNECT_BACKOFF_MAX", 30*time.Second)
 
@@ -145,9 +145,13 @@ func Startup() {
 			err := reconnectWithRetry(jidVal, deviceIDVal, retries, baseBackoff, maxBackoff)
 			if err != nil {
 				log.Print(nil).Warn("Failed to reconnect " + masked + ": " + err.Error())
+				// Mark as disconnected in DB so health check can retry later
+				_ = pkgWhatsApp.UpdateDeviceStatus(context.Background(), deviceIDVal, "disconnected")
 				atomic.AddInt64(&failed, 1)
 				return
 			}
+			// Mark as active in DB
+			_ = pkgWhatsApp.UpdateDeviceStatus(context.Background(), deviceIDVal, "active")
 			atomic.AddInt64(&reconnected, 1)
 		}(dev, jid, deviceID, maskJID)
 	}
