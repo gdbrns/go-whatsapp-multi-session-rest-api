@@ -5,44 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.2.8] - 2026-01-20
 
-### Added
-- **Star/Keep Messages API** - Star or unstar messages to keep them in chat (`POST /messages/:message_id/star`)
-- **Link Preview Messages API** - Send text messages with rich URL previews including title, description, and thumbnail (`POST /chats/:chat_jid/link-preview`)
-- **Newsletter Comments API** - Send comments on WhatsApp channel/newsletter posts (`POST /newsletters/:jid/comments`)
-- **Device Recovery Cron** - New background job to automatically recover disconnected devices every 10 minutes
-  - Queries disconnected devices from database
-  - Restores clients from whatsmeow store if not in memory
-  - Reconnects and updates status automatically
-  - Enabled by default (`WHATSAPP_ENABLE_DEVICE_RECOVERY_CRON=true`)
-  - Configurable schedule via `WHATSAPP_DEVICE_RECOVERY_CRON_SPEC`
+### 🚀 Changed
 
-### Changed
-- **API Key Creation** - All parameters are now mandatory when creating API keys:
-  - `customer_name` (required)
-  - `customer_email` (required)
-  - `customer_phone` (required, **new field**)
-  - `max_devices` (required, default changed from 5 to 1)
-  - `rate_limit_per_hour` (required)
-- Updated `.gitignore` to exclude release template
-- Updated Docker and release configuration files for consistency
-- **WA Version Refresh Cron** - Now enabled by default (was disabled)
-  - `WHATSAPP_ENABLE_WAVERSION_REFRESH_CRON` defaults to `true`
-  - `WHATSAPP_WAVERSION_REFRESH_CRON_FORCE` defaults to `true`
-  - Runs daily at 3 AM by default
-- **Startup Reconnect** - Increased default retries from 3 to 5 for better recovery
-- **Health Check Cron** - Now attempts auto-reconnect for unhealthy clients instead of just updating DB status
+- **whatsmeow** - Updated from `v0.0.0-20251217143725-11cf47c62d32` to `v0.0.0-20260116142645-06f473759141`
+  - Protocol update to v1032094433 for WhatsApp server compatibility
+  - Prevents "client outdated" errors during device pairing
+  - Also updates: `go.mau.fi/util` v0.9.4→v0.9.5, `golang.org/x/crypto` v0.46→v0.47, and other dependencies
+- **Device Recovery Cron** - Changed default interval from 10 minutes to 2 minutes for faster recovery after restarts
 
-### Fixed
-- Minor workflow adjustments in `release.yml`
-- **StreamReplaced Session Loss** - Fixed issue where sessions became invalid after ~2 days
-  - `StreamReplaced` event now attempts reconnection with 3 retries and exponential backoff
-  - Only deletes client from memory if all reconnection attempts fail
-  - Properly syncs device status with actual WhatsApp server state
-- **Session Persistence After Reboot** - Sessions now survive system restarts
-  - Failed startup reconnections are marked as "disconnected" for later recovery
-  - Device recovery cron picks up and reconnects failed devices periodically
+### 🐛 Fixed
+
+- **CRITICAL: Session Persistence After System Restart** - Fixed issue where devices showed "WhatsApp Client is not Valid" after VPS/server restart even though devices were still linked on phone
+  - Root cause: Recovery cron only checked for 'disconnected' status, but after restart devices may still have 'active' status in DB while not being in memory
+  - Added new `GetDevicesNeedingRecovery()` function that retrieves ALL devices with valid whatsmeow credentials regardless of status
+  - Device recovery cron now restores devices from whatsmeow store if they're not in memory
+  - Devices not found in whatsmeow store are now properly marked as "logged_out"
+- **Session Lifecycle Hardening** - Comprehensive improvements to ensure connections persist as long as device is linked on phone
+  - **Disconnected Event**: Now attempts manual reconnect with 3 retries and exponential backoff (10s initial wait, then 5s→10s→20s backoff) when whatsmeow's auto-reconnect fails
+  - **KeepAliveTimeout Event**: Triggers force-reconnect when 3+ consecutive keepalive failures occur, indicating a dead connection that needs manual intervention
+  - **ConnectFailure Event**: Now properly updates device status to "disconnected" and dispatches webhook for visibility and monitoring
 
 ---
 

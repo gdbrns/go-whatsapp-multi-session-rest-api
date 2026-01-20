@@ -4,10 +4,10 @@
 [![Docker Image](https://img.shields.io/docker/v/ghiovanidebrians/go-whatsapp-multi-session-rest-api?label=Docker&logo=docker&sort=semver)](https://hub.docker.com/r/ghiovanidebrians/go-whatsapp-multi-session-rest-api)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gdbrns/go-whatsapp-multi-session-rest-api)](https://goreportcard.com/report/github.com/gdbrns/go-whatsapp-multi-session-rest-api)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![whatsmeow](https://img.shields.io/badge/whatsmeow-v0.0.0--20251217-brightgreen.svg)](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20251217143725-11cf47c62d32)
+[![whatsmeow](https://img.shields.io/badge/whatsmeow-v0.0.0--20260116-brightgreen.svg)](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20260116142645-06f473759141)
 [![API Docs](https://img.shields.io/badge/API%20Docs-Bump.sh-blue.svg)](https://bump.sh/gdbrns/doc/go-whatsapp-multi-session-rest)
 
-> A minimal REST API for WhatsApp Multi-Device and Multi-Session implementation built with Go and **[whatsmeow v0.0.0-20251217143725-11cf47c62d32](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20251217143725-11cf47c62d32)**. Supports multiple accounts and devices simultaneously with efficient memory use and production-ready deployments.
+> A minimal REST API for WhatsApp Multi-Device and Multi-Session implementation built with Go and **[whatsmeow v0.0.0-20260116142645-06f473759141](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20260116142645-06f473759141)**. Supports multiple accounts and devices simultaneously with efficient memory use and production-ready deployments.
 
 ## 📚 API Documentation
 

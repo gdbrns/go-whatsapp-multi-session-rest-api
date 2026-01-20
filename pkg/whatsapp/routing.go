@@ -1088,6 +1088,58 @@ func GetDisconnectedDevices(ctx context.Context) ([]Device, error) {
 	return devices, nil
 }
 
+// GetDevicesNeedingRecovery retrieves all devices that have a valid whatsmeow_jid
+// This includes both 'disconnected' AND 'active' status devices that may need restoration after restart
+// The difference from GetDisconnectedDevices is that this function doesn't filter by status
+func GetDevicesNeedingRecovery(ctx context.Context) ([]Device, error) {
+	db, err := openRoutingDB()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := db.QueryContext(ctx, `
+		SELECT device_id, api_key_id, device_name, whatsmeow_jid, status, created_at, last_active_at
+		FROM devices
+		WHERE whatsmeow_jid IS NOT NULL AND whatsmeow_jid != ''
+		AND status IN ('active', 'disconnected')
+		ORDER BY last_active_at DESC NULLS LAST
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var devices []Device
+	for rows.Next() {
+		var d Device
+		var apiKeyID sql.NullInt64
+		var name sql.NullString
+		var jid sql.NullString
+		var lastActive sql.NullTime
+
+		if err := rows.Scan(&d.DeviceID, &apiKeyID, &name, &jid, &d.Status, &d.CreatedAt, &lastActive); err != nil {
+			continue
+		}
+
+		if apiKeyID.Valid {
+			d.APIKeyID = apiKeyID.Int64
+		}
+		if name.Valid {
+			d.DeviceName = name.String
+		}
+		if jid.Valid {
+			d.WhatsMeowJID = jid.String
+		}
+		if lastActive.Valid {
+			d.LastActiveAt = &lastActive.Time
+		}
+
+		devices = append(devices, d)
+	}
+
+	return devices, nil
+}
+
 // ListDevicesByAPIKey lists all devices for an API key
 func ListDevicesByAPIKey(ctx context.Context, apiKeyID int64) ([]Device, error) {
 	db, err := openRoutingDB()

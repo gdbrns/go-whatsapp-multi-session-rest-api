@@ -890,10 +890,59 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 			})
 		case *events.Disconnected:
 			log.Conn("disconnected", deviceID, currentJID)
-			_ = UpdateDeviceStatus(context.Background(), deviceID, "disconnected")
 			dispatchWebhook(deviceID, webhook.EventConnectionDisconnected, map[string]interface{}{
 				"jid": currentJID,
 			})
+			// Note: whatsmeow has EnableAutoReconnect=true, but it may fail silently
+			// We attempt manual reconnect as a fallback after a delay
+			go func(jidVal, deviceIDVal, curJID string) {
+				// Wait for whatsmeow's auto-reconnect to attempt first
+				time.Sleep(10 * time.Second)
+
+				client := getClient(jidVal, deviceIDVal)
+				if client == nil {
+					return
+				}
+
+				// If already reconnected by whatsmeow, skip
+				if client.IsConnected() {
+					log.Conn("auto-reconnected", deviceIDVal, curJID)
+					_ = UpdateDeviceStatus(context.Background(), deviceIDVal, "active")
+					return
+				}
+
+				// whatsmeow auto-reconnect likely failed, try manual reconnect
+				if client.Store != nil && client.Store.ID != nil {
+					log.Conn("disconnected-manual-reconnect", deviceIDVal, curJID)
+					maxRetries := 3
+					baseBackoff := 5 * time.Second
+					maxBackoff := 60 * time.Second
+
+					for attempt := 1; attempt <= maxRetries; attempt++ {
+						err := client.Connect()
+						if err == nil {
+							log.Conn("disconnected-reconnected", deviceIDVal, curJID)
+							_ = UpdateDeviceStatus(context.Background(), deviceIDVal, "active")
+							dispatchWebhook(deviceIDVal, webhook.EventConnectionConnected, map[string]interface{}{
+								"jid":    curJID,
+								"reason": "manual_reconnect",
+							})
+							return
+						}
+						log.Conn("disconnected-reconnect-failed", deviceIDVal, fmt.Sprintf("attempt %d: %v", attempt, err))
+
+						// Exponential backoff
+						backoff := baseBackoff * time.Duration(1<<(attempt-1))
+						if backoff > maxBackoff {
+							backoff = maxBackoff
+						}
+						time.Sleep(backoff)
+					}
+				}
+
+				// All retries failed, mark as disconnected for recovery cron to pick up
+				_ = UpdateDeviceStatus(context.Background(), deviceIDVal, "disconnected")
+			}(jid, deviceID, currentJID)
 		case *events.KeepAliveTimeout:
 			log.Conn("keepalive-timeout", deviceID, currentJID)
 			dispatchWebhook(deviceID, webhook.EventConnectionKeepAliveTimeout, map[string]interface{}{
@@ -901,6 +950,29 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 				"error_count":  e.ErrorCount,
 				"last_success": e.LastSuccess,
 			})
+			// If we have 3+ consecutive keepalive failures, the connection is likely dead
+			// Trigger a manual reconnect as whatsmeow's auto-reconnect may not be working
+			if e.ErrorCount >= 3 {
+				go func(jidVal, deviceIDVal, curJID string) {
+					client := getClient(jidVal, deviceIDVal)
+					if client == nil {
+						return
+					}
+					if client.Store != nil && client.Store.ID != nil {
+						log.Conn("keepalive-force-reconnect", deviceIDVal, curJID)
+						client.Disconnect()
+						time.Sleep(2 * time.Second)
+						err := client.Connect()
+						if err == nil {
+							log.Conn("keepalive-reconnected", deviceIDVal, curJID)
+							_ = UpdateDeviceStatus(context.Background(), deviceIDVal, "active")
+						} else {
+							log.Conn("keepalive-reconnect-failed", deviceIDVal, err.Error())
+							_ = UpdateDeviceStatus(context.Background(), deviceIDVal, "disconnected")
+						}
+					}
+				}(jid, deviceID, currentJID)
+			}
 		case *events.TemporaryBan:
 			log.Conn("temp-banned", deviceID, currentJID)
 			dispatchWebhook(deviceID, webhook.EventConnectionTemporaryBan, map[string]interface{}{
@@ -949,7 +1021,12 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 				})
 			}
 		case *events.ConnectFailure:
-			log.Conn("failed", deviceID, currentJID)
+			log.Conn("connect-failure", deviceID, fmt.Sprintf("%s reason=%s", currentJID, e.Reason))
+			_ = UpdateDeviceStatus(context.Background(), deviceID, "disconnected")
+			dispatchWebhook(deviceID, webhook.EventConnectionDisconnected, map[string]interface{}{
+				"jid":    currentJID,
+				"reason": fmt.Sprintf("connect_failure: %s", e.Reason),
+			})
 		case *events.PushNameSetting:
 			sendAvailablePresence(currentJID, deviceID)
 		case *events.AppStateSyncComplete:

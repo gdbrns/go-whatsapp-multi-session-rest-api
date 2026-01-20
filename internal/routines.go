@@ -63,15 +63,18 @@ func Routines(cron *cron.Cron) {
 		log.Print(nil).Info("Health check cron disabled; relying on whatsmeow event handlers")
 	}
 
-	// Device recovery cron - attempts to reconnect disconnected devices from DB
+	// Device recovery cron - attempts to reconnect devices from DB that are not in memory
 	// Runs every 10 minutes by default, enabled by default
+	// Now uses GetDevicesNeedingRecovery which includes BOTH 'active' and 'disconnected' status devices
+	// This fixes the issue where devices with 'active' status in DB but not in memory after restart
 	if isDeviceRecoveryCronEnabled() {
 		spec := getDeviceRecoveryCronSpec()
 		_, err := cron.AddFunc(spec, func() {
 			ctx := context.Background()
-			devices, err := pkgWhatsApp.GetDisconnectedDevices(ctx)
+			// Use GetDevicesNeedingRecovery to get ALL devices that should be in memory
+			devices, err := pkgWhatsApp.GetDevicesNeedingRecovery(ctx)
 			if err != nil {
-				log.Print(nil).WithField("error", err.Error()).Error("Failed to get disconnected devices for recovery")
+				log.Print(nil).WithField("error", err.Error()).Error("Failed to get devices for recovery")
 				return
 			}
 
@@ -79,9 +82,8 @@ func Routines(cron *cron.Cron) {
 				return
 			}
 
-			log.Print(nil).WithField("count", len(devices)).Info("Attempting to recover disconnected devices")
-
 			recovered := 0
+			skipped := 0
 			for _, device := range devices {
 				if device.WhatsMeowJID == "" {
 					continue
@@ -92,44 +94,57 @@ func Routines(cron *cron.Cron) {
 					continue
 				}
 
-				// Check if client already exists in memory
+				// Check if client already exists in memory AND is connected
 				if pkgWhatsApp.WhatsAppClientExists(jid, device.DeviceID) {
-					// Client exists, just try to reconnect
 					client := pkgWhatsApp.WhatsAppGetClient(jid, device.DeviceID)
 					if client != nil && client.Store != nil && client.Store.ID != nil {
-						if !client.IsConnected() {
-							err := client.Connect()
-							if err == nil {
-								log.Print(nil).Info("Recovered device (reconnect): " + device.DeviceID)
-								_ = pkgWhatsApp.UpdateDeviceStatus(ctx, device.DeviceID, "active")
-								recovered++
-							}
+						if client.IsConnected() {
+							// Already connected, skip
+							skipped++
+							continue
+						}
+						// Client exists but not connected - try to reconnect
+						err := client.Connect()
+						if err == nil {
+							log.Print(nil).Info("Recovered device (reconnect): " + device.DeviceID)
+							_ = pkgWhatsApp.UpdateDeviceStatus(ctx, device.DeviceID, "active")
+							recovered++
+						} else {
+							log.Print(nil).WithField("error", err.Error()).Warn("Failed to reconnect device: " + device.DeviceID)
+							_ = pkgWhatsApp.UpdateDeviceStatus(ctx, device.DeviceID, "disconnected")
 						}
 					}
 					continue
 				}
 
 				// Client doesn't exist in memory - try to restore from whatsmeow store
+				// This is the key fix: devices that were "active" before restart but not in memory
 				storeDevice, err := pkgWhatsApp.WhatsAppDatastore.GetDevice(ctx, parseJID(device.WhatsMeowJID))
 				if err != nil || storeDevice == nil {
+					log.Print(nil).WithField("device_id", device.DeviceID).Warn("Device not found in whatsmeow store, marking as logged_out")
+					_ = pkgWhatsApp.UpdateDeviceStatus(ctx, device.DeviceID, "logged_out")
 					continue
 				}
 
 				// Initialize and connect
+				log.Print(nil).WithField("device_id", device.DeviceID).Info("Restoring device from whatsmeow store")
 				pkgWhatsApp.WhatsAppInitClient(storeDevice, jid, device.DeviceID)
 				client := pkgWhatsApp.WhatsAppGetClient(jid, device.DeviceID)
 				if client != nil && client.Store != nil && client.Store.ID != nil {
 					err := client.Connect()
 					if err == nil {
-						log.Print(nil).Info("Recovered device (restore): " + device.DeviceID)
+						log.Print(nil).Info("Recovered device (restore+connect): " + device.DeviceID)
 						_ = pkgWhatsApp.UpdateDeviceStatus(ctx, device.DeviceID, "active")
 						recovered++
+					} else {
+						log.Print(nil).WithField("error", err.Error()).Warn("Failed to connect restored device: " + device.DeviceID)
+						_ = pkgWhatsApp.UpdateDeviceStatus(ctx, device.DeviceID, "disconnected")
 					}
 				}
 			}
 
-			if recovered > 0 {
-				log.Print(nil).WithField("recovered", recovered).WithField("total", len(devices)).Info("Device recovery completed")
+			if recovered > 0 || len(devices) > skipped {
+				log.Print(nil).WithField("recovered", recovered).WithField("skipped", skipped).WithField("total", len(devices)).Info("Device recovery completed")
 			}
 		})
 		if err != nil {
@@ -229,10 +244,10 @@ func isDeviceRecoveryCronEnabled() bool {
 }
 
 func getDeviceRecoveryCronSpec() string {
-	// robfig/cron with seconds field (6 parts). Default: every 10 minutes
+	// robfig/cron with seconds field (6 parts). Default: every 2 minutes for faster recovery after restart
 	spec := strings.TrimSpace(os.Getenv("WHATSAPP_DEVICE_RECOVERY_CRON_SPEC"))
 	if spec == "" {
-		return "0 */10 * * * *"
+		return "0 */2 * * * *"
 	}
 	return spec
 }
