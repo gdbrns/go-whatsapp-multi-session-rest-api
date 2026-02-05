@@ -18,7 +18,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/sunshineplan/imgconv v1.1.14
-	go.mau.fi/whatsmeow v0.0.0-20260116142645-06f473759141
+	go.mau.fi/whatsmeow v0.0.0-20260129212019-7787ab952245
 	golang.org/x/sync v0.19.0
 	golang.org/x/time v0.14.0
 	google.golang.org/protobuf v1.36.11

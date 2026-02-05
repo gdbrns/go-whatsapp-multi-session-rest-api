@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.9] - 2026-02-05
+
+### ✨ Added
+
+- **Newsletter Media Posts** - Send images, videos, and documents to newsletters (admin-only)
+- **Server Push Config** - Get/set WhatsApp server push notification config (FCM/APNs/Web)
+- **Force Active Delivery Receipts** - Toggle active delivery receipts even when offline
+- **Default Disappearing Timer** - Set account-level disappearing message timer
+
+### 🚀 Changed
+
+- **whatsmeow** - Updated from `v0.0.0-20260116142645-06f473759141` to `v0.0.0-20260129212019-7787ab952245`
+
+---
+
 ## [1.2.8] - 2026-01-20
 
 ### 🚀 Changed

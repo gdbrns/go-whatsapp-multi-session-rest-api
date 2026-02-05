@@ -29,6 +29,7 @@ import (
 
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/appstate"
+	waBinary "go.mau.fi/whatsmeow/binary"
 	"go.mau.fi/whatsmeow/proto/waCommon"
 	"go.mau.fi/whatsmeow/proto/waCompanionReg"
 	"go.mau.fi/whatsmeow/proto/waE2E"
@@ -2688,6 +2689,194 @@ func WhatsAppSendNewsletterMessage(ctx context.Context, jid string, deviceID str
 	return resp.ID, nil
 }
 
+func WhatsAppSendNewsletterImage(ctx context.Context, jid string, deviceID string, newsletterJID string, imageBytes []byte, imageType string, caption string) (string, error) {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return "", err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return "", err
+	}
+	if len(imageBytes) == 0 {
+		return "", errors.New("image payload cannot be empty")
+	}
+	if err := enforceSizeLimit("newsletter image", int64(len(imageBytes)), maxImageBytes); err != nil {
+		return "", err
+	}
+	imageMime := detectMime(imageBytes, imageType)
+	allowedImageMimes := map[string]bool{
+		"image/jpeg": true,
+		"image/jpg":  true,
+		"image/png":  true,
+		"image/webp": true,
+	}
+	if !allowedImageMimes[imageMime] {
+		return "", fmt.Errorf("image MIME type %s is not allowed", imageMime)
+	}
+	parsedJID, err := types.ParseJID(newsletterJID)
+	if err != nil {
+		return "", fmt.Errorf("invalid newsletter JID: %w", err)
+	}
+	if parsedJID.Server != types.NewsletterServer {
+		return "", errors.New("newsletter JID must use the newsletter server")
+	}
+	if err := waitRateLimit(ctx, deviceID); err != nil {
+		return "", err
+	}
+	uploaded, err := client.UploadNewsletter(ctx, imageBytes, whatsmeow.MediaImage)
+	if err != nil {
+		return "", errors.New("error while uploading newsletter image to WhatsApp server")
+	}
+	msgExtra := whatsmeow.SendRequestExtra{
+		ID:          client.GenerateMessageID(),
+		MediaHandle: uploaded.Handle,
+	}
+	msgContent := &waE2E.Message{
+		ImageMessage: &waE2E.ImageMessage{
+			URL:        proto.String(uploaded.URL),
+			DirectPath: proto.String(uploaded.DirectPath),
+			Mimetype:   proto.String(imageMime),
+			Caption:    proto.String(caption),
+			FileLength: proto.Uint64(uploaded.FileLength),
+			FileSHA256: uploaded.FileSHA256,
+		},
+	}
+	_, err = client.SendMessage(ctx, parsedJID, msgContent, msgExtra)
+	if err != nil {
+		return "", err
+	}
+	return msgExtra.ID, nil
+}
+
+func WhatsAppSendNewsletterVideo(ctx context.Context, jid string, deviceID string, newsletterJID string, videoBytes []byte, videoType string, caption string) (string, error) {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return "", err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return "", err
+	}
+	if len(videoBytes) == 0 {
+		return "", errors.New("video payload cannot be empty")
+	}
+	if err := enforceSizeLimit("newsletter video", int64(len(videoBytes)), maxVideoBytes); err != nil {
+		return "", err
+	}
+	videoMime := detectMime(videoBytes, videoType)
+	allowedVideoMimes := map[string]bool{
+		"video/mp4":       true,
+		"video/3gpp":      true,
+		"video/quicktime": true,
+		"video/webm":      true,
+		"video/mpeg":      true,
+	}
+	if !allowedVideoMimes[videoMime] {
+		return "", fmt.Errorf("video MIME type %s is not allowed", videoMime)
+	}
+	parsedJID, err := types.ParseJID(newsletterJID)
+	if err != nil {
+		return "", fmt.Errorf("invalid newsletter JID: %w", err)
+	}
+	if parsedJID.Server != types.NewsletterServer {
+		return "", errors.New("newsletter JID must use the newsletter server")
+	}
+	if err := waitRateLimit(ctx, deviceID); err != nil {
+		return "", err
+	}
+	uploaded, err := client.UploadNewsletter(ctx, videoBytes, whatsmeow.MediaVideo)
+	if err != nil {
+		return "", errors.New("error while uploading newsletter video to WhatsApp server")
+	}
+	msgExtra := whatsmeow.SendRequestExtra{
+		ID:          client.GenerateMessageID(),
+		MediaHandle: uploaded.Handle,
+	}
+	msgContent := &waE2E.Message{
+		VideoMessage: &waE2E.VideoMessage{
+			URL:        proto.String(uploaded.URL),
+			DirectPath: proto.String(uploaded.DirectPath),
+			Mimetype:   proto.String(videoMime),
+			Caption:    proto.String(caption),
+			FileLength: proto.Uint64(uploaded.FileLength),
+			FileSHA256: uploaded.FileSHA256,
+		},
+	}
+	_, err = client.SendMessage(ctx, parsedJID, msgContent, msgExtra)
+	if err != nil {
+		return "", err
+	}
+	return msgExtra.ID, nil
+}
+
+func WhatsAppSendNewsletterDocument(ctx context.Context, jid string, deviceID string, newsletterJID string, documentBytes []byte, documentType string, documentName string, caption string) (string, error) {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return "", err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return "", err
+	}
+	if len(documentBytes) == 0 {
+		return "", errors.New("document payload cannot be empty")
+	}
+	if err := enforceSizeLimit("newsletter document", int64(len(documentBytes)), maxDocumentBytes); err != nil {
+		return "", err
+	}
+	documentMime := detectMime(documentBytes, documentType)
+	allowedDocumentMimes := map[string]bool{
+		"application/pdf":    true,
+		"application/msword": true,
+		"application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
+		"application/vnd.ms-excel": true,
+		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":         true,
+		"application/vnd.ms-powerpoint":                                             true,
+		"application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+		"text/plain":               true,
+		"application/zip":          true,
+		"application/octet-stream": true,
+	}
+	if !allowedDocumentMimes[documentMime] {
+		return "", fmt.Errorf("document MIME type %s is not allowed", documentMime)
+	}
+	parsedJID, err := types.ParseJID(newsletterJID)
+	if err != nil {
+		return "", fmt.Errorf("invalid newsletter JID: %w", err)
+	}
+	if parsedJID.Server != types.NewsletterServer {
+		return "", errors.New("newsletter JID must use the newsletter server")
+	}
+	if err := waitRateLimit(ctx, deviceID); err != nil {
+		return "", err
+	}
+	uploaded, err := client.UploadNewsletter(ctx, documentBytes, whatsmeow.MediaDocument)
+	if err != nil {
+		return "", errors.New("error while uploading newsletter document to WhatsApp server")
+	}
+	if strings.TrimSpace(documentName) == "" {
+		documentName = "document"
+	}
+	msgExtra := whatsmeow.SendRequestExtra{
+		ID:          client.GenerateMessageID(),
+		MediaHandle: uploaded.Handle,
+	}
+	msgContent := &waE2E.Message{
+		DocumentMessage: &waE2E.DocumentMessage{
+			URL:        proto.String(uploaded.URL),
+			DirectPath: proto.String(uploaded.DirectPath),
+			Mimetype:   proto.String(documentMime),
+			Caption:    proto.String(caption),
+			FileName:   proto.String(documentName),
+			FileLength: proto.Uint64(uploaded.FileLength),
+			FileSHA256: uploaded.FileSHA256,
+		},
+	}
+	_, err = client.SendMessage(ctx, parsedJID, msgContent, msgExtra)
+	if err != nil {
+		return "", err
+	}
+	return msgExtra.ID, nil
+}
+
 func WhatsAppNewsletterSendReaction(ctx context.Context, jid string, deviceID string, newsletterJID string, messageServerID int, emoji string) error {
 	client, err := currentClient(jid, deviceID)
 	if err != nil {
@@ -5087,6 +5276,57 @@ func WhatsAppRegisterPushNotification(ctx context.Context, jid string, deviceID 
 	`, deviceID, platform, token)
 
 	return err
+}
+
+// ============================================================================
+// Server Push Notification Config (WhatsApp server-side settings)
+// ============================================================================
+
+func WhatsAppGetServerPushNotificationConfig(ctx context.Context, jid string, deviceID string) (*waBinary.Node, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return nil, err
+	}
+	return client.GetServerPushNotificationConfig(ctx)
+}
+
+func WhatsAppRegisterServerPushNotifications(ctx context.Context, jid string, deviceID string, config whatsmeow.PushConfig) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if config == nil {
+		return errors.New("push config is required")
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return err
+	}
+	return client.RegisterForPushNotifications(ctx, config)
+}
+
+// ============================================================================
+// Force Active Delivery Receipts
+// ============================================================================
+
+func WhatsAppSetForceActiveDeliveryReceipts(jid string, deviceID string, active bool) error {
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return err
+	}
+	client.SetForceActiveDeliveryReceipts(active)
+	return nil
 }
 
 // ============================================================================

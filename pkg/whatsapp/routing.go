@@ -485,11 +485,47 @@ func GetDeviceIDByJID(ctx context.Context, whatsmeowJID string) (string, error) 
 	return deviceID, err
 }
 
+// GetDeviceIDByStoreJID resolves a device_id directly from the devices table.
+// This is a fallback when device_routing is stale or inactive.
+func GetDeviceIDByStoreJID(ctx context.Context, whatsmeowJID string) (string, error) {
+	db, err := openRoutingDB()
+	if err != nil {
+		return "", err
+	}
+	var deviceID string
+	err = db.QueryRowContext(ctx, `SELECT device_id FROM devices WHERE whatsmeow_jid = $1`, whatsmeowJID).Scan(&deviceID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", errors.New("device id not found for jid")
+	}
+	return deviceID, err
+}
+
 func SyncDeviceRoutings(ctx context.Context) error {
 	db, err := openRoutingDB()
 	if err != nil {
 		return err
 	}
+
+	// Build a trusted map from devices table to avoid mismatched routing assignments.
+	deviceMap := make(map[string]string)
+	rows, err := db.QueryContext(ctx, `SELECT device_id, whatsmeow_jid FROM devices WHERE whatsmeow_jid IS NOT NULL AND whatsmeow_jid != ''`)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var deviceID string
+		var jid string
+		if scanErr := rows.Scan(&deviceID, &jid); scanErr != nil {
+			rows.Close()
+			return scanErr
+		}
+		deviceMap[jid] = deviceID
+	}
+	if err = rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
 
 	devices, err := WhatsAppDatastore.GetAllDevices(ctx)
 	if err != nil {
@@ -508,36 +544,23 @@ func SyncDeviceRoutings(ctx context.Context) error {
 		}
 
 		storeJID := device.ID.String()
+		deviceID, ok := deviceMap[storeJID]
+		if !ok {
+			// No trusted mapping in devices table; skip to avoid mismatching device IDs.
+			continue
+		}
 
-		var existingDeviceID string
-		err := tx.QueryRowContext(ctx, `SELECT device_id FROM device_routing WHERE whatsmeow_jid = $1`, storeJID).Scan(&existingDeviceID)
-
-		if errors.Is(err, sql.ErrNoRows) {
-			_, err = tx.ExecContext(ctx, `
-				UPDATE device_routing 
-				SET whatsmeow_jid = $1, is_active = TRUE, last_login_at = NOW(), updated_at = NOW()
-				WHERE whatsmeow_jid IS NULL 
-				AND device_id IN (
-					SELECT device_id FROM device_routing 
-					WHERE whatsmeow_jid IS NULL 
-					ORDER BY created_at ASC 
-					LIMIT 1
-				)
-			`, storeJID)
-			if err != nil {
-				return fmt.Errorf("failed to assign whatsmeow_jid to existing device_id: %w", err)
-			}
-		} else if err == nil {
-			_, err = tx.ExecContext(ctx, `
-				UPDATE device_routing 
-				SET is_active = TRUE, updated_at = NOW()
-				WHERE whatsmeow_jid = $1
-			`, storeJID)
-			if err != nil {
-				return fmt.Errorf("failed to activate device routing: %w", err)
-			}
-		} else {
-			return fmt.Errorf("failed to query device routing: %w", err)
+		_, err = tx.ExecContext(ctx, `
+			INSERT INTO device_routing (device_id, whatsmeow_jid, is_active, last_login_at, updated_at)
+			VALUES ($1, $2, TRUE, NOW(), NOW())
+			ON CONFLICT (device_id) DO UPDATE
+			SET whatsmeow_jid = EXCLUDED.whatsmeow_jid,
+			    is_active = TRUE,
+			    last_login_at = NOW(),
+			    updated_at = NOW()
+		`, deviceID, storeJID)
+		if err != nil {
+			return fmt.Errorf("failed to sync device routing for %s: %w", deviceID, err)
 		}
 	}
 
@@ -808,7 +831,6 @@ func CountDevicesByAPIKey(ctx context.Context, apiKeyID int64) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-
 	var count int
 	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices WHERE api_key_id = $1`, apiKeyID).Scan(&count)
 	return count, err
@@ -872,35 +894,31 @@ func CreateDevice(ctx context.Context, apiKeyID int64, deviceName string) (*Devi
 	return &Device{
 		DeviceID:     deviceID,
 		APIKeyID:     apiKeyID,
-		DeviceSecret: secret, // Only returned on creation
+		DeviceSecret: secret,
 		DeviceName:   deviceName,
 		Status:       "pending",
-		JWTVersion:   1, // Initial JWT version
 		CreatedAt:    createdAt,
 	}, nil
 }
 
-// ValidateDeviceCredentials validates device_id and device_secret, returns device with jwt_version
-func ValidateDeviceCredentials(ctx context.Context, deviceID, deviceSecret string) (*Device, error) {
+// ValidateDeviceCredentials validates device credentials for token regeneration
+func ValidateDeviceCredentials(ctx context.Context, deviceID string, deviceSecret string) (*Device, error) {
 	db, err := openRoutingDB()
 	if err != nil {
 		return nil, err
 	}
 
 	var d Device
-	var apiKeyID int64
+	var apiKeyID sql.NullInt64
 	var name sql.NullString
 	var jid sql.NullString
 	var lastActive sql.NullTime
 	var jwtVersion int
 
 	err = db.QueryRowContext(ctx, `
-		SELECT d.device_id, d.api_key_id, d.device_name, d.whatsmeow_jid, d.status, d.jwt_version, d.created_at, d.last_active_at
-		FROM devices d
-		JOIN api_keys a ON d.api_key_id = a.id
-		WHERE d.device_id = $1 AND d.device_secret = $2 AND a.is_active = TRUE
+		SELECT device_id, api_key_id, device_name, whatsmeow_jid, status, jwt_version, created_at, last_active_at
+		FROM devices WHERE device_id = $1 AND device_secret = $2
 	`, deviceID, deviceSecret).Scan(&d.DeviceID, &apiKeyID, &name, &jid, &d.Status, &jwtVersion, &d.CreatedAt, &lastActive)
-
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, errors.New("invalid device credentials")
 	}
@@ -908,7 +926,9 @@ func ValidateDeviceCredentials(ctx context.Context, deviceID, deviceSecret strin
 		return nil, err
 	}
 
-	d.APIKeyID = apiKeyID
+	if apiKeyID.Valid {
+		d.APIKeyID = apiKeyID.Int64
+	}
 	d.JWTVersion = jwtVersion
 	if name.Valid {
 		d.DeviceName = name.String
@@ -1101,7 +1121,7 @@ func GetDevicesNeedingRecovery(ctx context.Context) ([]Device, error) {
 		SELECT device_id, api_key_id, device_name, whatsmeow_jid, status, created_at, last_active_at
 		FROM devices
 		WHERE whatsmeow_jid IS NOT NULL AND whatsmeow_jid != ''
-		AND status IN ('active', 'disconnected')
+		AND status IN ('active', 'disconnected', 'pending')
 		ORDER BY last_active_at DESC NULLS LAST
 	`)
 	if err != nil {

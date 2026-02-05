@@ -424,6 +424,26 @@ type ResponsePushNotificationStatus struct {
 }
 
 // ============================================================================
+// Server Push Notification Config APIs
+// ============================================================================
+type RequestServerPushConfig struct {
+	Platform   string `json:"platform"` // "fcm" | "apns" | "web"
+	Token      string `json:"token,omitempty"`
+	VoipToken  string `json:"voip_token,omitempty"`
+	MsgIDEncKey string `json:"msg_id_enc_key,omitempty"` // base64 (32 bytes)
+	Endpoint   string `json:"endpoint,omitempty"`
+	Auth       string `json:"auth,omitempty"` // base64
+	P256DH     string `json:"p256dh,omitempty"` // base64
+}
+
+// ============================================================================
+// Force Active Delivery Receipts API
+// ============================================================================
+type RequestForceActiveReceipts struct {
+	Active bool `json:"active"`
+}
+
+// ============================================================================
 // Link Preview Message APIs
 // ============================================================================
 type RequestSendLinkPreview struct {

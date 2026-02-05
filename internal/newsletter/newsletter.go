@@ -2,6 +2,7 @@ package newsletter
 
 import (
 	"context"
+	"io"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -18,6 +19,10 @@ func getDeviceContext(c *fiber.Ctx) (deviceID string, jid string) {
 		jid = jidVal.(string)
 	}
 	return
+}
+
+func convertFileToBytes(file io.Reader) ([]byte, error) {
+	return io.ReadAll(file)
 }
 
 // ListNewsletters lists all subscribed newsletters/channels
@@ -209,6 +214,143 @@ func SendNewsletterMessage(c *fiber.Ctx) error {
 	log.Newsletter(c, "SendNewsletterMessage", newsletterJID).WithField("message_id", msgID).Info("Newsletter message sent successfully")
 
 	return router.ResponseSuccessWithData(c, "Success send newsletter message", map[string]interface{}{"message_id": msgID})
+}
+
+// SendNewsletterImage sends an image to a newsletter (admin only)
+func SendNewsletterImage(c *fiber.Ctx) error {
+	deviceID, jid := getDeviceContext(c)
+	newsletterJID := c.Params("jid")
+
+	caption := c.FormValue("caption")
+
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		log.Newsletter(c, "SendNewsletterImage", newsletterJID).Warn("No file provided")
+		return router.ResponseBadRequest(c, "file is required")
+	}
+
+	log.Newsletter(c, "SendNewsletterImage", newsletterJID).WithField("filename", fileHeader.Filename).WithField("size", fileHeader.Size).Info("Sending newsletter image")
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		log.Newsletter(c, "SendNewsletterImage", newsletterJID).WithError(err).Error("Failed to open file")
+		return router.ResponseInternalError(c, err.Error())
+	}
+	defer file.Close()
+
+	fileBytes, err := convertFileToBytes(file)
+	if err != nil {
+		log.Newsletter(c, "SendNewsletterImage", newsletterJID).WithError(err).Error("Failed to read file")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	msgID, err := pkgWhatsApp.WhatsAppSendNewsletterImage(ctx, jid, deviceID, newsletterJID, fileBytes, "image/jpeg", caption)
+	if err != nil {
+		log.Newsletter(c, "SendNewsletterImage", newsletterJID).WithError(err).Error("Failed to send newsletter image")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.Newsletter(c, "SendNewsletterImage", newsletterJID).WithField("message_id", msgID).Info("Newsletter image sent successfully")
+
+	return router.ResponseSuccessWithData(c, "Success send newsletter image", map[string]interface{}{"message_id": msgID})
+}
+
+// SendNewsletterVideo sends a video to a newsletter (admin only)
+func SendNewsletterVideo(c *fiber.Ctx) error {
+	deviceID, jid := getDeviceContext(c)
+	newsletterJID := c.Params("jid")
+
+	caption := c.FormValue("caption")
+
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		log.Newsletter(c, "SendNewsletterVideo", newsletterJID).Warn("No file provided")
+		return router.ResponseBadRequest(c, "file is required")
+	}
+
+	log.Newsletter(c, "SendNewsletterVideo", newsletterJID).WithField("filename", fileHeader.Filename).WithField("size", fileHeader.Size).Info("Sending newsletter video")
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		log.Newsletter(c, "SendNewsletterVideo", newsletterJID).WithError(err).Error("Failed to open file")
+		return router.ResponseInternalError(c, err.Error())
+	}
+	defer file.Close()
+
+	fileBytes, err := convertFileToBytes(file)
+	if err != nil {
+		log.Newsletter(c, "SendNewsletterVideo", newsletterJID).WithError(err).Error("Failed to read file")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	msgID, err := pkgWhatsApp.WhatsAppSendNewsletterVideo(ctx, jid, deviceID, newsletterJID, fileBytes, "video/mp4", caption)
+	if err != nil {
+		log.Newsletter(c, "SendNewsletterVideo", newsletterJID).WithError(err).Error("Failed to send newsletter video")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.Newsletter(c, "SendNewsletterVideo", newsletterJID).WithField("message_id", msgID).Info("Newsletter video sent successfully")
+
+	return router.ResponseSuccessWithData(c, "Success send newsletter video", map[string]interface{}{"message_id": msgID})
+}
+
+// SendNewsletterDocument sends a document to a newsletter (admin only)
+func SendNewsletterDocument(c *fiber.Ctx) error {
+	deviceID, jid := getDeviceContext(c)
+	newsletterJID := c.Params("jid")
+
+	fileName := c.FormValue("filename")
+	caption := c.FormValue("caption")
+
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		log.Newsletter(c, "SendNewsletterDocument", newsletterJID).Warn("No file provided")
+		return router.ResponseBadRequest(c, "file is required")
+	}
+
+	log.Newsletter(c, "SendNewsletterDocument", newsletterJID).WithField("filename", fileHeader.Filename).WithField("size", fileHeader.Size).Info("Sending newsletter document")
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		log.Newsletter(c, "SendNewsletterDocument", newsletterJID).WithError(err).Error("Failed to open file")
+		return router.ResponseInternalError(c, err.Error())
+	}
+	defer file.Close()
+
+	fileBytes, err := convertFileToBytes(file)
+	if err != nil {
+		log.Newsletter(c, "SendNewsletterDocument", newsletterJID).WithError(err).Error("Failed to read file")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	if fileName == "" {
+		fileName = fileHeader.Filename
+	}
+
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	msgID, err := pkgWhatsApp.WhatsAppSendNewsletterDocument(ctx, jid, deviceID, newsletterJID, fileBytes, "application/octet-stream", fileName, caption)
+	if err != nil {
+		log.Newsletter(c, "SendNewsletterDocument", newsletterJID).WithError(err).Error("Failed to send newsletter document")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.Newsletter(c, "SendNewsletterDocument", newsletterJID).WithField("message_id", msgID).WithField("filename", fileName).Info("Newsletter document sent successfully")
+
+	return router.ResponseSuccessWithData(c, "Success send newsletter document", map[string]interface{}{"message_id": msgID})
 }
 
 // ReactToNewsletterMessage reacts to a newsletter message

@@ -4,10 +4,10 @@
 [![Docker Image](https://img.shields.io/docker/v/ghiovanidebrians/go-whatsapp-multi-session-rest-api?label=Docker&logo=docker&sort=semver)](https://hub.docker.com/r/ghiovanidebrians/go-whatsapp-multi-session-rest-api)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gdbrns/go-whatsapp-multi-session-rest-api)](https://goreportcard.com/report/github.com/gdbrns/go-whatsapp-multi-session-rest-api)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![whatsmeow](https://img.shields.io/badge/whatsmeow-v0.0.0--20260116-brightgreen.svg)](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20260116142645-06f473759141)
+[![whatsmeow](https://img.shields.io/badge/whatsmeow-v0.0.0--20260129-brightgreen.svg)](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20260129212019-7787ab952245)
 [![API Docs](https://img.shields.io/badge/API%20Docs-Bump.sh-blue.svg)](https://bump.sh/gdbrns/doc/go-whatsapp-multi-session-rest)
 
-> A minimal REST API for WhatsApp Multi-Device and Multi-Session implementation built with Go and **[whatsmeow v0.0.0-20260116142645-06f473759141](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20260116142645-06f473759141)**. Supports multiple accounts and devices simultaneously with efficient memory use and production-ready deployments.
+> A minimal REST API for WhatsApp Multi-Device and Multi-Session implementation built with Go and **[whatsmeow v0.0.0-20260129212019-7787ab952245](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20260129212019-7787ab952245)**. Supports multiple accounts and devices simultaneously with efficient memory use and production-ready deployments.
 
 ## 📚 API Documentation
 
@@ -41,6 +41,7 @@
 - 📨 **Rich Messaging** - Text, images, videos, audio, stickers, locations, contacts, documents
 - 📊 **Polls** - Create polls, vote, and receive real-time results via webhooks
 - 📰 **Newsletter/Channels** - Full channel support - create, follow, message, react, TOS acceptance
+- 📰 **Newsletter Media Posts** - Post images, videos, and documents to channels
 - 📱 **Status/Stories** - Post and manage WhatsApp Status updates
 - 📞 **Call Handling** - Reject incoming WhatsApp calls programmatically
 - 💼 **Business Profiles** - Get business profiles and resolve wa.me/message links
@@ -51,6 +52,7 @@
 - 👥 **Group Management** - Full CRUD for groups, participants, admins, community unlinking
 - 🔄 **Message Operations** - Edit, react, delete, reply, forward, mark read
 - 📊 **Presence & Status** - Online status, typing indicators, disappearing messages, passive mode
+- ⏳ **Account Disappearing Timer** - Set default disappearing message timer for new chats
 - 🔄 **App State Synchronization** - Fetch, send, and manage app state patches
 - 📜 **Message History Sync** - Request and download message history on demand
 - 🌐 **Per-Device Proxy** - Configure HTTP proxy per device (overrides global setting)
@@ -59,6 +61,8 @@
 - 🔁 **WA Web Version Auto-Refresh** - Auto-refreshes WhatsApp Web version to handle "client outdated" during pairing
 - 🧯 **Startup Reconnect Storm Protection** - Concurrency limit + jitter + retry/backoff for 100s of sessions
 - 🔔 **Push Notifications** - Register for push notifications (reuses webhook system)
+- 🧲 **Server Push Config** - Configure WhatsApp server push settings (FCM/APNs/Web)
+- ✅ **Active Delivery Receipts** - Force active delivery receipts when needed
 - 🪝 **Webhook Integration** - 35+ event types with real-time notifications and retry support
 - 🏗️ **Production Ready** - Docker support, environment configuration, logging
 - 📖 **OpenAPI/Swagger** - Interactive API documentation at `/docs/`
@@ -872,7 +876,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### Core Technologies
 
-- **[whatsmeow](https://pkg.go.dev/go.mau.fi/whatsmeow)** by [@tulir](https://github.com/tulir) - WhatsApp Multi-Device protocol library. This project wouldn't exist without this incredible reverse-engineering effort of the WhatsApp Web protocol. Currently using **v0.0.0-20251217** (Dec 17, 2025).
+- **[whatsmeow](https://pkg.go.dev/go.mau.fi/whatsmeow)** by [@tulir](https://github.com/tulir) - WhatsApp Multi-Device protocol library. This project wouldn't exist without this incredible reverse-engineering effort of the WhatsApp Web protocol. Currently using **v0.0.0-20260129** (Jan 29, 2026).
 - **[Fiber](https://github.com/gofiber/fiber)** - Express-inspired web framework for Go
 - **[libsignal](https://pkg.go.dev/go.mau.fi/libsignal)** - Signal Protocol implementation for E2E encryption
 

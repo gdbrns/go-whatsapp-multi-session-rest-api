@@ -2,6 +2,7 @@ package device
 
 import (
 	"context"
+	"encoding/base64"
 	"strconv"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/router"
 	"github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/validation"
 	pkgWhatsApp "github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/whatsapp"
+	"go.mau.fi/whatsmeow"
 )
 
 // getDeviceContext extracts device context from auth middleware
@@ -440,4 +442,132 @@ func RegisterPushNotification(c *fiber.Ctx) error {
 	log.DeviceOpCtx(c, "RegisterPushNotification").Info("Push notifications registered successfully")
 
 	return router.ResponseSuccess(c, "Push notifications registered successfully")
+}
+
+func decodeBase64Bytes(value string) ([]byte, error) {
+	if value == "" {
+		return nil, nil
+	}
+	decoded, err := base64.StdEncoding.DecodeString(value)
+	if err == nil {
+		return decoded, nil
+	}
+	return base64.RawStdEncoding.DecodeString(value)
+}
+
+// GetServerPushConfig retrieves the server-side push notification config
+func GetServerPushConfig(c *fiber.Ctx) error {
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	deviceID, jid := getDeviceContext(c)
+
+	log.DeviceOpCtx(c, "GetServerPushConfig").Info("Retrieving server push notification config")
+
+	config, err := pkgWhatsApp.WhatsAppGetServerPushNotificationConfig(ctx, jid, deviceID)
+	if err != nil {
+		log.DeviceOpCtx(c, "GetServerPushConfig").WithError(err).Error("Failed to get server push config")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.DeviceOpCtx(c, "GetServerPushConfig").Info("Server push config retrieved successfully")
+
+	return router.ResponseSuccessWithData(c, "Success get server push config", config)
+}
+
+// SetServerPushConfig sets server-side push notification config
+func SetServerPushConfig(c *fiber.Ctx) error {
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	deviceID, jid := getDeviceContext(c)
+
+	var req typWhatsApp.RequestServerPushConfig
+	if err := c.BodyParser(&req); err != nil {
+		log.DeviceOpCtx(c, "SetServerPushConfig").Warn("Failed to parse body request")
+		return router.ResponseBadRequest(c, "Failed to parse body request")
+	}
+
+	platform := strings.ToLower(strings.TrimSpace(req.Platform))
+	var config whatsmeow.PushConfig
+
+	switch platform {
+	case "fcm":
+		if req.Token == "" {
+			log.DeviceOpCtx(c, "SetServerPushConfig").Warn("Token required for fcm platform")
+			return router.ResponseBadRequest(c, "token is required for fcm platform")
+		}
+		config = &whatsmeow.FCMPushConfig{Token: req.Token}
+	case "apns":
+		if req.Token == "" {
+			log.DeviceOpCtx(c, "SetServerPushConfig").Warn("Token required for apns platform")
+			return router.ResponseBadRequest(c, "token is required for apns platform")
+		}
+		keyBytes, err := decodeBase64Bytes(req.MsgIDEncKey)
+		if err != nil {
+			log.DeviceOpCtx(c, "SetServerPushConfig").WithError(err).Warn("Invalid msg_id_enc_key base64")
+			return router.ResponseBadRequest(c, "msg_id_enc_key must be valid base64")
+		}
+		if len(keyBytes) > 0 && len(keyBytes) != 32 {
+			log.DeviceOpCtx(c, "SetServerPushConfig").Warn("Invalid msg_id_enc_key length")
+			return router.ResponseBadRequest(c, "msg_id_enc_key must be 32 bytes when provided")
+		}
+		config = &whatsmeow.APNsPushConfig{Token: req.Token, VoIPToken: req.VoipToken, MsgIDEncKey: keyBytes}
+	case "web":
+		if req.Endpoint == "" || req.Auth == "" || req.P256DH == "" {
+			log.DeviceOpCtx(c, "SetServerPushConfig").Warn("Missing web push fields")
+			return router.ResponseBadRequest(c, "endpoint, auth, and p256dh are required for web platform")
+		}
+		authBytes, err := decodeBase64Bytes(req.Auth)
+		if err != nil {
+			log.DeviceOpCtx(c, "SetServerPushConfig").WithError(err).Warn("Invalid auth base64")
+			return router.ResponseBadRequest(c, "auth must be valid base64")
+		}
+		p256dhBytes, err := decodeBase64Bytes(req.P256DH)
+		if err != nil {
+			log.DeviceOpCtx(c, "SetServerPushConfig").WithError(err).Warn("Invalid p256dh base64")
+			return router.ResponseBadRequest(c, "p256dh must be valid base64")
+		}
+		config = &whatsmeow.WebPushConfig{Endpoint: req.Endpoint, Auth: authBytes, P256DH: p256dhBytes}
+	default:
+		log.DeviceOpCtx(c, "SetServerPushConfig").Warn("Invalid platform provided")
+		return router.ResponseBadRequest(c, "platform must be one of: fcm, apns, web")
+	}
+
+	log.DeviceOpCtx(c, "SetServerPushConfig").WithField("platform", platform).Info("Setting server push config")
+
+	if err := pkgWhatsApp.WhatsAppRegisterServerPushNotifications(ctx, jid, deviceID, config); err != nil {
+		log.DeviceOpCtx(c, "SetServerPushConfig").WithError(err).Error("Failed to set server push config")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.DeviceOpCtx(c, "SetServerPushConfig").Info("Server push config updated successfully")
+
+	return router.ResponseSuccess(c, "Server push config updated successfully")
+}
+
+// SetForceActiveReceipts toggles active delivery receipts
+func SetForceActiveReceipts(c *fiber.Ctx) error {
+	deviceID, jid := getDeviceContext(c)
+
+	var req typWhatsApp.RequestForceActiveReceipts
+	if err := c.BodyParser(&req); err != nil {
+		log.DeviceOpCtx(c, "SetForceActiveReceipts").Warn("Failed to parse body request")
+		return router.ResponseBadRequest(c, "Failed to parse body request")
+	}
+
+	log.DeviceOpCtx(c, "SetForceActiveReceipts").WithField("active", req.Active).Info("Setting force active delivery receipts")
+
+	if err := pkgWhatsApp.WhatsAppSetForceActiveDeliveryReceipts(jid, deviceID, req.Active); err != nil {
+		log.DeviceOpCtx(c, "SetForceActiveReceipts").WithError(err).Error("Failed to set force active receipts")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.DeviceOpCtx(c, "SetForceActiveReceipts").Info("Force active delivery receipts updated successfully")
+
+	return router.ResponseSuccess(c, "Force active delivery receipts updated successfully")
 }

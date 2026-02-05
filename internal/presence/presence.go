@@ -131,6 +131,41 @@ func SetDisappearingTimer(c *fiber.Ctx) error {
 	return router.ResponseSuccess(c, "Success set disappearing timer")
 }
 
+// SetDefaultDisappearingTimer updates the account-level disappearing timer
+func SetDefaultDisappearingTimer(c *fiber.Ctx) error {
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	deviceID, jid := getDeviceContext(c)
+
+	var req struct {
+		Timer string `json:"timer"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		log.SessionWithDevice(deviceID, jid, "SetDefaultDisappearingTimer").Warn("Failed to parse body request")
+		return router.ResponseBadRequest(c, "Failed parse body request")
+	}
+
+	log.SessionWithDevice(deviceID, jid, "SetDefaultDisappearingTimer").WithField("timer", req.Timer).Info("Setting default disappearing timer")
+
+	timer, err := parseTimer(req.Timer)
+	if err != nil {
+		log.SessionWithDevice(deviceID, jid, "SetDefaultDisappearingTimer").WithField("timer", req.Timer).Warn("Invalid timer value")
+		return router.ResponseBadRequest(c, "Invalid timer value")
+	}
+
+	if err := pkgWhatsApp.WhatsAppSetDisappearingTimer(ctx, jid, deviceID, timer, ""); err != nil {
+		log.SessionWithDevice(deviceID, jid, "SetDefaultDisappearingTimer").WithError(err).Error("Failed to set default disappearing timer")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.SessionWithDevice(deviceID, jid, "SetDefaultDisappearingTimer").WithField("timer", req.Timer).Info("Default disappearing timer set successfully")
+
+	return router.ResponseSuccess(c, "Success set default disappearing timer")
+}
+
 // SubscribePresence subscribes to presence updates for a specific user
 func SubscribePresence(c *fiber.Ctx) error {
 	ctx := c.UserContext()

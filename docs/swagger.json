@@ -1824,6 +1824,97 @@
         }
       }
     },
+    "/devices/me/server-push-config": {
+      "get": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["04 - Device Operations"],
+        "summary": "Get Server Push Config",
+        "description": "Get WhatsApp server push notification settings for the device.",
+        "responses": {
+          "200": {
+            "description": "Server push config retrieved",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "status": {"type": "boolean", "example": true},
+                "code": {"type": "integer", "example": 200},
+                "message": {"type": "string", "example": "Success get server push config"},
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "tag": {"type": "string", "example": "iq"},
+                    "attrs": {"type": "object"},
+                    "content": {"type": "array", "items": {"type": "object"}}
+                  }
+                }
+              }
+            }
+          },
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/UnauthorizedResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      },
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["04 - Device Operations"],
+        "summary": "Set Server Push Config",
+        "description": "Configure WhatsApp server push notifications (FCM/APNs/Web).",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["platform"],
+              "properties": {
+                "platform": {"type": "string", "enum": ["fcm", "apns", "web"], "example": "fcm"},
+                "token": {"type": "string", "description": "Required for fcm/apns"},
+                "voip_token": {"type": "string", "description": "Optional APNs VoIP token"},
+                "msg_id_enc_key": {"type": "string", "description": "Optional APNs message key (base64, 32 bytes)"},
+                "endpoint": {"type": "string", "description": "Web push endpoint (required for web)"},
+                "auth": {"type": "string", "description": "Web push auth (base64, required for web)"},
+                "p256dh": {"type": "string", "description": "Web push p256dh (base64, required for web)"}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {"description": "Server push config updated", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/UnauthorizedResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/devices/me/force-active-receipts": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["04 - Device Operations"],
+        "summary": "Force Active Delivery Receipts",
+        "description": "Force active delivery receipts even when the client is not marked online.",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["active"],
+              "properties": {
+                "active": {"type": "boolean", "example": true}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {"description": "Active delivery receipts updated", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/UnauthorizedResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
     "/devices/me/contacts/{phone}/registered": {
       "get": {
         "security": [{"BearerAuth": []}],
@@ -3797,6 +3888,31 @@
         }
       }
     },
+    "/users/me/disappearing-timer": {
+      "patch": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["09 - Presence & Status"],
+        "summary": "Set Default Disappearing Timer",
+        "consumes": ["application/json"],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "timer": {"type": "string", "enum": ["off", "24h", "7d", "90d"]}
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {"description": "Default timer set", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
     "/app-state/{name}": {
       "get": {
         "security": [{"BearerAuth": []}],
@@ -4723,6 +4839,67 @@
         ],
         "responses": {
           "200": {"description": "Message sent", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/newsletters/{jid}/images": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["13 - Newsletter/Channels"],
+        "summary": "Send Newsletter Image",
+        "description": "Send an image to a newsletter (admin only)",
+        "consumes": ["multipart/form-data"],
+        "parameters": [
+          {"name": "jid", "in": "path", "required": true, "type": "string"},
+          {"name": "file", "in": "formData", "required": true, "type": "file", "description": "Image file"},
+          {"name": "caption", "in": "formData", "type": "string", "description": "Optional caption"}
+        ],
+        "responses": {
+          "200": {"description": "Image sent", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/newsletters/{jid}/videos": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["13 - Newsletter/Channels"],
+        "summary": "Send Newsletter Video",
+        "description": "Send a video to a newsletter (admin only)",
+        "consumes": ["multipart/form-data"],
+        "parameters": [
+          {"name": "jid", "in": "path", "required": true, "type": "string"},
+          {"name": "file", "in": "formData", "required": true, "type": "file", "description": "Video file"},
+          {"name": "caption", "in": "formData", "type": "string", "description": "Optional caption"}
+        ],
+        "responses": {
+          "200": {"description": "Video sent", "schema": {"$ref": "#/definitions/SuccessResponse"}},
+          "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
+          "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}
+        }
+      }
+    },
+    "/newsletters/{jid}/documents": {
+      "post": {
+        "security": [{"BearerAuth": []}],
+        "tags": ["13 - Newsletter/Channels"],
+        "summary": "Send Newsletter Document",
+        "description": "Send a document to a newsletter (admin only)",
+        "consumes": ["multipart/form-data"],
+        "parameters": [
+          {"name": "jid", "in": "path", "required": true, "type": "string"},
+          {"name": "file", "in": "formData", "required": true, "type": "file", "description": "Document file"},
+          {"name": "filename", "in": "formData", "type": "string", "description": "Optional filename override"},
+          {"name": "caption", "in": "formData", "type": "string", "description": "Optional caption"}
+        ],
+        "responses": {
+          "200": {"description": "Document sent", "schema": {"$ref": "#/definitions/SuccessResponse"}},
           "400": {"description": "Bad request", "schema": {"$ref": "#/definitions/ErrorResponse"}},
           "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/ErrorResponse"}},
           "500": {"description": "Internal server error", "schema": {"$ref": "#/definitions/ErrorResponse"}}

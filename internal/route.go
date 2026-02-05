@@ -110,6 +110,9 @@ func Routes(app *fiber.App) {
 
 	// Push Notification Registration
 	app.Post(router.BaseURL+"/devices/me/push-notifications", deviceAuthMiddleware, ctlDevice.RegisterPushNotification)
+	app.Get(router.BaseURL+"/devices/me/server-push-config", deviceAuthMiddleware, ctlDevice.GetServerPushConfig)
+	app.Post(router.BaseURL+"/devices/me/server-push-config", deviceAuthMiddleware, ctlDevice.SetServerPushConfig)
+	app.Post(router.BaseURL+"/devices/me/force-active-receipts", deviceAuthMiddleware, ctlDevice.SetForceActiveReceipts)
 
 	// History Sync
 	app.Post(router.BaseURL+"/history/sync", deviceAuthMiddleware, ctlHistory.BuildHistorySyncRequest)
@@ -171,6 +174,9 @@ func Routes(app *fiber.App) {
 	app.Delete(router.BaseURL+"/newsletters/:jid/follow", deviceAuthMiddleware, ctlNewsletter.UnfollowNewsletter)
 	app.Get(router.BaseURL+"/newsletters/:jid/messages", deviceAuthMiddleware, ctlNewsletter.GetNewsletterMessages)
 	app.Post(router.BaseURL+"/newsletters/:jid/messages", deviceAuthMiddleware, ctlNewsletter.SendNewsletterMessage)
+	app.Post(router.BaseURL+"/newsletters/:jid/images", deviceAuthMiddleware, ctlNewsletter.SendNewsletterImage)
+	app.Post(router.BaseURL+"/newsletters/:jid/videos", deviceAuthMiddleware, ctlNewsletter.SendNewsletterVideo)
+	app.Post(router.BaseURL+"/newsletters/:jid/documents", deviceAuthMiddleware, ctlNewsletter.SendNewsletterDocument)
 	app.Post(router.BaseURL+"/newsletters/:jid/reaction", deviceAuthMiddleware, ctlNewsletter.ReactToNewsletterMessage)
 	app.Post(router.BaseURL+"/newsletters/:jid/comments", deviceAuthMiddleware, ctlNewsletter.SendNewsletterComment)
 	app.Post(router.BaseURL+"/newsletters/:jid/mute", deviceAuthMiddleware, ctlNewsletter.ToggleNewsletterMute)
@@ -215,6 +221,7 @@ func Routes(app *fiber.App) {
 	app.Post(router.BaseURL+"/chats/:chat_jid/presence", deviceAuthMiddleware, ctlPresence.SendChatPresence)
 	app.Post(router.BaseURL+"/presence/status", deviceAuthMiddleware, ctlPresence.UpdateStatus)
 	app.Patch(router.BaseURL+"/chats/:chat_jid/disappearing-timer", deviceAuthMiddleware, ctlPresence.SetDisappearingTimer)
+	app.Patch(router.BaseURL+"/users/me/disappearing-timer", deviceAuthMiddleware, ctlPresence.SetDefaultDisappearingTimer)
 
 	// App state routes
 	app.Get(router.BaseURL+"/app-state/:name", deviceAuthMiddleware, ctlAppState.FetchAppState)

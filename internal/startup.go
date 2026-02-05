@@ -123,8 +123,13 @@ func Startup() {
 		}
 		deviceID, errDevice := getDeviceID(device.ID.String())
 		if errDevice != nil {
-			log.Print(nil).Warn("Device mapping not found for JID " + device.ID.String() + ", skipping restore")
-			continue
+			fallbackID, fallbackErr := pkgWhatsApp.GetDeviceIDByStoreJID(ctx, device.ID.String())
+			if fallbackErr != nil {
+				log.Print(nil).Warn("Device mapping not found for JID " + device.ID.String() + ", skipping restore")
+				continue
+			}
+			deviceID = fallbackID
+			_ = pkgWhatsApp.SaveDeviceRouting(ctx, deviceID, device.ID.String())
 		}
 		maskJID := jid[0:len(jid)-4] + "xxxx"
 
