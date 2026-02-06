@@ -583,7 +583,6 @@ func normalizeDatastoreDSN(driver string, dsn string) string {
 		}
 		return current + separator + key + "=" + value
 	}
-	dsn = appendParam(dsn, "prefer_simple_protocol", "true")
 	dsn = appendParam(dsn, "statement_cache_capacity", "0")
 	dsn = appendParam(dsn, "default_query_exec_mode", "simple_protocol")
 	return dsn
