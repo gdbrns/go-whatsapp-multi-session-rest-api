@@ -2,6 +2,7 @@ package router
 
 import (
 	"fmt"
+	"runtime"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -15,6 +16,12 @@ func RecoveryMiddleware() fiber.Handler {
 		defer func() {
 			if rec := recover(); rec != nil {
 				message := fmt.Sprintf("%v", rec)
+
+				// Capture stack trace for debugging
+				buf := make([]byte, 4096)
+				n := runtime.Stack(buf, false)
+				stackTrace := string(buf[:n])
+
 				resp := Response{
 					Status:  false,
 					Code:    fiber.StatusInternalServerError,
@@ -22,7 +29,10 @@ func RecoveryMiddleware() fiber.Handler {
 				}
 				// Preserve legacy error field for compatibility
 				resp.Error = message
-				log.Print(c).WithField("request_id", c.Locals("request_id")).Error("panic recovered: " + message)
+				log.Print(c).
+					WithField("request_id", c.Locals("request_id")).
+					WithField("stack", stackTrace).
+					Error("panic recovered: " + message)
 				_ = c.Status(resp.Code).JSON(resp)
 			}
 		}()

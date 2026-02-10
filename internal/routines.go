@@ -39,19 +39,27 @@ func Routines(cron *cron.Cron) {
 
 					// Attempt auto-reconnect if client has valid store
 					if client.Store != nil && client.Store.ID != nil {
-						reconnectErr := client.Connect()
-						if reconnectErr == nil {
-							log.Print(nil).Info("Client reconnected successfully: " + maskJID + " (" + deviceID + ")")
-							_ = pkgWhatsApp.UpdateDeviceStatus(context.Background(), deviceID, "active")
-							return
+						if isConnected && !isLoggedIn {
+							// Connected but not logged in — handshake stuck.
+							// Connect() would return ErrAlreadyConnected.
+							// Use ResetConnection() to force a clean restart.
+							client.ResetConnection()
+						} else {
+							// Not connected at all — safe to call Connect()
+							reconnectErr := client.Connect()
+							if reconnectErr == nil {
+								log.Print(nil).Info("Client reconnected successfully: " + maskJID + " (" + deviceID + ")")
+								_ = pkgWhatsApp.UpdateDeviceStatus(context.Background(), deviceID, "active")
+								return
+							}
+							log.Print(nil).WithField("error", reconnectErr.Error()).Warn("Client reconnect failed: " + maskJID + " (" + deviceID + ")")
 						}
-						log.Print(nil).WithField("error", reconnectErr.Error()).Warn("Client reconnect failed: " + maskJID + " (" + deviceID + ")")
 					}
 
 					// Sync DB status to disconnected if reconnect failed or no valid store
 					_ = pkgWhatsApp.UpdateDeviceStatus(context.Background(), deviceID, "disconnected")
 				} else {
-					log.Print(nil).Info("Client healthy: " + maskJID + " (" + deviceID + ")")
+					log.Print(nil).Debug("Client healthy: " + maskJID + " (" + deviceID + ")")
 					// Sync DB status to active if client is healthy
 					_ = pkgWhatsApp.UpdateDeviceStatus(context.Background(), deviceID, "active")
 				}
@@ -129,6 +137,7 @@ func Routines(cron *cron.Cron) {
 				if err != nil || storeDevice == nil {
 					log.Print(nil).WithField("device_id", device.DeviceID).Warn("Device not found in whatsmeow store, marking as logged_out")
 					_ = pkgWhatsApp.UpdateDeviceStatus(ctx, device.DeviceID, "logged_out")
+					pkgWhatsApp.CleanupDeviceRateLimiter(device.DeviceID)
 					continue
 				}
 
@@ -179,6 +188,35 @@ func Routines(cron *cron.Cron) {
 			log.Print(nil).WithField("error", err.Error()).Error("Failed to add WA Web version refresh cron job")
 		} else {
 			log.Print(nil).WithField("spec", spec).WithField("force", force).Info("WA Web version refresh cron enabled")
+		}
+	}
+
+	// Webhook delivery log cleanup cron — prevents unbounded wa_webhook_deliveries table growth (#5)
+	// Runs daily at 04:00, deletes deliveries older than 7 days by default
+	if whe := pkgWhatsApp.GetWebhookEngine(); whe != nil {
+		retentionDays := 7
+		if raw, ok := os.LookupEnv("WEBHOOK_DELIVERY_RETENTION_DAYS"); ok {
+			if v, err := strconv.Atoi(strings.TrimSpace(raw)); err == nil && v > 0 {
+				retentionDays = v
+			}
+		}
+		retention := time.Duration(retentionDays) * 24 * time.Hour
+		_, err := cron.AddFunc("0 0 4 * * *", func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			deleted, err := whe.Store().CleanupOldDeliveries(ctx, retention)
+			if err != nil {
+				log.Print(nil).WithField("error", err.Error()).Error("Failed to cleanup old webhook deliveries")
+				return
+			}
+			if deleted > 0 {
+				log.Print(nil).WithField("deleted", deleted).WithField("retention_days", retentionDays).Info("Webhook delivery log cleanup completed")
+			}
+		})
+		if err != nil {
+			log.Print(nil).WithField("error", err.Error()).Error("Failed to add webhook cleanup cron job")
+		} else {
+			log.Print(nil).WithField("retention_days", retentionDays).Info("Webhook delivery cleanup cron enabled")
 		}
 	}
 

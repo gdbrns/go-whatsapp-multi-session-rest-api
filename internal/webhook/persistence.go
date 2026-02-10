@@ -23,7 +23,7 @@ type activeCacheEntry struct {
 }
 
 func NewStore(db *sql.DB) *Store {
-	ttlSeconds := env.GetEnvIntOrDefault("WEBHOOK_CACHE_TTL_SECONDS", 15)
+	ttlSeconds := env.GetEnvIntOrDefault("WEBHOOK_CACHE_TTL_SECONDS", 60)
 	if ttlSeconds < 0 {
 		ttlSeconds = 0
 	}
@@ -241,4 +241,17 @@ func (s *Store) GetDeliveryLogs(ctx context.Context, webhookID int64, limit int)
 		logs = append(logs, log)
 	}
 	return logs, rows.Err()
+}
+
+// CleanupOldDeliveries removes webhook delivery logs older than the given retention
+// period to prevent unbounded table growth (#5).
+func (s *Store) CleanupOldDeliveries(ctx context.Context, retention time.Duration) (int64, error) {
+	cutoff := time.Now().Add(-retention)
+	result, err := s.db.ExecContext(ctx, `
+		DELETE FROM wa_webhook_deliveries WHERE created_at < $1
+	`, cutoff)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

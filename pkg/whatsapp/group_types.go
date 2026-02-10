@@ -273,7 +273,6 @@ func ConvertGroupsInParallelWithContext(ctx context.Context, groups []*types.Gro
 	}
 
 	result := make([]EnhancedGroupInfo, len(groups))
-	errChan := make(chan error, 1)
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, maxWorkers)
 
@@ -313,8 +312,6 @@ func ConvertGroupsInParallelWithContext(ctx context.Context, groups []*types.Gro
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case err := <-errChan:
-		return nil, err
 	case <-done:
 	}
 

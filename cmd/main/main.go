@@ -46,6 +46,7 @@ import (
 	"github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/env"
 	"github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/log"
 	"github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/router"
+	pkgWhatsApp "github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/whatsapp"
 
 	"github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal"
 )
@@ -144,6 +145,11 @@ func main() {
 	err = app.ShutdownWithContext(ctxShutdown)
 	if err != nil {
 		log.Print(nil).Fatal(err.Error())
+	}
+
+	// Shutdown webhook engine (drain in-flight deliveries)
+	if whe := pkgWhatsApp.GetWebhookEngine(); whe != nil {
+		whe.Shutdown()
 	}
 
 	// Try To Shutdown Cron

@@ -3,9 +3,6 @@ package internal
 import (
 	"context"
 	mathrand "math/rand/v2"
-	"os"
-	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -14,38 +11,6 @@ import (
 	pkgWhatsApp "github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/whatsapp"
 	"go.mau.fi/whatsmeow/store"
 )
-
-func parseOptionalInt(envKey string, defaultVal int, minVal int) int {
-	raw, ok := os.LookupEnv(envKey)
-	if !ok {
-		return defaultVal
-	}
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return defaultVal
-	}
-	v, err := strconv.Atoi(raw)
-	if err != nil || v < minVal {
-		return defaultVal
-	}
-	return v
-}
-
-func parseOptionalDuration(envKey string, defaultVal time.Duration) time.Duration {
-	raw, ok := os.LookupEnv(envKey)
-	if !ok {
-		return defaultVal
-	}
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return defaultVal
-	}
-	d, err := time.ParseDuration(raw)
-	if err != nil || d < 0 {
-		return defaultVal
-	}
-	return d
-}
 
 func jitterSleep(max time.Duration) {
 	if max <= 0 {
@@ -102,11 +67,11 @@ func Startup() {
 		return
 	}
 
-	maxConcurrent := parseOptionalInt("WHATSAPP_STARTUP_RECONNECT_CONCURRENCY", 10, 1)
-	jitterMax := parseOptionalDuration("WHATSAPP_STARTUP_RECONNECT_JITTER_MAX", 5*time.Second)
-	retries := parseOptionalInt("WHATSAPP_STARTUP_RECONNECT_RETRIES", 5, 1) // Increased default to 5 for better recovery
-	baseBackoff := parseOptionalDuration("WHATSAPP_STARTUP_RECONNECT_BACKOFF_BASE", 2*time.Second)
-	maxBackoff := parseOptionalDuration("WHATSAPP_STARTUP_RECONNECT_BACKOFF_MAX", 30*time.Second)
+	maxConcurrent := pkgWhatsApp.ParseOptionalInt("WHATSAPP_STARTUP_RECONNECT_CONCURRENCY", 10, 1)
+	jitterMax := pkgWhatsApp.ParseOptionalDuration("WHATSAPP_STARTUP_RECONNECT_JITTER_MAX", 5*time.Second)
+	retries := pkgWhatsApp.ParseOptionalInt("WHATSAPP_STARTUP_RECONNECT_RETRIES", 5, 1) // Default 5 for better recovery
+	baseBackoff := pkgWhatsApp.ParseOptionalDuration("WHATSAPP_STARTUP_RECONNECT_BACKOFF_BASE", 2*time.Second)
+	maxBackoff := pkgWhatsApp.ParseOptionalDuration("WHATSAPP_STARTUP_RECONNECT_BACKOFF_MAX", 30*time.Second)
 
 	var restored, reconnected, failed int64
 	sem := make(chan struct{}, maxConcurrent)

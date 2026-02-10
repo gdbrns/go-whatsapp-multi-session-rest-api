@@ -1,4 +1,4 @@
-package whatsapp
+﻿package whatsapp
 
 import (
 	"bytes"
@@ -309,7 +309,8 @@ func configureGroupListCache() {
 	}
 }
 
-func parseOptionalBool(envKey string, defaultVal bool) bool {
+// ParseOptionalBool reads an env var as a bool, returning defaultVal if unset/invalid.
+func ParseOptionalBool(envKey string, defaultVal bool) bool {
 	if raw, ok := os.LookupEnv(envKey); ok {
 		raw = strings.TrimSpace(raw)
 		if parsed, err := strconv.ParseBool(raw); err == nil {
@@ -319,7 +320,8 @@ func parseOptionalBool(envKey string, defaultVal bool) bool {
 	return defaultVal
 }
 
-func parseOptionalDuration(envKey string, defaultVal time.Duration) time.Duration {
+// ParseOptionalDuration reads an env var as a time.Duration, returning defaultVal if unset/invalid.
+func ParseOptionalDuration(envKey string, defaultVal time.Duration) time.Duration {
 	if raw, ok := os.LookupEnv(envKey); ok {
 		raw = strings.TrimSpace(raw)
 		if raw == "" {
@@ -332,7 +334,8 @@ func parseOptionalDuration(envKey string, defaultVal time.Duration) time.Duratio
 	return defaultVal
 }
 
-func parseOptionalInt(envKey string, defaultVal int, minVal int) int {
+// ParseOptionalInt reads an env var as an int, returning defaultVal if unset/invalid/below minVal.
+func ParseOptionalInt(envKey string, defaultVal int, minVal int) int {
 	if raw, ok := os.LookupEnv(envKey); ok {
 		raw = strings.TrimSpace(raw)
 		if raw == "" {
@@ -353,29 +356,29 @@ func loadBehaviorConfig() {
 		whatsAppLogLevel = strings.ToUpper(val)
 	}
 
-	autoMarkReadEnabled = parseOptionalBool("WHATSAPP_AUTO_MARK_READ", false)
-	autoPresenceEnabled = parseOptionalBool("WHATSAPP_AUTO_PRESENCE_ENABLED", true)
-	autoTypingEnabled = parseOptionalBool("WHATSAPP_AUTO_TYPING_ENABLED", true)
-	typingDelayMin = parseOptionalDuration("WHATSAPP_TYPING_DELAY_MIN", 1*time.Second)
-	typingDelayMax = parseOptionalDuration("WHATSAPP_TYPING_DELAY_MAX", 3*time.Second)
+	autoMarkReadEnabled = ParseOptionalBool("WHATSAPP_AUTO_MARK_READ", false)
+	autoPresenceEnabled = ParseOptionalBool("WHATSAPP_AUTO_PRESENCE_ENABLED", true)
+	autoTypingEnabled = ParseOptionalBool("WHATSAPP_AUTO_TYPING_ENABLED", true)
+	typingDelayMin = ParseOptionalDuration("WHATSAPP_TYPING_DELAY_MIN", 1*time.Second)
+	typingDelayMax = ParseOptionalDuration("WHATSAPP_TYPING_DELAY_MAX", 3*time.Second)
 	if typingDelayMax < typingDelayMin {
 		typingDelayMax = typingDelayMin
 	}
 
-	readReceiptJitterEnabled = parseOptionalBool("WHATSAPP_READ_RECEIPT_JITTER_ENABLED", true)
-	readReceiptDelayMin = parseOptionalDuration("WHATSAPP_READ_RECEIPT_DELAY_MIN", 500*time.Millisecond)
-	readReceiptDelayMax = parseOptionalDuration("WHATSAPP_READ_RECEIPT_DELAY_MAX", 2*time.Second)
+	readReceiptJitterEnabled = ParseOptionalBool("WHATSAPP_READ_RECEIPT_JITTER_ENABLED", true)
+	readReceiptDelayMin = ParseOptionalDuration("WHATSAPP_READ_RECEIPT_DELAY_MIN", 500*time.Millisecond)
+	readReceiptDelayMax = ParseOptionalDuration("WHATSAPP_READ_RECEIPT_DELAY_MAX", 2*time.Second)
 	if readReceiptDelayMax < readReceiptDelayMin {
 		readReceiptDelayMax = readReceiptDelayMin
 	}
 
-	appStateWebhookEnabled = parseOptionalBool("WHATSAPP_APPSTATE_WEBHOOK_ENABLED", false)
+	appStateWebhookEnabled = ParseOptionalBool("WHATSAPP_APPSTATE_WEBHOOK_ENABLED", false)
 
 	log.Sys("cfg", fmt.Sprintf("presence:%t typing:%t read_jitter:%t", autoPresenceEnabled, autoTypingEnabled, readReceiptJitterEnabled))
 }
 
 func loadIsOnConfig() {
-	isOnCacheEnabled = parseOptionalBool("WHATSAPP_ISON_CACHE_ENABLED", false)
+	isOnCacheEnabled = ParseOptionalBool("WHATSAPP_ISON_CACHE_ENABLED", false)
 
 	if ttlRaw, ok := os.LookupEnv("WHATSAPP_ISON_CACHE_TTL"); ok {
 		if ttl, err := time.ParseDuration(strings.TrimSpace(ttlRaw)); err == nil && ttl > 0 {
@@ -410,9 +413,9 @@ func loadIsOnConfig() {
 }
 
 func loadRateLimitConfig() {
-	rateLimitEnabled = parseOptionalBool("WHATSAPP_RATE_LIMIT_ENABLED", false)
-	rateLimitPerMinute = parseOptionalInt("WHATSAPP_RATE_LIMIT_MSG_PER_MINUTE", 20, 1)
-	rateLimitBurstSize = parseOptionalInt("WHATSAPP_RATE_LIMIT_BURST_SIZE", 5, 1)
+	rateLimitEnabled = ParseOptionalBool("WHATSAPP_RATE_LIMIT_ENABLED", false)
+	rateLimitPerMinute = ParseOptionalInt("WHATSAPP_RATE_LIMIT_MSG_PER_MINUTE", 20, 1)
+	rateLimitBurstSize = ParseOptionalInt("WHATSAPP_RATE_LIMIT_BURST_SIZE", 5, 1)
 	if rateLimitBurstSize > rateLimitPerMinute {
 		rateLimitBurstSize = rateLimitPerMinute
 	}
@@ -445,6 +448,14 @@ func rateLimiterForDevice(deviceID string) *rate.Limiter {
 	limiter := rate.NewLimiter(limit, rateLimitBurstSize)
 	deviceRateLimiters[deviceID] = limiter
 	return limiter
+}
+
+// CleanupDeviceRateLimiter removes the rate limiter for a device on logout/deletion
+// to prevent unbounded memory growth (#7/#12).
+func CleanupDeviceRateLimiter(deviceID string) {
+	deviceRateLimiterMu.Lock()
+	delete(deviceRateLimiters, deviceID)
+	deviceRateLimiterMu.Unlock()
 }
 
 func waitRateLimit(ctx context.Context, deviceID string) error {
@@ -914,6 +925,7 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 				client.Disconnect()
 			}
 			deleteClient(jid, deviceID)
+			CleanupDeviceRateLimiter(deviceID)
 			routingCtx, routingCancel := context.WithTimeout(context.Background(), routingCleanupTimeout)
 			_ = DeleteDeviceRouting(routingCtx, deviceID)
 			// Update device status to logged_out
@@ -927,63 +939,21 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 			cancelCleanup()
 			WhatsAppInitClient(nil, "", deviceID)
 		case *events.StreamReplaced:
+			// StreamReplaced implements PermanentDisconnect in whatsmeow â€” another
+			// device/instance has taken over this session. Reconnecting would start
+			// a reconnect war between instances. The correct action is to stop and
+			// let the other instance own the connection.
 			log.Conn("stream-replaced", deviceID, currentJID)
-			dispatchWebhook(deviceID, webhook.EventConnectionReconnecting, map[string]interface{}{
-				"jid":    currentJID,
-				"reason": "stream_replaced",
-			})
-			dispatchWebhook(deviceID, webhook.EventConnectionStreamReplaced, map[string]interface{}{
-				"jid": currentJID,
-			})
-			// Attempt to reconnect instead of deleting the client
-			go func(jidVal, deviceIDVal, curJID string) {
-				client, err := currentClient(jidVal, deviceIDVal)
-				if err != nil {
-					log.Conn("stream-replaced-no-client", deviceIDVal, curJID)
-					return
-				}
-				// Store the device before disconnecting for potential re-init
-				device := client.Store
+			client, clientErr := currentClient(jid, deviceID)
+			if clientErr == nil {
 				client.Disconnect()
-
-				// Attempt reconnect with exponential backoff
-				maxRetries := 3
-				baseBackoff := 2 * time.Second
-				maxBackoff := 30 * time.Second
-
-				for attempt := 1; attempt <= maxRetries; attempt++ {
-					if device != nil && device.ID != nil {
-						err = client.Connect()
-						if err == nil {
-							log.Conn("stream-replaced-reconnected", deviceIDVal, curJID)
-							_ = SaveDeviceRouting(context.Background(), deviceIDVal, device.ID.String())
-							_ = UpdateDeviceStatus(context.Background(), deviceIDVal, "active")
-							dispatchWebhook(deviceIDVal, webhook.EventConnectionConnected, map[string]interface{}{
-								"jid":    curJID,
-								"reason": "stream_replaced_reconnect",
-							})
-							return
-						}
-						log.Conn("stream-replaced-reconnect-failed", deviceIDVal, fmt.Sprintf("attempt %d: %v", attempt, err))
-					}
-
-					// Exponential backoff
-					backoff := baseBackoff * time.Duration(1<<(attempt-1))
-					if backoff > maxBackoff {
-						backoff = maxBackoff
-					}
-					time.Sleep(backoff)
-				}
-
-				// All retries failed - delete client and update status
-				log.Conn("stream-replaced-reconnect-exhausted", deviceIDVal, curJID)
-				deleteClient(jidVal, deviceIDVal)
-				_ = UpdateDeviceStatus(context.Background(), deviceIDVal, "disconnected")
-				dispatchWebhook(deviceIDVal, webhook.EventConnectionDisconnected, map[string]interface{}{
-					"jid":    curJID,
-					"reason": "stream_replaced_reconnect_failed",
-				})
-			}(jid, deviceID, currentJID)
+			}
+			_ = UpdateDeviceStatus(context.Background(), deviceID, "disconnected")
+			CleanupDeviceRateLimiter(deviceID)
+			dispatchWebhook(deviceID, webhook.EventConnectionStreamReplaced, map[string]interface{}{
+				"jid":     currentJID,
+				"warning": "Another instance took over this session. Do NOT reconnect automatically â€” resolve the duplicate first.",
+			})
 		case *events.Connected:
 			// Get the JID from client store after connection
 			client, err := currentClient(jid, deviceID)
@@ -1025,54 +995,40 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 			dispatchWebhook(deviceID, webhook.EventConnectionDisconnected, map[string]interface{}{
 				"jid": currentJID,
 			})
-			// Note: whatsmeow has EnableAutoReconnect=true, but it may fail silently
-			// We attempt manual reconnect as a fallback after a delay
+			// whatsmeow's EnableAutoReconnect=true handles reconnection internally.
+			// We only check after a generous delay; if whatsmeow failed, we nudge
+			// with ResetConnection() (purpose-built: "disconnects and forces automatic
+			// reconnection") instead of a manual Disconnect+Connect loop that races.
 			go func(jidVal, deviceIDVal, curJID string) {
-				// Wait for whatsmeow's auto-reconnect to attempt first
-				time.Sleep(10 * time.Second)
+				// Give whatsmeow's internal AutoReconnect plenty of time
+				time.Sleep(15 * time.Second)
 
 				client := getClient(jidVal, deviceIDVal)
 				if client == nil {
 					return
 				}
 
-				// If already reconnected by whatsmeow, skip
+				// Already reconnected by whatsmeow â€” just sync DB
 				if client.IsConnected() {
 					log.Conn("auto-reconnected", deviceIDVal, curJID)
 					_ = UpdateDeviceStatus(context.Background(), deviceIDVal, "active")
 					return
 				}
 
-				// whatsmeow auto-reconnect likely failed, try manual reconnect
+				// whatsmeow auto-reconnect didn't succeed â€” use ResetConnection()
 				if client.Store != nil && client.Store.ID != nil {
-					log.Conn("disconnected-manual-reconnect", deviceIDVal, curJID)
-					maxRetries := 3
-					baseBackoff := 5 * time.Second
-					maxBackoff := 60 * time.Second
-
-					for attempt := 1; attempt <= maxRetries; attempt++ {
-						err := client.Connect()
-						if err == nil {
-							log.Conn("disconnected-reconnected", deviceIDVal, curJID)
-							_ = UpdateDeviceStatus(context.Background(), deviceIDVal, "active")
-							dispatchWebhook(deviceIDVal, webhook.EventConnectionConnected, map[string]interface{}{
-								"jid":    curJID,
-								"reason": "manual_reconnect",
-							})
-							return
-						}
-						log.Conn("disconnected-reconnect-failed", deviceIDVal, fmt.Sprintf("attempt %d: %v", attempt, err))
-
-						// Exponential backoff
-						backoff := baseBackoff * time.Duration(1<<(attempt-1))
-						if backoff > maxBackoff {
-							backoff = maxBackoff
-						}
-						time.Sleep(backoff)
+					log.Conn("disconnected-reset-connection", deviceIDVal, curJID)
+					client.ResetConnection()
+					// Give it a moment to reconnect
+					time.Sleep(5 * time.Second)
+					if client.IsConnected() {
+						log.Conn("disconnected-reconnected", deviceIDVal, curJID)
+						_ = UpdateDeviceStatus(context.Background(), deviceIDVal, "active")
+						return
 					}
 				}
 
-				// All retries failed, mark as disconnected for recovery cron to pick up
+				// Still not connected â€” mark for recovery cron to pick up
 				_ = UpdateDeviceStatus(context.Background(), deviceIDVal, "disconnected")
 			}(jid, deviceID, currentJID)
 		case *events.KeepAliveTimeout:
@@ -1082,8 +1038,9 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 				"error_count":  e.ErrorCount,
 				"last_success": e.LastSuccess,
 			})
-			// If we have 3+ consecutive keepalive failures, the connection is likely dead
-			// Trigger a manual reconnect as whatsmeow's auto-reconnect may not be working
+			// After 3+ consecutive keepalive failures the connection is likely dead.
+			// whatsmeow docs: KeepAliveTimeout has "no automatic handling".
+			// Use ResetConnection() â€” "disconnects and forces automatic reconnection".
 			if e.ErrorCount >= 3 {
 				go func(jidVal, deviceIDVal, curJID string) {
 					client := getClient(jidVal, deviceIDVal)
@@ -1092,14 +1049,14 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 					}
 					if client.Store != nil && client.Store.ID != nil {
 						log.Conn("keepalive-force-reconnect", deviceIDVal, curJID)
-						client.Disconnect()
-						time.Sleep(2 * time.Second)
-						err := client.Connect()
-						if err == nil {
+						client.ResetConnection()
+						// Give the auto-reconnect a moment
+						time.Sleep(5 * time.Second)
+						if client.IsConnected() {
 							log.Conn("keepalive-reconnected", deviceIDVal, curJID)
 							_ = UpdateDeviceStatus(context.Background(), deviceIDVal, "active")
 						} else {
-							log.Conn("keepalive-reconnect-failed", deviceIDVal, err.Error())
+							log.Conn("keepalive-reconnect-pending", deviceIDVal, curJID)
 							_ = UpdateDeviceStatus(context.Background(), deviceIDVal, "disconnected")
 						}
 					}
@@ -2035,19 +1992,20 @@ func WhatsAppLogout(jid string, deviceID string) error {
 			client.Disconnect()
 			storeCtx, storeCancel := context.WithTimeout(context.Background(), routingCleanupTimeout)
 			defer storeCancel()
-			err = client.Store.Delete(storeCtx)
-			if err != nil {
-				return err
-			}
+			_ = client.Store.Delete(storeCtx) // best-effort: don't block cleanup on store delete failure
 		}
 
+		// Always clean up routing, status, rate limiter and client â€” even on partial failure.
+		// This prevents leaked device_routing entries (#3).
 		routingCtx, routingCancel := context.WithTimeout(context.Background(), routingCleanupTimeout)
 		defer routingCancel()
-		err = DeleteDeviceRouting(routingCtx, deviceID)
-		if err != nil {
-			return err
-		}
+		_ = DeleteDeviceRouting(routingCtx, deviceID)
 
+		// whatsmeow docs: "LoggedOut event will NOT be emitted when logout is initiated by this client"
+		// So we must update status ourselves (#2).
+		_ = UpdateDeviceStatus(context.Background(), deviceID, "logged_out")
+
+		CleanupDeviceRateLimiter(deviceID)
 		deleteClient(jid, deviceID)
 
 		return nil
@@ -4227,7 +4185,7 @@ func WhatsAppMessageForward(ctx context.Context, jid string, deviceID string, me
 	} else if messageContent.PollCreationMessage != nil {
 		forwardedContent.PollCreationMessage = messageContent.PollCreationMessage
 	} else {
-		forwardedContent.Conversation = proto.String("📎 Forwarded message")
+		forwardedContent.Conversation = proto.String("ðŸ“Ž Forwarded message")
 	}
 
 	forwardingScore := uint32(1)

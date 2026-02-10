@@ -163,7 +163,7 @@ func (e *Engine) worker() {
 func (e *Engine) deliver(task *deliveryTask) {
 	if err := e.validateURL(task.webhook.URL); err != nil {
 		log.WHACK(string(task.event.EventType), task.event.DeviceID, task.webhook.ID, false, 0)
-		_ = e.store.LogDelivery(context.Background(), task.webhook.ID, task.event.EventType, DeliveryFailed, 0, err.Error())
+		_ = e.store.LogDelivery(e.ctx, task.webhook.ID, task.event.EventType, DeliveryFailed, 0, err.Error())
 		return
 	}
 
@@ -177,7 +177,7 @@ func (e *Engine) deliver(task *deliveryTask) {
 
 	var lastErr error
 	for attempt := 1; attempt <= e.retryLimit; attempt++ {
-		req, err := http.NewRequestWithContext(context.Background(), "POST", task.webhook.URL, bytes.NewReader(payload))
+		req, err := http.NewRequestWithContext(e.ctx, "POST", task.webhook.URL, bytes.NewReader(payload))
 		if err != nil {
 			lastErr = err
 			continue
@@ -202,7 +202,7 @@ func (e *Engine) deliver(task *deliveryTask) {
 		resp.Body.Close()
 
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-			_ = e.store.LogDelivery(context.Background(), task.webhook.ID, task.event.EventType, DeliverySuccess, attempt, "")
+			_ = e.store.LogDelivery(e.ctx, task.webhook.ID, task.event.EventType, DeliverySuccess, attempt, "")
 			log.WHACK(string(task.event.EventType), task.event.DeviceID, task.webhook.ID, true, attempt)
 			return
 		}
@@ -217,7 +217,7 @@ func (e *Engine) deliver(task *deliveryTask) {
 	if lastErr != nil {
 		errorMsg = lastErr.Error()
 	}
-	_ = e.store.LogDelivery(context.Background(), task.webhook.ID, task.event.EventType, DeliveryFailed, e.retryLimit, errorMsg)
+	_ = e.store.LogDelivery(e.ctx, task.webhook.ID, task.event.EventType, DeliveryFailed, e.retryLimit, errorMsg)
 	log.WHACK(string(task.event.EventType), task.event.DeviceID, task.webhook.ID, false, e.retryLimit)
 }
 
