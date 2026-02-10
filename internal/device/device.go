@@ -18,10 +18,11 @@ import (
 
 // getDeviceContext extracts device context from auth middleware
 func getDeviceContext(c *fiber.Ctx) (deviceID string, jid string) {
-	deviceID = c.Locals("device_id").(string)
-	jidVal := c.Locals("device_jid")
-	if jidVal != nil {
-		jid = jidVal.(string)
+	if idVal, ok := c.Locals("device_id").(string); ok {
+		deviceID = idVal
+	}
+	if jidVal, ok := c.Locals("device_jid").(string); ok {
+		jid = jidVal
 	}
 	return
 }
@@ -62,12 +63,12 @@ func Login(c *fiber.Ctx) error {
 
 	qrCodeImage, qrCodeTimeout, err := pkgWhatsApp.WhatsAppLogin(jid, deviceID)
 	if err != nil {
-			log.DeviceOpCtx(c, "Login").WithError(err).Error("Failed to generate QR code")
+		log.DeviceOpCtx(c, "Login").WithError(err).Error("Failed to generate QR code")
 		return router.ResponseInternalError(c, err.Error())
 	}
 
 	if qrCodeImage == "WhatsApp Client is Reconnected" {
-			log.DeviceOpCtx(c, "Login").Info("WhatsApp client reconnected successfully")
+		log.DeviceOpCtx(c, "Login").Info("WhatsApp client reconnected successfully")
 		return router.ResponseSuccess(c, qrCodeImage)
 	}
 
@@ -252,11 +253,11 @@ func GetStatus(c *fiber.Ctx) error {
 	log.DeviceOpCtx(c, "GetStatus").WithField("db_status", dbStatus).WithField("client_loaded", clientLoaded).WithField("is_connected", isConnected).WithField("is_logged_in", isLoggedIn).Info("Device status retrieved")
 
 	data := map[string]interface{}{
-		"db_status":     dbStatus,      // Status from database
-		"client_loaded": clientLoaded,  // Is client in memory?
+		"db_status":     dbStatus,                  // Status from database
+		"client_loaded": clientLoaded,              // Is client in memory?
 		"connected":     isConnected && isLoggedIn, // For backward compat: true only if fully connected
-		"is_connected":  isConnected,   // Connected to WhatsApp servers
-		"is_logged_in":  isLoggedIn,    // Has authenticated session
+		"is_connected":  isConnected,               // Connected to WhatsApp servers
+		"is_logged_in":  isLoggedIn,                // Has authenticated session
 		"error":         errorMessage,
 	}
 

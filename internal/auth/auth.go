@@ -32,7 +32,11 @@ func CreateDevice(c *fiber.Ctx) error {
 	}
 
 	// Get API key from context (set by APIKeyAuth middleware)
-	apiKey := c.Locals("api_key").(*pkgWhatsApp.APIKey)
+	apiKeyVal := c.Locals("api_key")
+	apiKey, ok := apiKeyVal.(*pkgWhatsApp.APIKey)
+	if !ok || apiKey == nil {
+		return router.ResponseUnauthorized(c, "Invalid API key context")
+	}
 
 	log.AuthOp(c, "CreateDevice", "").WithField("api_key_id", apiKey.ID).WithField("customer", apiKey.CustomerName).Info("Creating new device")
 

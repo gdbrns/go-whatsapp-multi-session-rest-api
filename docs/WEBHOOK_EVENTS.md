@@ -12,6 +12,8 @@ Complete documentation for all WhatsApp API webhook event types and their payloa
 - [Group Events](#group-events)
 - [Contact Events](#contact-events)
 - [App State Events](#app-state-events)
+- [History Sync Events](#history-sync-events)
+- [Newsletter Events](#newsletter-events)
 - [Webhook Configuration](#webhook-configuration)
 - [Security](#security)
 
@@ -21,21 +23,21 @@ Complete documentation for all WhatsApp API webhook event types and their payloa
 
 When WhatsApp events occur, webhooks are triggered and HTTP POST requests are sent to your configured endpoint. Each device can have multiple webhooks configured, and each webhook can filter which event types it receives.
 
-### Supported Event Types (31 Total)
+### Supported Event Types (85 Total)
 
-| Category | Event Types |
-|----------|-------------|
-| **Messages** (5) | `message.received`, `message.delivered`, `message.read`, `message.played`, `message.deleted` |
-| **Connection** (6) | `connection.connected`, `connection.disconnected`, `connection.logged_out`, `connection.reconnecting`, `connection.keepalive_timeout`, `connection.temporary_ban` |
-| **Calls** (4) | `call.offer`, `call.accept`, `call.terminate`, `call.reject` |
-| **Groups** (4) | `group.join`, `group.leave`, `group.participant_update`, `group.info_update` |
-| **Newsletter** (4) | `newsletter.join`, `newsletter.leave`, `newsletter.message_received`, `newsletter.update` |
-| **Polls** (3) | `poll.created`, `poll.vote`, `poll.update` |
-| **Status** (3) | `status.posted`, `status.viewed`, `status.deleted` |
-| **Media** (2) | `media.received`, `media.downloaded` |
-| **Contact** (2) | `contact.update`, `blocklist.change` |
-| **App State** (2) | `appstate.sync_complete`, `appstate.patch_received` |
-| **History** (1) | `history.sync` |
+This API emits all events available in the latest whatsmeow release, plus a few derived convenience events (poll/media/status). See the **Quick Reference** section for the full list.
+
+Category summary:
+
+- Messages, polls, media, status
+- Connection and pairing
+- Calls
+- Groups
+- Contacts, profiles, privacy, presence
+- App state, labels, chat settings
+- History and offline sync
+- Newsletters
+- Blocklist
 
 ---
 
@@ -445,33 +447,6 @@ Triggered when a call ends.
 
 ---
 
-### `call.reject`
-
-Triggered when a call is rejected.
-
-```json
-{
-  "event_type": "call.reject",
-  "device_id": "abc123def456-ghi789",
-  "timestamp": "2024-12-09T13:37:04.123456Z",
-  "data": {
-    "jid": "6281234567890",
-    "call_id": "CALL123ABC456DEF",
-    "from": "6289876543210@s.whatsapp.net",
-    "timestamp": 1702129024
-  }
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `jid` | string | Phone number of the device |
-| `call_id` | string | Unique call identifier |
-| `from` | string | Caller's JID |
-| `timestamp` | integer | Unix timestamp when call was rejected |
-
----
-
 ## Group Events
 
 ### `group.join`
@@ -655,6 +630,29 @@ Triggered during message history synchronization.
 
 ---
 
+### `history.sync_complete`
+
+Triggered when a history sync reports completion (progress >= 100).
+
+```json
+{
+  "event_type": "history.sync_complete",
+  "device_id": "abc123def456-ghi789",
+  "timestamp": "2024-12-09T13:37:04.123456Z",
+  "data": {
+    "jid": "6281234567890",
+    "sync_type": "RECENT"
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `jid` | string | Phone number of the device |
+| `sync_type` | string | Type of sync (e.g., "RECENT", "FULL", "ON_DEMAND") |
+
+---
+
 ## Newsletter Events
 
 ### `newsletter.join`
@@ -705,33 +703,6 @@ Triggered when unsubscribing from a newsletter/channel.
 
 ---
 
-### `newsletter.message_received`
-
-Triggered when a newsletter message is received.
-
-```json
-{
-  "event_type": "newsletter.message_received",
-  "device_id": "abc123def456-ghi789",
-  "timestamp": "2024-12-09T13:37:04.123456Z",
-  "data": {
-    "jid": "6281234567890",
-    "newsletter_jid": "120363123456789012@newsletter",
-    "server_id": 12345,
-    "views_count": 1500
-  }
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `jid` | string | Phone number of the device |
-| `newsletter_jid` | string | JID of the newsletter |
-| `server_id` | integer | Server message ID |
-| `views_count` | integer | Number of views |
-
----
-
 ### `newsletter.update`
 
 Triggered when a newsletter is updated (muted, settings changed, etc.).
@@ -757,183 +728,21 @@ Triggered when a newsletter is updated (muted, settings changed, etc.).
 
 ---
 
-## Poll Events
+### `newsletter.message_received`
 
-### `poll.created`
-
-Triggered when a poll is created.
+Triggered when a newsletter message is received.
 
 ```json
 {
-  "event_type": "poll.created",
-  "device_id": "abc123def456-ghi789",
-  "timestamp": "2024-12-09T13:37:04.123456Z",
-  "data": {
-    "jid": "6281234567890",
-    "poll_message_id": "3EB0ABC123DEF456789",
-    "chat_jid": "6289876543210@s.whatsapp.net",
-    "question": "What's your favorite color?",
-    "options": ["Red", "Blue", "Green"]
-  }
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `jid` | string | Phone number of the device |
-| `poll_message_id` | string | Message ID of the poll |
-| `chat_jid` | string | Chat where poll was created |
-| `question` | string | Poll question |
-| `options` | array | Poll options |
-
----
-
-### `poll.vote`
-
-Triggered when someone votes on a poll.
-
-```json
-{
-  "event_type": "poll.vote",
-  "device_id": "abc123def456-ghi789",
-  "timestamp": "2024-12-09T13:37:04.123456Z",
-  "data": {
-    "jid": "6281234567890",
-    "poll_message": "3EB0ABC123DEF456789",
-    "chat_jid": "6289876543210@s.whatsapp.net",
-    "voter": "6289876543211@s.whatsapp.net",
-    "vote_hash": ["abc123", "def456"]
-  }
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `jid` | string | Phone number of the device |
-| `poll_message` | string | Message ID of the poll |
-| `chat_jid` | string | Chat where poll exists |
-| `voter` | string | JID of the voter |
-| `vote_hash` | array | Encrypted vote hashes |
-
----
-
-### `poll.update`
-
-Triggered when poll results are updated.
-
-```json
-{
-  "event_type": "poll.update",
-  "device_id": "abc123def456-ghi789",
-  "timestamp": "2024-12-09T13:37:04.123456Z",
-  "data": {
-    "jid": "6281234567890",
-    "poll_message_id": "3EB0ABC123DEF456789",
-    "chat_jid": "6289876543210@s.whatsapp.net"
-  }
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `jid` | string | Phone number of the device |
-| `poll_message_id` | string | Message ID of the poll |
-| `chat_jid` | string | Chat where poll exists |
-
----
-
-## Status/Stories Events
-
-### `status.posted`
-
-Triggered when a status is posted.
-
-```json
-{
-  "event_type": "status.posted",
-  "device_id": "abc123def456-ghi789",
-  "timestamp": "2024-12-09T13:37:04.123456Z",
-  "data": {
-    "jid": "6281234567890",
-    "status_id": "3EB0ABC123DEF456789",
-    "type": "text"
-  }
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `jid` | string | Phone number of the device |
-| `status_id` | string | ID of the posted status |
-| `type` | string | Status type ("text", "image", "video") |
-
----
-
-### `status.viewed`
-
-Triggered when someone views your status.
-
-```json
-{
-  "event_type": "status.viewed",
-  "device_id": "abc123def456-ghi789",
-  "timestamp": "2024-12-09T13:37:04.123456Z",
-  "data": {
-    "jid": "6281234567890",
-    "status_id": "3EB0ABC123DEF456789",
-    "viewer": "6289876543210@s.whatsapp.net"
-  }
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `jid` | string | Phone number of the device |
-| `status_id` | string | ID of the viewed status |
-| `viewer` | string | JID of the viewer |
-
----
-
-### `status.deleted`
-
-Triggered when a status is deleted.
-
-```json
-{
-  "event_type": "status.deleted",
-  "device_id": "abc123def456-ghi789",
-  "timestamp": "2024-12-09T13:37:04.123456Z",
-  "data": {
-    "jid": "6281234567890",
-    "status_id": "3EB0ABC123DEF456789"
-  }
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `jid` | string | Phone number of the device |
-| `status_id` | string | ID of the deleted status |
-
----
-
-## Media Events
-
-### `media.received`
-
-Triggered when media is received in a message.
-
-```json
-{
-  "event_type": "media.received",
+  "event_type": "newsletter.message_received",
   "device_id": "abc123def456-ghi789",
   "timestamp": "2024-12-09T13:37:04.123456Z",
   "data": {
     "jid": "6281234567890",
     "message_id": "3EB0ABC123DEF456789",
-    "chat": "6289876543210@s.whatsapp.net",
-    "media_type": "image",
-    "mime_type": "image/jpeg"
+    "chat": "120363123456789012@newsletter",
+    "timestamp": 1702129024,
+    "is_edit": false
   }
 }
 ```
@@ -941,27 +750,26 @@ Triggered when media is received in a message.
 | Field | Type | Description |
 |-------|------|-------------|
 | `jid` | string | Phone number of the device |
-| `message_id` | string | Message ID containing media |
-| `chat` | string | Chat JID |
-| `media_type` | string | Type of media ("image", "video", "audio", "document", "sticker") |
-| `mime_type` | string | MIME type of the media |
+| `message_id` | string | Unique message identifier |
+| `chat` | string | Newsletter JID |
+| `timestamp` | integer | Unix timestamp of the message |
+| `is_edit` | boolean | Whether this is an edit update |
 
 ---
 
-### `media.downloaded`
+### `newsletter.mute_change`
 
-Triggered when media is downloaded.
+Triggered when a newsletter mute state changes.
 
 ```json
 {
-  "event_type": "media.downloaded",
+  "event_type": "newsletter.mute_change",
   "device_id": "abc123def456-ghi789",
   "timestamp": "2024-12-09T13:37:04.123456Z",
   "data": {
     "jid": "6281234567890",
-    "message_id": "3EB0ABC123DEF456789",
-    "media_type": "image",
-    "size": 125000
+    "newsletter_jid": "120363123456789012@newsletter",
+    "mute": true
   }
 }
 ```
@@ -969,9 +777,133 @@ Triggered when media is downloaded.
 | Field | Type | Description |
 |-------|------|-------------|
 | `jid` | string | Phone number of the device |
-| `message_id` | string | Message ID of the media |
-| `media_type` | string | Type of media |
-| `size` | integer | Size of downloaded media in bytes |
+| `newsletter_jid` | string | Newsletter JID |
+| `mute` | boolean | Mute state |
+
+---
+
+### `newsletter.live_update`
+
+Triggered when a newsletter live update is received.
+
+```json
+{
+  "event_type": "newsletter.live_update",
+  "device_id": "abc123def456-ghi789",
+  "timestamp": "2024-12-09T13:37:04.123456Z",
+  "data": {
+    "jid": "6281234567890",
+    "newsletter_jid": "120363123456789012@newsletter",
+    "time": "2024-12-09T13:37:04Z",
+    "message_count": 1
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `jid` | string | Phone number of the device |
+| `newsletter_jid` | string | Newsletter JID |
+| `time` | string | Timestamp of the update |
+| `message_count` | integer | Number of messages included |
+
+---
+
+## Additional Events (Whatsmeow)
+
+These events are emitted directly from whatsmeow or derived from message content. All payloads follow the standard envelope and use the `data` fields below.
+
+### Connection (Additional)
+
+| Event | Data fields |
+|-------|-------------|
+| `connection.qr` | `jid`, `codes` |
+| `connection.qr_scanned_without_multidevice` | `jid` |
+| `connection.pair_success` | `jid`, `pair_jid`, `pair_lid`, `business_name`, `platform` |
+| `connection.pair_error` | `jid`, `pair_jid`, `pair_lid`, `business_name`, `platform`, `error` |
+| `connection.client_outdated` | `jid` |
+| `connection.cat_refresh_error` | `jid`, `error` |
+| `connection.connect_failure` | `jid`, `reason`, `message` |
+| `connection.stream_error` | `jid`, `code` |
+| `connection.stream_replaced` | `jid` |
+| `connection.manual_login_reconnect` | `jid` |
+| `connection.keepalive_restored` | `jid` |
+
+### Calls (Additional)
+
+| Event | Data fields |
+|-------|-------------|
+| `call.pre_accept` | `jid`, `call_id`, `from`, `timestamp` |
+| `call.offer_notice` | `jid`, `call_id`, `from`, `timestamp`, `media`, `type` |
+| `call.transport` | `jid`, `call_id`, `from`, `timestamp` |
+| `call.relay_latency` | `jid`, `call_id`, `from`, `timestamp` |
+| `call.reject` | `jid`, `call_id`, `from`, `timestamp` |
+| `call.unknown` | `jid` |
+
+### Groups (Additional)
+
+| Event | Data fields |
+|-------|-------------|
+| `group.participant_update` | `jid`, `group_jid`, `join`, `leave`, `promote`, `demote` |
+| `group.leave` | `jid`, `group_jid`, `reason` |
+
+### Messages, Polls, Media, Status
+
+| Event | Data fields |
+|-------|-------------|
+| `message.undecryptable` | `jid`, `message_id`, `from`, `chat`, `timestamp`, `is_from_me`, `is_unavailable`, `unavailable_type`, `fail_mode` |
+| `message.fb_received` | `jid`, `message_id`, `from`, `chat`, `timestamp`, `retry_count` |
+| `poll.created` | `jid`, `message_id`, `chat`, `poll_name`, `options_count`, `selectable_options` |
+| `poll.vote` | `jid`, `message_id`, `chat`, `timestamp` |
+| `poll.update` | `jid`, `message_id`, `chat`, `timestamp` |
+| `poll.vote_decrypted` | `jid`, `message_id`, `chat`, `selected_options` |
+| `media.received` | `jid`, `message_id`, `chat`, `media_type` |
+| `media.retry` | `jid`, `message_id`, `chat`, `sender`, `timestamp`, `from_me`, `error` |
+| `status.posted` | `jid`, `message_id`, `from`, `timestamp`, `is_from_me` |
+| `status.viewed` | `jid`, `message_id`, `chat`, `sender`, `timestamp` |
+| `status.deleted` | `jid`, `message_id`, `from`, `timestamp`, `is_from_me` |
+| `status.mute` | `jid`, `target`, `timestamp`, `from_full`, `action_raw` |
+| `status.comment` | Reserved for future use |
+| `media.downloaded` | Reserved for API-triggered downloads |
+
+### Presence and Profile
+
+| Event | Data fields |
+|-------|-------------|
+| `chat.presence` | `jid`, `chat`, `sender`, `is_from_me`, `state`, `media` |
+| `presence.update` | `jid`, `from`, `unavailable`, `last_seen` |
+| `identity.change` | `jid`, `target`, `timestamp`, `implicit` |
+| `picture.update` | `jid`, `target`, `author`, `timestamp`, `removed`, `picture_id` |
+| `user.about` | `jid`, `target`, `status`, `timestamp` |
+| `privacy.settings` | `jid`, `settings`, `group_add_changed`, `last_seen_changed`, `status_changed`, `profile_changed`, `read_receipts_changed`, `online_changed`, `call_add_changed` |
+| `pushname.update` | `jid`, `target`, `target_alt`, `old`, `new` |
+| `pushname.setting` | `jid`, `timestamp`, `from_full`, `push_name`, `action_raw` |
+| `business.name_update` | `jid`, `target`, `old`, `new` |
+
+### Chat and Label State
+
+| Event | Data fields |
+|-------|-------------|
+| `chat.mute` | `jid`, `chat`, `timestamp`, `from_full`, `action_raw` |
+| `chat.archive` | `jid`, `chat`, `timestamp`, `from_full`, `action_raw` |
+| `chat.pin` | `jid`, `chat`, `timestamp`, `from_full`, `action_raw` |
+| `chat.star` | `jid`, `chat`, `sender`, `message_id`, `timestamp`, `is_from_me`, `from_full`, `action_raw` |
+| `chat.delete_for_me` | `jid`, `chat`, `sender`, `message_id`, `timestamp`, `is_from_me`, `from_full`, `action_raw` |
+| `chat.delete` | `jid`, `chat`, `timestamp`, `delete_media`, `from_full`, `action_raw` |
+| `chat.clear` | `jid`, `chat`, `timestamp`, `delete_media`, `from_full`, `action_raw` |
+| `chat.mark_read` | `jid`, `chat`, `timestamp`, `from_full`, `action_raw` |
+| `label.edit` | `jid`, `label_id`, `timestamp`, `from_full`, `action_raw` |
+| `label.chat` | `jid`, `chat`, `label_id`, `timestamp`, `from_full`, `action_raw` |
+| `label.message` | `jid`, `chat`, `label_id`, `message_id`, `timestamp`, `from_full`, `action_raw` |
+| `settings.unarchive_chats` | `jid`, `timestamp`, `from_full`, `action_raw` |
+
+### App State and Offline Sync
+
+| Event | Data fields |
+|-------|-------------|
+| `appstate.sync_error` | `jid`, `name`, `full_sync`, `error` |
+| `offline.sync_preview` | `jid`, `total`, `app_data_changes`, `messages`, `notifications`, `receipts` |
+| `offline.sync_completed` | `jid`, `count` |
 
 ---
 
@@ -1120,28 +1052,89 @@ message.delivered
 message.read
 message.played
 message.deleted
+message.undecryptable
+message.fb_received
 connection.connected
 connection.disconnected
 connection.logged_out
 connection.reconnecting
 connection.keepalive_timeout
+connection.keepalive_restored
 connection.temporary_ban
+connection.client_outdated
+connection.cat_refresh_error
+connection.connect_failure
+connection.stream_error
+connection.stream_replaced
+connection.manual_login_reconnect
+connection.qr
+connection.qr_scanned_without_multidevice
+connection.pair_success
+connection.pair_error
 call.offer
 call.accept
+call.pre_accept
+call.offer_notice
+call.transport
+call.relay_latency
 call.terminate
 call.reject
+call.unknown
 group.join
 group.leave
 group.participant_update
 group.info_update
+newsletter.join
+newsletter.leave
+newsletter.message_received
+newsletter.update
+newsletter.mute_change
+newsletter.live_update
 contact.update
+chat.presence
+presence.update
+identity.change
+picture.update
+user.about
+privacy.settings
+pushname.update
+pushname.setting
+business.name_update
+chat.mute
+chat.archive
+chat.pin
+chat.star
+chat.delete_for_me
+chat.delete
+chat.clear
+chat.mark_read
+label.edit
+label.chat
+label.message
+settings.unarchive_chats
+status.mute
 blocklist.change
 appstate.sync_complete
+appstate.sync_error
 appstate.patch_received
 history.sync
+history.sync_complete
+offline.sync_preview
+offline.sync_completed
+poll.created
+poll.vote
+poll.update
+poll.vote_decrypted
+status.posted
+status.viewed
+status.deleted
+status.comment
+media.received
+media.downloaded
+media.retry
 ```
 
 ---
 
-*Last updated: December 2025*
+*Last updated: February 2026*
 

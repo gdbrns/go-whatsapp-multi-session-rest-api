@@ -7,12 +7,13 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"image"
 	"io"
+	mathrand "math/rand/v2"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"regexp"
-	mathrand "math/rand/v2"
 	"runtime"
 	"sort"
 	"strconv"
@@ -92,8 +93,8 @@ var (
 	groupListCacheEnabled    = true
 	deviceOSName             = "Chrome"
 	whatsAppLogLevel         = "ERROR"
-	autoMarkReadEnabled    bool
-	autoPresenceEnabled    bool
+	autoMarkReadEnabled      bool
+	autoPresenceEnabled      bool
 	autoTypingEnabled        bool
 	typingDelayMin           time.Duration
 	typingDelayMax           time.Duration
@@ -107,6 +108,8 @@ var (
 	rateLimitBurstSize  int
 	deviceRateLimiters  = make(map[string]*rate.Limiter)
 	deviceRateLimiterMu sync.Mutex
+	lastClientMu         sync.RWMutex
+	lastClientByDeviceID = make(map[string]*whatsmeow.Client)
 
 	phonePattern = regexp.MustCompile(`^[1-9][0-9]{5,15}$`)
 
@@ -159,6 +162,53 @@ const (
 	maxDocumentBytes        = int64(50 * 1024 * 1024)
 	maxVideoBytes           = int64(100 * 1024 * 1024)
 	maxAudioBytes           = int64(20 * 1024 * 1024)
+)
+
+// Package-level MIME type allowlists (avoid per-call allocations)
+var (
+	allowedImageMimes = map[string]bool{
+		"image/jpeg": true,
+		"image/jpg":  true,
+		"image/png":  true,
+		"image/webp": true,
+	}
+
+	allowedVideoMimes = map[string]bool{
+		"video/mp4":       true,
+		"video/3gpp":      true,
+		"video/quicktime": true,
+		"video/webm":      true,
+		"video/mpeg":      true,
+	}
+
+	allowedAudioMimes = map[string]bool{
+		"audio/mpeg":             true,
+		"audio/mp3":              true,
+		"audio/mp4":              true,
+		"audio/ogg":              true,
+		"audio/wav":              true,
+		"audio/x-wav":            true,
+		"audio/aac":              true,
+		"audio/opus":             true,
+		"audio/ogg; codecs=opus": true,
+	}
+
+	allowedDocumentMimes = map[string]bool{
+		"application/pdf": true,
+		"application/msword": true,
+		"application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
+		"application/vnd.ms-excel": true,
+		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":         true,
+		"application/vnd.ms-powerpoint":                                             true,
+		"application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
+		"text/plain":               true,
+		"application/zip":          true,
+		"application/octet-stream": true,
+	}
+
+	allowedStickerMimes = map[string]bool{
+		"image/webp": true,
+	}
 )
 
 func init() {
@@ -606,6 +656,7 @@ func setClient(jid string, deviceID string, client *whatsmeow.Client) {
 	clientsMu.Lock()
 	WhatsAppClient[key] = client
 	clientsMu.Unlock()
+	cacheLastClient(deviceID, client)
 
 	// Attach keys datastore if configured and device JID is already known
 	if client != nil {
@@ -618,6 +669,9 @@ func deleteClient(jid string, deviceID string) {
 	clientsMu.Lock()
 	delete(WhatsAppClient, key)
 	clientsMu.Unlock()
+	lastClientMu.Lock()
+	delete(lastClientByDeviceID, deviceID)
+	lastClientMu.Unlock()
 }
 
 func rangeClients(fn func(SessionKey, *whatsmeow.Client)) {
@@ -688,7 +742,27 @@ func currentClient(jid string, deviceID string) (*whatsmeow.Client, error) {
 	if client == nil {
 		return nil, errors.New("WhatsApp Client is not Valid")
 	}
+	cacheLastClient(deviceID, client)
 	return client, nil
+}
+
+func cacheLastClient(deviceID string, client *whatsmeow.Client) {
+	if deviceID == "" || client == nil {
+		return
+	}
+	lastClientMu.Lock()
+	lastClientByDeviceID[deviceID] = client
+	lastClientMu.Unlock()
+}
+
+func getLastClient(deviceID string) *whatsmeow.Client {
+	if deviceID == "" {
+		return nil
+	}
+	lastClientMu.RLock()
+	client := lastClientByDeviceID[deviceID]
+	lastClientMu.RUnlock()
+	return client
 }
 
 func WhatsAppInitClient(device *store.Device, jid string, deviceID string) {
@@ -773,12 +847,67 @@ func getClientJID(initialJid string, deviceID string) string {
 	return initialJid
 }
 
+func jidPtrString(jid *types.JID) string {
+	if jid == nil {
+		return ""
+	}
+	return jid.String()
+}
+
+func jidListToStrings(jids []types.JID) []string {
+	if len(jids) == 0 {
+		return nil
+	}
+	result := make([]string, 0, len(jids))
+	for _, jid := range jids {
+		result = append(result, jid.String())
+	}
+	return result
+}
+
+func isCurrentUserJID(current string, jid types.JID) bool {
+	if current == "" {
+		return false
+	}
+	if jid.User == current {
+		return true
+	}
+	currentJID := WhatsAppComposeJID(current)
+	return jid.User == currentJID.User && jid.Server == currentJID.Server
+}
+
 func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 	return func(evt interface{}) {
 		// Get the current JID dynamically from client store
 		currentJID := getClientJID(jid, deviceID)
 
 		switch e := evt.(type) {
+		case *events.QR:
+			dispatchWebhook(deviceID, webhook.EventConnectionQR, map[string]interface{}{
+				"jid":   currentJID,
+				"codes": e.Codes,
+			})
+		case *events.QRScannedWithoutMultidevice:
+			dispatchWebhook(deviceID, webhook.EventConnectionQRScannedWithoutMultidevice, map[string]interface{}{
+				"jid": currentJID,
+			})
+		case *events.PairSuccess:
+			dispatchWebhook(deviceID, webhook.EventConnectionPairSuccess, map[string]interface{}{
+				"jid":           currentJID,
+				"pair_jid":      e.ID.String(),
+				"pair_lid":      e.LID.String(),
+				"business_name": e.BusinessName,
+				"platform":      e.Platform,
+			})
+		case *events.PairError:
+			dispatchWebhook(deviceID, webhook.EventConnectionPairError, map[string]interface{}{
+				"jid":           currentJID,
+				"pair_jid":      e.ID.String(),
+				"pair_lid":      e.LID.String(),
+				"business_name": e.BusinessName,
+				"platform":      e.Platform,
+				"error":         fmt.Sprintf("%v", e.Error),
+			})
 		case *events.LoggedOut:
 			client, err := currentClient(jid, deviceID)
 			if err == nil {
@@ -802,6 +931,9 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 			dispatchWebhook(deviceID, webhook.EventConnectionReconnecting, map[string]interface{}{
 				"jid":    currentJID,
 				"reason": "stream_replaced",
+			})
+			dispatchWebhook(deviceID, webhook.EventConnectionStreamReplaced, map[string]interface{}{
+				"jid": currentJID,
 			})
 			// Attempt to reconnect instead of deleting the client
 			go func(jidVal, deviceIDVal, curJID string) {
@@ -980,8 +1112,51 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 				"reason":  e.Code,
 				"expires": e.Expire,
 			})
+		case *events.ClientOutdated:
+			dispatchWebhook(deviceID, webhook.EventConnectionClientOutdated, map[string]interface{}{
+				"jid": currentJID,
+			})
+		case *events.CATRefreshError:
+			dispatchWebhook(deviceID, webhook.EventConnectionCATRefreshError, map[string]interface{}{
+				"jid":   currentJID,
+				"error": fmt.Sprintf("%v", e.Error),
+			})
+		case *events.ConnectFailure:
+			log.Conn("connect-failure", deviceID, fmt.Sprintf("%s reason=%s", currentJID, e.Reason))
+			_ = UpdateDeviceStatus(context.Background(), deviceID, "disconnected")
+			dispatchWebhook(deviceID, webhook.EventConnectionDisconnected, map[string]interface{}{
+				"jid":    currentJID,
+				"reason": fmt.Sprintf("connect_failure: %s", e.Reason),
+			})
+			dispatchWebhook(deviceID, webhook.EventConnectionConnectFailure, map[string]interface{}{
+				"jid":     currentJID,
+				"reason":  e.Reason.String(),
+				"message": e.Message,
+			})
+		case *events.StreamError:
+			dispatchWebhook(deviceID, webhook.EventConnectionStreamError, map[string]interface{}{
+				"jid":  currentJID,
+				"code": e.Code,
+			})
+		case *events.ManualLoginReconnect:
+			dispatchWebhook(deviceID, webhook.EventConnectionManualLoginReconnect, map[string]interface{}{
+				"jid": currentJID,
+			})
+		case *events.KeepAliveRestored:
+			dispatchWebhook(deviceID, webhook.EventConnectionKeepAliveRestored, map[string]interface{}{
+				"jid": currentJID,
+			})
 		case *events.Message:
-			autoMarkMessageAsRead(currentJID, deviceID, e)
+			go autoMarkMessageAsRead(currentJID, deviceID, e)
+			if e.Info.Chat == types.StatusBroadcastJID {
+				dispatchWebhook(deviceID, webhook.EventStatusPosted, map[string]interface{}{
+					"jid":        currentJID,
+					"message_id": e.Info.ID,
+					"from":       e.Info.Sender.String(),
+					"timestamp":  e.Info.Timestamp.Unix(),
+					"is_from_me": e.Info.IsFromMe,
+				})
+			}
 			// Check if this is a message deletion (revoke)
 			if e.Message != nil && e.Message.ProtocolMessage != nil &&
 				e.Message.ProtocolMessage.GetType() == waE2E.ProtocolMessage_REVOKE {
@@ -995,6 +1170,15 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 					"deleted_by": e.Info.Sender.String(),
 					"is_from_me": e.Info.IsFromMe,
 				})
+				if e.Info.Chat == types.StatusBroadcastJID {
+					dispatchWebhook(deviceID, webhook.EventStatusDeleted, map[string]interface{}{
+						"jid":        currentJID,
+						"message_id": deletedMsgID,
+						"from":       e.Info.Sender.String(),
+						"timestamp":  e.Info.Timestamp.Unix(),
+						"is_from_me": e.Info.IsFromMe,
+					})
+				}
 			} else {
 				// Regular message received
 				dispatchWebhook(deviceID, webhook.EventMessageReceived, map[string]interface{}{
@@ -1004,12 +1188,98 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 					"timestamp":  e.Info.Timestamp.Unix(),
 					"is_from_me": e.Info.IsFromMe,
 				})
+				if e.NewsletterMeta != nil {
+					dispatchWebhook(deviceID, webhook.EventNewsletterMessageReceived, map[string]interface{}{
+						"jid":        currentJID,
+						"message_id": e.Info.ID,
+						"chat":       e.Info.Chat.String(),
+						"timestamp":  e.Info.Timestamp.Unix(),
+						"is_edit":    e.IsEdit,
+					})
+				}
+				if e.Message != nil {
+					if poll := e.Message.GetPollCreationMessage(); poll != nil {
+						dispatchWebhook(deviceID, webhook.EventPollCreated, map[string]interface{}{
+							"jid":                    currentJID,
+							"message_id":             e.Info.ID,
+							"chat":                   e.Info.Chat.String(),
+							"poll_name":              poll.GetName(),
+							"options_count":          len(poll.GetOptions()),
+							"selectable_options":      poll.GetSelectableOptionsCount(),
+						})
+					}
+					if e.Message.GetPollUpdateMessage() != nil {
+						dispatchWebhook(deviceID, webhook.EventPollVote, map[string]interface{}{
+							"jid":        currentJID,
+							"message_id": e.Info.ID,
+							"chat":       e.Info.Chat.String(),
+							"timestamp":  e.Info.Timestamp.Unix(),
+						})
+						dispatchWebhook(deviceID, webhook.EventPollUpdate, map[string]interface{}{
+							"jid":        currentJID,
+							"message_id": e.Info.ID,
+							"chat":       e.Info.Chat.String(),
+							"timestamp":  e.Info.Timestamp.Unix(),
+						})
+						client, err := currentClient(jid, deviceID)
+						if err == nil && client != nil {
+							if pollVote, decErr := client.DecryptPollVote(context.Background(), e); decErr == nil {
+								dispatchWebhook(deviceID, webhook.EventPollVoteDecrypted, map[string]interface{}{
+									"jid":              currentJID,
+									"message_id":       e.Info.ID,
+									"chat":             e.Info.Chat.String(),
+									"selected_options": pollVote.GetSelectedOptions(),
+								})
+							}
+						}
+					}
+					if e.Message.GetImageMessage() != nil {
+						dispatchWebhook(deviceID, webhook.EventMediaReceived, map[string]interface{}{
+							"jid":        currentJID,
+							"message_id": e.Info.ID,
+							"chat":       e.Info.Chat.String(),
+							"media_type": "image",
+						})
+					}
+					if e.Message.GetVideoMessage() != nil {
+						dispatchWebhook(deviceID, webhook.EventMediaReceived, map[string]interface{}{
+							"jid":        currentJID,
+							"message_id": e.Info.ID,
+							"chat":       e.Info.Chat.String(),
+							"media_type": "video",
+						})
+					}
+					if e.Message.GetAudioMessage() != nil {
+						dispatchWebhook(deviceID, webhook.EventMediaReceived, map[string]interface{}{
+							"jid":        currentJID,
+							"message_id": e.Info.ID,
+							"chat":       e.Info.Chat.String(),
+							"media_type": "audio",
+						})
+					}
+					if e.Message.GetDocumentMessage() != nil {
+						dispatchWebhook(deviceID, webhook.EventMediaReceived, map[string]interface{}{
+							"jid":        currentJID,
+							"message_id": e.Info.ID,
+							"chat":       e.Info.Chat.String(),
+							"media_type": "document",
+						})
+					}
+					if e.Message.GetStickerMessage() != nil {
+						dispatchWebhook(deviceID, webhook.EventMediaReceived, map[string]interface{}{
+							"jid":        currentJID,
+							"message_id": e.Info.ID,
+							"chat":       e.Info.Chat.String(),
+							"media_type": "sticker",
+						})
+					}
+				}
 			}
 		case *events.Receipt:
 			eventType := webhook.EventMessageDelivered
-	if e.Type == types.ReceiptTypeRead || e.Type == types.ReceiptTypeReadSelf {
-			eventType = webhook.EventMessageRead
-		} else if e.Type == types.ReceiptTypePlayed {
+			if e.Type == types.ReceiptTypeRead || e.Type == types.ReceiptTypeReadSelf {
+				eventType = webhook.EventMessageRead
+			} else if e.Type == types.ReceiptTypePlayed {
 				eventType = webhook.EventMessagePlayed
 			}
 			for _, msgID := range e.MessageIDs {
@@ -1019,21 +1289,41 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 					"sender":     e.Sender.String(),
 					"timestamp":  e.Timestamp.Unix(),
 				})
+				if e.Chat == types.StatusBroadcastJID && eventType == webhook.EventMessageRead {
+					dispatchWebhook(deviceID, webhook.EventStatusViewed, map[string]interface{}{
+						"jid":        currentJID,
+						"message_id": msgID,
+						"chat":       e.Chat.String(),
+						"sender":     e.Sender.String(),
+						"timestamp":  e.Timestamp.Unix(),
+					})
+				}
 			}
-		case *events.ConnectFailure:
-			log.Conn("connect-failure", deviceID, fmt.Sprintf("%s reason=%s", currentJID, e.Reason))
-			_ = UpdateDeviceStatus(context.Background(), deviceID, "disconnected")
-			dispatchWebhook(deviceID, webhook.EventConnectionDisconnected, map[string]interface{}{
-				"jid":    currentJID,
-				"reason": fmt.Sprintf("connect_failure: %s", e.Reason),
-			})
 		case *events.PushNameSetting:
 			sendAvailablePresence(currentJID, deviceID)
+			dispatchWebhook(deviceID, webhook.EventPushNameSetting, map[string]interface{}{
+				"jid":        currentJID,
+				"timestamp":  e.Timestamp,
+				"from_full":  e.FromFullSync,
+				"push_name":  e.Action.GetName(),
+				"action_raw": e.Action,
+			})
 		case *events.AppStateSyncComplete:
 			if appStateWebhookEnabled {
 				dispatchWebhook(deviceID, webhook.EventAppStateSyncComplete, map[string]interface{}{
 					"jid":  currentJID,
 					"name": e.Name,
+					"version": e.Version,
+					"recovery": e.Recovery,
+				})
+			}
+		case *events.AppStateSyncError:
+			if appStateWebhookEnabled {
+				dispatchWebhook(deviceID, webhook.EventAppStateSyncError, map[string]interface{}{
+					"jid":      currentJID,
+					"name":     e.Name,
+					"full_sync": e.FullSync,
+					"error":    fmt.Sprintf("%v", e.Error),
 				})
 			}
 		case *events.AppState:
@@ -1052,9 +1342,39 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 				"from":      e.From.String(),
 				"timestamp": e.Timestamp.Unix(),
 			})
+		case *events.CallOfferNotice:
+			dispatchWebhook(deviceID, webhook.EventCallOfferNotice, map[string]interface{}{
+				"jid":       currentJID,
+				"call_id":   e.CallID,
+				"from":      e.From.String(),
+				"timestamp": e.Timestamp.Unix(),
+				"media":     e.Media,
+				"type":      e.Type,
+			})
 		case *events.CallAccept:
 			log.Call("accept", deviceID, e.CallID, e.From.String())
 			dispatchWebhook(deviceID, webhook.EventCallAccept, map[string]interface{}{
+				"jid":       currentJID,
+				"call_id":   e.CallID,
+				"from":      e.From.String(),
+				"timestamp": e.Timestamp.Unix(),
+			})
+		case *events.CallPreAccept:
+			dispatchWebhook(deviceID, webhook.EventCallPreAccept, map[string]interface{}{
+				"jid":       currentJID,
+				"call_id":   e.CallID,
+				"from":      e.From.String(),
+				"timestamp": e.Timestamp.Unix(),
+			})
+		case *events.CallTransport:
+			dispatchWebhook(deviceID, webhook.EventCallTransport, map[string]interface{}{
+				"jid":       currentJID,
+				"call_id":   e.CallID,
+				"from":      e.From.String(),
+				"timestamp": e.Timestamp.Unix(),
+			})
+		case *events.CallRelayLatency:
+			dispatchWebhook(deviceID, webhook.EventCallRelayLatency, map[string]interface{}{
 				"jid":       currentJID,
 				"call_id":   e.CallID,
 				"from":      e.From.String(),
@@ -1069,6 +1389,17 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 				"timestamp": e.Timestamp.Unix(),
 				"reason":    e.Reason,
 			})
+		case *events.CallReject:
+			dispatchWebhook(deviceID, webhook.EventCallReject, map[string]interface{}{
+				"jid":       currentJID,
+				"call_id":   e.CallID,
+				"from":      e.From.String(),
+				"timestamp": e.Timestamp.Unix(),
+			})
+		case *events.UnknownCallEvent:
+			dispatchWebhook(deviceID, webhook.EventCallUnknown, map[string]interface{}{
+				"jid": currentJID,
+			})
 		// History sync events
 		case *events.HistorySync:
 			dispatchWebhook(deviceID, webhook.EventHistorySync, map[string]interface{}{
@@ -1077,11 +1408,18 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 				"progress":           e.Data.GetProgress(),
 				"conversation_count": len(e.Data.GetConversations()),
 			})
+			if e.Data.GetProgress() >= 100 {
+				dispatchWebhook(deviceID, webhook.EventHistorySyncComplete, map[string]interface{}{
+					"jid":       currentJID,
+					"sync_type": e.Data.GetSyncType().String(),
+				})
+			}
 		// Blocklist change events
 		case *events.Blocklist:
 			dispatchWebhook(deviceID, webhook.EventBlocklistChange, map[string]interface{}{
 				"jid":    currentJID,
 				"action": string(e.Action),
+				"changes": e.Changes,
 			})
 		// Group join events
 		case *events.JoinedGroup:
@@ -1090,6 +1428,9 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 				"jid":       currentJID,
 				"group_jid": e.JID.String(),
 				"reason":    e.Reason,
+				"type":      e.Type,
+				"sender":    jidPtrString(e.Sender),
+				"sender_pn": jidPtrString(e.SenderPN),
 			})
 		// Group participant update events
 		case *events.GroupInfo:
@@ -1097,21 +1438,48 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 			dispatchWebhook(deviceID, webhook.EventGroupInfoUpdate, map[string]interface{}{
 				"jid":       currentJID,
 				"group_jid": e.JID.String(),
-				"sender":    e.Sender.String(),
+				"sender":    jidPtrString(e.Sender),
 				"timestamp": e.Timestamp.Unix(),
+				"join":      jidListToStrings(e.Join),
+				"leave":     jidListToStrings(e.Leave),
+				"promote":   jidListToStrings(e.Promote),
+				"demote":    jidListToStrings(e.Demote),
 			})
+			if len(e.Join) > 0 || len(e.Leave) > 0 || len(e.Promote) > 0 || len(e.Demote) > 0 {
+				dispatchWebhook(deviceID, webhook.EventGroupParticipantUpdate, map[string]interface{}{
+					"jid":       currentJID,
+					"group_jid": e.JID.String(),
+					"join":      jidListToStrings(e.Join),
+					"leave":     jidListToStrings(e.Leave),
+					"promote":   jidListToStrings(e.Promote),
+					"demote":    jidListToStrings(e.Demote),
+				})
+				for _, leaver := range e.Leave {
+					if isCurrentUserJID(currentJID, leaver) {
+						dispatchWebhook(deviceID, webhook.EventGroupLeave, map[string]interface{}{
+							"jid":       currentJID,
+							"group_jid": e.JID.String(),
+							"reason":    e.JoinReason,
+						})
+						break
+					}
+				}
+			}
 		// Contact update events
 		case *events.Contact:
 			dispatchWebhook(deviceID, webhook.EventContactUpdate, map[string]interface{}{
-				"jid":          currentJID,
-				"contact_jid":  e.JID.String(),
-				"action":       e.Action.String(),
+				"jid":         currentJID,
+				"contact_jid": e.JID.String(),
+				"action":      e.Action.String(),
+				"timestamp":   e.Timestamp,
+				"from_full":   e.FromFullSync,
 			})
 		// Newsletter events
 		case *events.NewsletterJoin:
 			dispatchWebhook(deviceID, webhook.EventNewsletterJoin, map[string]interface{}{
 				"jid":            currentJID,
 				"newsletter_jid": e.ID.String(),
+				"name":           e.ThreadMeta.Name.Text,
 			})
 		case *events.NewsletterLeave:
 			dispatchWebhook(deviceID, webhook.EventNewsletterLeave, map[string]interface{}{
@@ -1124,6 +1492,244 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 				"jid":            currentJID,
 				"newsletter_jid": e.ID.String(),
 				"mute":           e.Mute,
+			})
+			dispatchWebhook(deviceID, webhook.EventNewsletterMuteChange, map[string]interface{}{
+				"jid":            currentJID,
+				"newsletter_jid": e.ID.String(),
+				"mute":           e.Mute,
+			})
+		case *events.NewsletterLiveUpdate:
+			dispatchWebhook(deviceID, webhook.EventNewsletterLiveUpdate, map[string]interface{}{
+				"jid":            currentJID,
+				"newsletter_jid": e.JID.String(),
+				"time":           e.Time,
+				"message_count":  len(e.Messages),
+				"messages":       e.Messages,
+			})
+		case *events.MediaRetry:
+			dispatchWebhook(deviceID, webhook.EventMediaRetry, map[string]interface{}{
+				"jid":        currentJID,
+				"message_id": e.MessageID,
+				"chat":       e.ChatID.String(),
+				"sender":     e.SenderID.String(),
+				"timestamp":  e.Timestamp,
+				"from_me":    e.FromMe,
+				"error":      e.Error,
+			})
+		case *events.OfflineSyncPreview:
+			dispatchWebhook(deviceID, webhook.EventOfflineSyncPreview, map[string]interface{}{
+				"jid":               currentJID,
+				"total":             e.Total,
+				"app_data_changes":  e.AppDataChanges,
+				"messages":          e.Messages,
+				"notifications":     e.Notifications,
+				"receipts":          e.Receipts,
+			})
+		case *events.OfflineSyncCompleted:
+			dispatchWebhook(deviceID, webhook.EventOfflineSyncCompleted, map[string]interface{}{
+				"jid":   currentJID,
+				"count": e.Count,
+			})
+		case *events.ChatPresence:
+			dispatchWebhook(deviceID, webhook.EventChatPresence, map[string]interface{}{
+				"jid":         currentJID,
+				"chat":        e.Chat.String(),
+				"sender":      e.Sender.String(),
+				"is_from_me":  e.IsFromMe,
+				"state":       e.State,
+				"media":       e.Media,
+			})
+		case *events.Presence:
+			dispatchWebhook(deviceID, webhook.EventPresence, map[string]interface{}{
+				"jid":         currentJID,
+				"from":        e.From.String(),
+				"unavailable": e.Unavailable,
+				"last_seen":   e.LastSeen,
+			})
+		case *events.IdentityChange:
+			dispatchWebhook(deviceID, webhook.EventIdentityChange, map[string]interface{}{
+				"jid":       currentJID,
+				"target":    e.JID.String(),
+				"timestamp": e.Timestamp,
+				"implicit":  e.Implicit,
+			})
+		case *events.Picture:
+			dispatchWebhook(deviceID, webhook.EventPictureUpdate, map[string]interface{}{
+				"jid":        currentJID,
+				"target":     e.JID.String(),
+				"author":     e.Author.String(),
+				"timestamp":  e.Timestamp,
+				"removed":    e.Remove,
+				"picture_id": e.PictureID,
+			})
+		case *events.UserAbout:
+			dispatchWebhook(deviceID, webhook.EventUserAbout, map[string]interface{}{
+				"jid":       currentJID,
+				"target":    e.JID.String(),
+				"status":    e.Status,
+				"timestamp": e.Timestamp,
+			})
+		case *events.PrivacySettings:
+			dispatchWebhook(deviceID, webhook.EventPrivacySettings, map[string]interface{}{
+				"jid":                 currentJID,
+				"settings":            e.NewSettings,
+				"group_add_changed":   e.GroupAddChanged,
+				"last_seen_changed":   e.LastSeenChanged,
+				"status_changed":      e.StatusChanged,
+				"profile_changed":     e.ProfileChanged,
+				"read_receipts_changed": e.ReadReceiptsChanged,
+				"online_changed":      e.OnlineChanged,
+				"call_add_changed":    e.CallAddChanged,
+			})
+		case *events.PushName:
+			dispatchWebhook(deviceID, webhook.EventPushName, map[string]interface{}{
+				"jid":         currentJID,
+				"target":      e.JID.String(),
+				"target_alt":  e.JIDAlt.String(),
+				"old":         e.OldPushName,
+				"new":         e.NewPushName,
+			})
+		case *events.BusinessName:
+			dispatchWebhook(deviceID, webhook.EventBusinessName, map[string]interface{}{
+				"jid":   currentJID,
+				"target": e.JID.String(),
+				"old":   e.OldBusinessName,
+				"new":   e.NewBusinessName,
+			})
+		case *events.FBMessage:
+			dispatchWebhook(deviceID, webhook.EventMessageFBReceived, map[string]interface{}{
+				"jid":        currentJID,
+				"message_id": e.Info.ID,
+				"from":       e.Info.Sender.String(),
+				"chat":       e.Info.Chat.String(),
+				"timestamp":  e.Info.Timestamp.Unix(),
+				"retry_count": e.RetryCount,
+			})
+		case *events.UndecryptableMessage:
+			dispatchWebhook(deviceID, webhook.EventMessageUndecryptable, map[string]interface{}{
+				"jid":              currentJID,
+				"message_id":       e.Info.ID,
+				"from":             e.Info.Sender.String(),
+				"chat":             e.Info.Chat.String(),
+				"timestamp":        e.Info.Timestamp.Unix(),
+				"is_from_me":       e.Info.IsFromMe,
+				"is_unavailable":   e.IsUnavailable,
+				"unavailable_type": e.UnavailableType,
+				"fail_mode":        e.DecryptFailMode,
+			})
+		case *events.Mute:
+			dispatchWebhook(deviceID, webhook.EventChatMute, map[string]interface{}{
+				"jid":         currentJID,
+				"chat":        e.JID.String(),
+				"timestamp":   e.Timestamp,
+				"from_full":   e.FromFullSync,
+				"action_raw":  e.Action,
+			})
+		case *events.Archive:
+			dispatchWebhook(deviceID, webhook.EventChatArchive, map[string]interface{}{
+				"jid":         currentJID,
+				"chat":        e.JID.String(),
+				"timestamp":   e.Timestamp,
+				"from_full":   e.FromFullSync,
+				"action_raw":  e.Action,
+			})
+		case *events.Pin:
+			dispatchWebhook(deviceID, webhook.EventChatPin, map[string]interface{}{
+				"jid":         currentJID,
+				"chat":        e.JID.String(),
+				"timestamp":   e.Timestamp,
+				"from_full":   e.FromFullSync,
+				"action_raw":  e.Action,
+			})
+		case *events.Star:
+			dispatchWebhook(deviceID, webhook.EventChatStar, map[string]interface{}{
+				"jid":         currentJID,
+				"chat":        e.ChatJID.String(),
+				"sender":      e.SenderJID.String(),
+				"message_id":  e.MessageID,
+				"timestamp":   e.Timestamp,
+				"is_from_me":  e.IsFromMe,
+				"from_full":   e.FromFullSync,
+				"action_raw":  e.Action,
+			})
+		case *events.DeleteForMe:
+			dispatchWebhook(deviceID, webhook.EventChatDeleteForMe, map[string]interface{}{
+				"jid":         currentJID,
+				"chat":        e.ChatJID.String(),
+				"sender":      e.SenderJID.String(),
+				"message_id":  e.MessageID,
+				"timestamp":   e.Timestamp,
+				"is_from_me":  e.IsFromMe,
+				"from_full":   e.FromFullSync,
+				"action_raw":  e.Action,
+			})
+		case *events.ClearChat:
+			dispatchWebhook(deviceID, webhook.EventChatClear, map[string]interface{}{
+				"jid":         currentJID,
+				"chat":        e.JID.String(),
+				"timestamp":   e.Timestamp,
+				"delete_media": e.DeleteMedia,
+				"from_full":   e.FromFullSync,
+				"action_raw":  e.Action,
+			})
+		case *events.DeleteChat:
+			dispatchWebhook(deviceID, webhook.EventChatDelete, map[string]interface{}{
+				"jid":          currentJID,
+				"chat":         e.JID.String(),
+				"timestamp":    e.Timestamp,
+				"delete_media": e.DeleteMedia,
+				"from_full":    e.FromFullSync,
+				"action_raw":   e.Action,
+			})
+		case *events.MarkChatAsRead:
+			dispatchWebhook(deviceID, webhook.EventChatMarkRead, map[string]interface{}{
+				"jid":        currentJID,
+				"chat":       e.JID.String(),
+				"timestamp":  e.Timestamp,
+				"from_full":  e.FromFullSync,
+				"action_raw": e.Action,
+			})
+		case *events.LabelEdit:
+			dispatchWebhook(deviceID, webhook.EventLabelEdit, map[string]interface{}{
+				"jid":        currentJID,
+				"label_id":   e.LabelID,
+				"timestamp":  e.Timestamp,
+				"from_full":  e.FromFullSync,
+				"action_raw": e.Action,
+			})
+		case *events.LabelAssociationChat:
+			dispatchWebhook(deviceID, webhook.EventLabelAssociationChat, map[string]interface{}{
+				"jid":        currentJID,
+				"chat":       e.JID.String(),
+				"label_id":   e.LabelID,
+				"timestamp":  e.Timestamp,
+				"from_full":  e.FromFullSync,
+				"action_raw": e.Action,
+			})
+		case *events.LabelAssociationMessage:
+			dispatchWebhook(deviceID, webhook.EventLabelAssociationMessage, map[string]interface{}{
+				"jid":        currentJID,
+				"chat":       e.JID.String(),
+				"label_id":   e.LabelID,
+				"message_id": e.MessageID,
+				"timestamp":  e.Timestamp,
+				"from_full":  e.FromFullSync,
+				"action_raw": e.Action,
+			})
+		case *events.UnarchiveChatsSetting:
+			dispatchWebhook(deviceID, webhook.EventUnarchiveChatsSetting, map[string]interface{}{
+				"jid":        currentJID,
+				"timestamp":  e.Timestamp,
+				"from_full":  e.FromFullSync,
+				"action_raw": e.Action,
+			})
+		case *events.UserStatusMute:
+			dispatchWebhook(deviceID, webhook.EventUserStatusMute, map[string]interface{}{
+				"jid":        currentJID,
+				"target":     e.JID.String(),
+				"timestamp":  e.Timestamp,
+				"from_full":  e.FromFullSync,
+				"action_raw": e.Action,
 			})
 		}
 	}
@@ -1451,19 +2057,27 @@ func WhatsAppLogout(jid string, deviceID string) error {
 }
 
 func WhatsAppIsClientOK(jid string, deviceID string) error {
-	client, err := currentClient(jid, deviceID)
-	if err != nil {
-		return err
+	client := getLastClient(deviceID)
+	if client == nil {
+		var err error
+		client, err = currentClient(jid, deviceID)
+		if err != nil {
+			return err
+		}
 	}
+	return ensureClientOK(client)
+}
 
+func ensureClientOK(client *whatsmeow.Client) error {
+	if client == nil {
+		return errors.New("WhatsApp Client is not Valid")
+	}
 	if !client.IsConnected() {
 		return errors.New("WhatsApp Client is not Connected")
 	}
-
 	if !client.IsLoggedIn() {
 		return errors.New("WhatsApp Client is not Logged In")
 	}
-
 	return nil
 }
 
@@ -1716,18 +2330,18 @@ func WhatsAppMessageDelete(ctx context.Context, jid string, deviceID string, rji
 	if err != nil {
 		return err
 	}
-	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+	if err = ensureClientOK(client); err != nil {
 		return err
 	}
-	remoteJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, rjid)
+	remoteJID, err := WhatsAppCheckJID(ctx, jid, deviceID, rjid)
 	if err != nil {
 		return err
 	}
-	WhatsAppPresence(context.Background(), jid, deviceID, true)
-	WhatsAppComposeStatus(context.Background(), jid, deviceID, remoteJID, true, false)
+	WhatsAppPresence(ctx, jid, deviceID, true)
+	WhatsAppComposeStatus(ctx, jid, deviceID, remoteJID, true, false)
 	defer func() {
-		WhatsAppComposeStatus(context.Background(), jid, deviceID, remoteJID, false, false)
-		WhatsAppPresence(context.Background(), jid, deviceID, false)
+		WhatsAppComposeStatus(ctx, jid, deviceID, remoteJID, false, false)
+		WhatsAppPresence(ctx, jid, deviceID, false)
 	}()
 	_, err = client.SendMessage(ctx, remoteJID, client.BuildRevoke(remoteJID, types.EmptyJID, msgid))
 	return err
@@ -1874,7 +2488,7 @@ func WhatsAppGroupCreate(ctx context.Context, jid string, deviceID string, subje
 	if len(participantIDs) > 0 {
 		participants := make([]types.JID, 0, len(participantIDs))
 		for _, participant := range participantIDs {
-			parsed, err := WhatsAppCheckJID(context.Background(), jid, deviceID, participant)
+			parsed, err := WhatsAppCheckJID(ctx, jid, deviceID, participant)
 			if err != nil {
 				return nil, err
 			}
@@ -1923,7 +2537,7 @@ func WhatsAppGroupLeave(ctx context.Context, jid string, deviceID string, gjid s
 	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
 		return err
 	}
-	groupJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, gjid)
+	groupJID, err := WhatsAppCheckJID(ctx, jid, deviceID, gjid)
 	if err != nil {
 		return err
 	}
@@ -1948,7 +2562,7 @@ func WhatsAppGroupSetName(ctx context.Context, jid string, deviceID string, gjid
 	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
 		return err
 	}
-	groupJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, gjid)
+	groupJID, err := WhatsAppCheckJID(ctx, jid, deviceID, gjid)
 	if err != nil {
 		return err
 	}
@@ -1973,7 +2587,7 @@ func WhatsAppGroupSetDescription(ctx context.Context, jid string, deviceID strin
 	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
 		return err
 	}
-	groupJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, gjid)
+	groupJID, err := WhatsAppCheckJID(ctx, jid, deviceID, gjid)
 	if err != nil {
 		return err
 	}
@@ -1998,7 +2612,7 @@ func WhatsAppGroupSetPhoto(ctx context.Context, jid string, deviceID string, gji
 	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
 		return "", err
 	}
-	groupJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, gjid)
+	groupJID, err := WhatsAppCheckJID(ctx, jid, deviceID, gjid)
 	if err != nil {
 		return "", err
 	}
@@ -2024,7 +2638,7 @@ func WhatsAppGroupInviteLink(ctx context.Context, jid string, deviceID string, g
 	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
 		return "", err
 	}
-	groupJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, gjid)
+	groupJID, err := WhatsAppCheckJID(ctx, jid, deviceID, gjid)
 	if err != nil {
 		return "", err
 	}
@@ -2045,7 +2659,7 @@ func WhatsAppGroupGetRequestParticipants(ctx context.Context, jid string, device
 	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
 		return nil, err
 	}
-	groupJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, gjid)
+	groupJID, err := WhatsAppCheckJID(ctx, jid, deviceID, gjid)
 	if err != nil {
 		return nil, err
 	}
@@ -2126,13 +2740,13 @@ func WhatsAppSendText(ctx context.Context, jid string, deviceID string, rjid str
 	if err != nil {
 		return "", err
 	}
-	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+	if err = ensureClientOK(client); err != nil {
 		return "", err
 	}
 	if strings.TrimSpace(message) == "" {
 		return "", errors.New("Message cannot be empty")
 	}
-	remoteJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, rjid)
+	remoteJID, err := WhatsAppCheckJID(ctx, jid, deviceID, rjid)
 	if err != nil {
 		return "", err
 	}
@@ -2157,7 +2771,7 @@ func WhatsAppSendDocument(ctx context.Context, jid string, deviceID string, rjid
 	if err != nil {
 		return "", err
 	}
-	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+	if err = ensureClientOK(client); err != nil {
 		return "", err
 	}
 	if len(documentBytes) == 0 {
@@ -2166,7 +2780,7 @@ func WhatsAppSendDocument(ctx context.Context, jid string, deviceID string, rjid
 	if err := enforceSizeLimit("document", int64(len(documentBytes)), maxDocumentBytes); err != nil {
 		return "", err
 	}
-	remoteJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, rjid)
+	remoteJID, err := WhatsAppCheckJID(ctx, jid, deviceID, rjid)
 	if err != nil {
 		return "", err
 	}
@@ -2176,18 +2790,6 @@ func WhatsAppSendDocument(ctx context.Context, jid string, deviceID string, rjid
 	cleanup := beginPresenceSimulation(ctx, jid, deviceID, remoteJID, false, opts)
 	defer cleanup()
 	documentMime := detectMime(documentBytes, documentType)
-	allowedDocumentMimes := map[string]bool{
-		"application/pdf":    true,
-		"application/msword": true,
-		"application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
-		"application/vnd.ms-excel": true,
-		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":         true,
-		"application/vnd.ms-powerpoint":                                             true,
-		"application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
-		"text/plain":               true,
-		"application/zip":          true,
-		"application/octet-stream": true,
-	}
 	if !allowedDocumentMimes[documentMime] {
 		return "", fmt.Errorf("Document MIME type %s is not allowed", documentMime)
 	}
@@ -2221,7 +2823,7 @@ func WhatsAppSendImage(ctx context.Context, jid string, deviceID string, rjid st
 	if err != nil {
 		return "", err
 	}
-	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+	if err = ensureClientOK(client); err != nil {
 		return "", err
 	}
 	if len(imageBytes) == 0 {
@@ -2231,16 +2833,10 @@ func WhatsAppSendImage(ctx context.Context, jid string, deviceID string, rjid st
 		return "", err
 	}
 	imageMime := detectMime(imageBytes, imageType)
-	allowedImageMimes := map[string]bool{
-		"image/jpeg": true,
-		"image/jpg":  true,
-		"image/png":  true,
-		"image/webp": true,
-	}
 	if !allowedImageMimes[imageMime] {
 		return "", fmt.Errorf("Image MIME type %s is not allowed", imageMime)
 	}
-	remoteJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, rjid)
+	remoteJID, err := WhatsAppCheckJID(ctx, jid, deviceID, rjid)
 	if err != nil {
 		return "", err
 	}
@@ -2253,48 +2849,52 @@ func WhatsAppSendImage(ctx context.Context, jid string, deviceID string, rjid st
 	if err != nil {
 		isWhatsAppImageConvertWebP = false
 	}
-	if imageType == "image/webp" && isWhatsAppImageConvertWebP {
-		imgConvDecode, err := imgconv.Decode(bytes.NewReader(imageBytes))
-		if err != nil {
-			return "", errors.New("Error While Decoding Convert Image Stream")
-		}
-		imgConvEncode := new(bytes.Buffer)
-		err = imgconv.Write(imgConvEncode, imgConvDecode, &imgconv.FormatOption{Format: imgconv.PNG})
-		if err != nil {
-			return "", errors.New("Error While Encoding Convert Image Stream")
-		}
-		imageBytes = imgConvEncode.Bytes()
-		imageMime = "image/png"
-	}
 	isWhatsAppImageCompression, err := env.GetEnvBool("WHATSAPP_MEDIA_IMAGE_COMPRESSION")
 	if err != nil {
 		isWhatsAppImageCompression = false
 	}
-	if isWhatsAppImageCompression {
-		imgResizeDecode, err := imgconv.Decode(bytes.NewReader(imageBytes))
+	var decodedImage image.Image
+	decoded := false
+	if (imageType == "image/webp" && isWhatsAppImageConvertWebP) || isWhatsAppImageCompression {
+		decodedImage, err = imgconv.Decode(bytes.NewReader(imageBytes))
 		if err != nil {
-			return "", errors.New("Error While Decoding Resize Image Stream")
+			return "", errors.New("Error While Decoding Image Stream")
 		}
-		imgResizeEncode := new(bytes.Buffer)
-		err = imgconv.Write(imgResizeEncode,
-			imgconv.Resize(imgResizeDecode, &imgconv.ResizeOption{Width: 1024}),
-			&imgconv.FormatOption{})
-		if err != nil {
-			return "", errors.New("Error While Encoding Resize Image Stream")
+		decoded = true
+
+		if isWhatsAppImageCompression {
+			decodedImage = imgconv.Resize(decodedImage, &imgconv.ResizeOption{Width: 1024})
 		}
-		imageBytes = imgResizeEncode.Bytes()
+
+		formatOpt := &imgconv.FormatOption{}
+		if imageType == "image/webp" && isWhatsAppImageConvertWebP {
+			formatOpt = &imgconv.FormatOption{Format: imgconv.PNG}
+		}
+		imgEncode := new(bytes.Buffer)
+		if err := imgconv.Write(imgEncode, decodedImage, formatOpt); err != nil {
+			return "", errors.New("Error While Encoding Image Stream")
+		}
+		imageBytes = imgEncode.Bytes()
+		if imageType == "image/webp" && isWhatsAppImageConvertWebP {
+			imageMime = "image/png"
+		}
 	}
 	imageMime = detectMime(imageBytes, imageMime)
 	if !allowedImageMimes[imageMime] {
 		return "", fmt.Errorf("Image MIME type %s is not allowed", imageMime)
 	}
-	imgThumbDecode, err := imgconv.Decode(bytes.NewReader(imageBytes))
-	if err != nil {
-		return "", errors.New("Error While Decoding Thumbnail Image Stream")
+	var thumbSource image.Image
+	if decoded {
+		thumbSource = decodedImage
+	} else {
+		thumbSource, err = imgconv.Decode(bytes.NewReader(imageBytes))
+		if err != nil {
+			return "", errors.New("Error While Decoding Thumbnail Image Stream")
+		}
 	}
 	imgThumbEncode := new(bytes.Buffer)
 	err = imgconv.Write(imgThumbEncode,
-		imgconv.Resize(imgThumbDecode, &imgconv.ResizeOption{Width: 72}),
+		imgconv.Resize(thumbSource, &imgconv.ResizeOption{Width: 72}),
 		&imgconv.FormatOption{Format: imgconv.JPEG})
 	if err != nil {
 		return "", errors.New("Error While Encoding Thumbnail Image Stream")
@@ -2510,10 +3110,10 @@ func WhatsAppGetUserStatus(ctx context.Context, jid string, deviceID string, use
 	result := make([]map[string]interface{}, 0)
 	for userJIDKey, info := range userInfo {
 		result = append(result, map[string]interface{}{
-			"jid":            userJIDKey.String(),
-			"status":         info.Status,
-			"verified_name":  info.VerifiedName,
-			"picture_id":     info.PictureID,
+			"jid":           userJIDKey.String(),
+			"status":        info.Status,
+			"verified_name": info.VerifiedName,
+			"picture_id":    info.PictureID,
 		})
 	}
 	return result, nil
@@ -2655,9 +3255,9 @@ func WhatsAppGetNewsletterMessages(ctx context.Context, jid string, deviceID str
 	result := make([]map[string]interface{}, len(messages))
 	for i, m := range messages {
 		result[i] = map[string]interface{}{
-			"server_id":  m.MessageServerID,
-			"views":      m.ViewsCount,
-			"reactions":  m.ReactionCounts,
+			"server_id": m.MessageServerID,
+			"views":     m.ViewsCount,
+			"reactions": m.ReactionCounts,
 		}
 	}
 	return result, nil
@@ -2703,12 +3303,6 @@ func WhatsAppSendNewsletterImage(ctx context.Context, jid string, deviceID strin
 		return "", err
 	}
 	imageMime := detectMime(imageBytes, imageType)
-	allowedImageMimes := map[string]bool{
-		"image/jpeg": true,
-		"image/jpg":  true,
-		"image/png":  true,
-		"image/webp": true,
-	}
 	if !allowedImageMimes[imageMime] {
 		return "", fmt.Errorf("image MIME type %s is not allowed", imageMime)
 	}
@@ -2762,13 +3356,6 @@ func WhatsAppSendNewsletterVideo(ctx context.Context, jid string, deviceID strin
 		return "", err
 	}
 	videoMime := detectMime(videoBytes, videoType)
-	allowedVideoMimes := map[string]bool{
-		"video/mp4":       true,
-		"video/3gpp":      true,
-		"video/quicktime": true,
-		"video/webm":      true,
-		"video/mpeg":      true,
-	}
 	if !allowedVideoMimes[videoMime] {
 		return "", fmt.Errorf("video MIME type %s is not allowed", videoMime)
 	}
@@ -2822,18 +3409,6 @@ func WhatsAppSendNewsletterDocument(ctx context.Context, jid string, deviceID st
 		return "", err
 	}
 	documentMime := detectMime(documentBytes, documentType)
-	allowedDocumentMimes := map[string]bool{
-		"application/pdf":    true,
-		"application/msword": true,
-		"application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
-		"application/vnd.ms-excel": true,
-		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":         true,
-		"application/vnd.ms-powerpoint":                                             true,
-		"application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
-		"text/plain":               true,
-		"application/zip":          true,
-		"application/octet-stream": true,
-	}
 	if !allowedDocumentMimes[documentMime] {
 		return "", fmt.Errorf("document MIME type %s is not allowed", documentMime)
 	}
@@ -2995,7 +3570,7 @@ func WhatsAppCreatePoll(ctx context.Context, jid string, deviceID string, rjid s
 	if err != nil {
 		return "", err
 	}
-	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+	if err = ensureClientOK(client); err != nil {
 		return "", err
 	}
 	if strings.TrimSpace(question) == "" {
@@ -3007,7 +3582,7 @@ func WhatsAppCreatePoll(ctx context.Context, jid string, deviceID string, rjid s
 	if len(options) > 12 {
 		return "", errors.New("Poll cannot have more than 12 options")
 	}
-	remoteJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, rjid)
+	remoteJID, err := WhatsAppCheckJID(ctx, jid, deviceID, rjid)
 	if err != nil {
 		return "", err
 	}
@@ -3032,13 +3607,13 @@ func WhatsAppVotePoll(ctx context.Context, jid string, deviceID string, rjid str
 	if err != nil {
 		return err
 	}
-	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+	if err = ensureClientOK(client); err != nil {
 		return err
 	}
 	if len(selectedOptions) == 0 {
 		return errors.New("At least one option must be selected")
 	}
-	remoteJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, rjid)
+	remoteJID, err := WhatsAppCheckJID(ctx, jid, deviceID, rjid)
 	if err != nil {
 		return err
 	}
@@ -3049,7 +3624,7 @@ func WhatsAppVotePoll(ctx context.Context, jid string, deviceID string, rjid str
 	// Note: BuildPollVote requires the original poll message info
 	// This is a simplified implementation that may need adjustment based on actual poll message storage
 	pollMsgInfo := &types.MessageInfo{
-		ID:        pollMsgID,
+		ID: pollMsgID,
 		MessageSource: types.MessageSource{
 			Chat: remoteJID,
 		},
@@ -3070,7 +3645,7 @@ func WhatsAppSendVideo(ctx context.Context, jid string, deviceID string, rjid st
 	if err != nil {
 		return "", err
 	}
-	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+	if err = ensureClientOK(client); err != nil {
 		return "", err
 	}
 	if len(videoBytes) == 0 {
@@ -3080,17 +3655,10 @@ func WhatsAppSendVideo(ctx context.Context, jid string, deviceID string, rjid st
 		return "", err
 	}
 	videoMime := detectMime(videoBytes, videoType)
-	allowedVideoMimes := map[string]bool{
-		"video/mp4":       true,
-		"video/3gpp":      true,
-		"video/quicktime": true,
-		"video/webm":      true,
-		"video/mpeg":      true,
-	}
 	if !allowedVideoMimes[videoMime] {
 		return "", fmt.Errorf("Video MIME type %s is not allowed", videoMime)
 	}
-	remoteJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, rjid)
+	remoteJID, err := WhatsAppCheckJID(ctx, jid, deviceID, rjid)
 	if err != nil {
 		return "", err
 	}
@@ -3129,7 +3697,7 @@ func WhatsAppSendAudio(ctx context.Context, jid string, deviceID string, rjid st
 	if err != nil {
 		return "", err
 	}
-	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+	if err = ensureClientOK(client); err != nil {
 		return "", err
 	}
 	if len(audioBytes) == 0 {
@@ -3139,21 +3707,10 @@ func WhatsAppSendAudio(ctx context.Context, jid string, deviceID string, rjid st
 		return "", err
 	}
 	audioMime := detectMime(audioBytes, audioType)
-	allowedAudioMimes := map[string]bool{
-		"audio/mpeg":      true,
-		"audio/mp3":       true,
-		"audio/mp4":       true,
-		"audio/ogg":       true,
-		"audio/wav":       true,
-		"audio/x-wav":     true,
-		"audio/aac":       true,
-		"audio/opus":      true,
-		"audio/ogg; codecs=opus": true,
-	}
 	if !allowedAudioMimes[audioMime] {
 		return "", fmt.Errorf("Audio MIME type %s is not allowed", audioMime)
 	}
-	remoteJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, rjid)
+	remoteJID, err := WhatsAppCheckJID(ctx, jid, deviceID, rjid)
 	if err != nil {
 		return "", err
 	}
@@ -3191,7 +3748,7 @@ func WhatsAppSendSticker(ctx context.Context, jid string, deviceID string, rjid 
 	if err != nil {
 		return "", err
 	}
-	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+	if err = ensureClientOK(client); err != nil {
 		return "", err
 	}
 	if len(stickerBytes) == 0 {
@@ -3201,13 +3758,10 @@ func WhatsAppSendSticker(ctx context.Context, jid string, deviceID string, rjid 
 		return "", err
 	}
 	stickerMime := detectMime(stickerBytes, "image/webp")
-	allowedStickerMimes := map[string]bool{
-		"image/webp": true,
-	}
 	if !allowedStickerMimes[stickerMime] {
 		return "", fmt.Errorf("Sticker MIME type %s is not allowed. Stickers must be in WebP format", stickerMime)
 	}
-	remoteJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, rjid)
+	remoteJID, err := WhatsAppCheckJID(ctx, jid, deviceID, rjid)
 	if err != nil {
 		return "", err
 	}
@@ -3253,7 +3807,7 @@ func WhatsAppSendLocation(ctx context.Context, jid string, deviceID string, rjid
 	if longitude < -180 || longitude > 180 {
 		return "", errors.New("Longitude must be between -180 and 180")
 	}
-	remoteJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, rjid)
+	remoteJID, err := WhatsAppCheckJID(ctx, jid, deviceID, rjid)
 	if err != nil {
 		return "", err
 	}
@@ -3292,7 +3846,7 @@ func WhatsAppSendContact(ctx context.Context, jid string, deviceID string, rjid 
 	if strings.TrimSpace(contactPhone) == "" {
 		return "", errors.New("Contact phone cannot be empty")
 	}
-	remoteJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, rjid)
+	remoteJID, err := WhatsAppCheckJID(ctx, jid, deviceID, rjid)
 	if err != nil {
 		return "", err
 	}
@@ -3323,21 +3877,21 @@ func WhatsAppMessageEdit(ctx context.Context, jid string, deviceID string, rjid 
 	if err != nil {
 		return "", err
 	}
-	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+	if err = ensureClientOK(client); err != nil {
 		return "", err
 	}
 	if strings.TrimSpace(message) == "" {
 		return "", errors.New("Message cannot be empty")
 	}
-	remoteJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, rjid)
+	remoteJID, err := WhatsAppCheckJID(ctx, jid, deviceID, rjid)
 	if err != nil {
 		return "", err
 	}
-	WhatsAppPresence(context.Background(), jid, deviceID, true)
-	WhatsAppComposeStatus(context.Background(), jid, deviceID, remoteJID, true, false)
+	WhatsAppPresence(ctx, jid, deviceID, true)
+	WhatsAppComposeStatus(ctx, jid, deviceID, remoteJID, true, false)
 	defer func() {
-		WhatsAppComposeStatus(context.Background(), jid, deviceID, remoteJID, false, false)
-		WhatsAppPresence(context.Background(), jid, deviceID, false)
+		WhatsAppComposeStatus(ctx, jid, deviceID, remoteJID, false, false)
+		WhatsAppPresence(ctx, jid, deviceID, false)
 	}()
 	msgContent := &waE2E.Message{
 		Conversation: proto.String(message),
@@ -3354,18 +3908,18 @@ func WhatsAppMessageReact(ctx context.Context, jid string, deviceID string, rjid
 	if err != nil {
 		return "", err
 	}
-	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+	if err = ensureClientOK(client); err != nil {
 		return "", err
 	}
-	remoteJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, rjid)
+	remoteJID, err := WhatsAppCheckJID(ctx, jid, deviceID, rjid)
 	if err != nil {
 		return "", err
 	}
-	WhatsAppPresence(context.Background(), jid, deviceID, true)
-	WhatsAppComposeStatus(context.Background(), jid, deviceID, remoteJID, true, false)
+	WhatsAppPresence(ctx, jid, deviceID, true)
+	WhatsAppComposeStatus(ctx, jid, deviceID, remoteJID, true, false)
 	defer func() {
-		WhatsAppComposeStatus(context.Background(), jid, deviceID, remoteJID, false, false)
-		WhatsAppPresence(context.Background(), jid, deviceID, false)
+		WhatsAppComposeStatus(ctx, jid, deviceID, remoteJID, false, false)
+		WhatsAppPresence(ctx, jid, deviceID, false)
 	}()
 	if !gomoji.ContainsEmoji(emoji) && uniseg.GraphemeClusterCount(emoji) != 1 {
 		return "", errors.New("WhatsApp Message React Emoji Must Be Contain Only 1 Emoji Character")
@@ -3420,7 +3974,7 @@ func WhatsAppPresenceChat(ctx context.Context, jid string, deviceID string, chat
 		return err
 	}
 
-	remoteJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, chatID)
+	remoteJID, err := WhatsAppCheckJID(ctx, jid, deviceID, chatID)
 	if err != nil {
 		return err
 	}
@@ -3601,7 +4155,7 @@ func WhatsAppGroupGetLinkedParticipants(ctx context.Context, jid string, deviceI
 		return nil, err
 	}
 
-	communityJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, community)
+	communityJID, err := WhatsAppCheckJID(ctx, jid, deviceID, community)
 	if err != nil {
 		return nil, err
 	}
@@ -3621,7 +4175,7 @@ func WhatsAppGroupGetSubGroups(ctx context.Context, jid string, deviceID string,
 		return nil, err
 	}
 
-	communityJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, community)
+	communityJID, err := WhatsAppCheckJID(ctx, jid, deviceID, community)
 	if err != nil {
 		return nil, err
 	}
@@ -3641,7 +4195,7 @@ func WhatsAppMessageForward(ctx context.Context, jid string, deviceID string, me
 		return "", err
 	}
 
-	toJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, toChatID)
+	toJID, err := WhatsAppCheckJID(ctx, jid, deviceID, toChatID)
 	if err != nil {
 		return "", err
 	}
@@ -3965,7 +4519,7 @@ func WhatsAppAddParticipants(ctx context.Context, jid string, deviceID string, g
 		return nil, err
 	}
 
-	groupJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, groupID)
+	groupJID, err := WhatsAppCheckJID(ctx, jid, deviceID, groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -3975,7 +4529,7 @@ func WhatsAppAddParticipants(ctx context.Context, jid string, deviceID string, g
 
 	jidList := make([]types.JID, 0, len(participants))
 	for _, participant := range participants {
-		parsed, err := WhatsAppCheckJID(context.Background(), jid, deviceID, participant)
+		parsed, err := WhatsAppCheckJID(ctx, jid, deviceID, participant)
 		if err != nil {
 			continue
 		}
@@ -4004,7 +4558,7 @@ func WhatsAppRemoveParticipants(ctx context.Context, jid string, deviceID string
 		return nil, err
 	}
 
-	groupJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, groupID)
+	groupJID, err := WhatsAppCheckJID(ctx, jid, deviceID, groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -4014,7 +4568,7 @@ func WhatsAppRemoveParticipants(ctx context.Context, jid string, deviceID string
 
 	jidList := make([]types.JID, 0, len(participants))
 	for _, participant := range participants {
-		parsed, err := WhatsAppCheckJID(context.Background(), jid, deviceID, participant)
+		parsed, err := WhatsAppCheckJID(ctx, jid, deviceID, participant)
 		if err != nil {
 			continue
 		}
@@ -4040,7 +4594,7 @@ func WhatsAppApproveJoinRequests(ctx context.Context, jid string, deviceID strin
 		return nil, err
 	}
 
-	groupJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, groupID)
+	groupJID, err := WhatsAppCheckJID(ctx, jid, deviceID, groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -4050,7 +4604,7 @@ func WhatsAppApproveJoinRequests(ctx context.Context, jid string, deviceID strin
 
 	jidList := make([]types.JID, 0, len(userIDs))
 	for _, userID := range userIDs {
-		parsed, err := WhatsAppCheckJID(context.Background(), jid, deviceID, userID)
+		parsed, err := WhatsAppCheckJID(ctx, jid, deviceID, userID)
 		if err != nil {
 			continue
 		}
@@ -4076,7 +4630,7 @@ func WhatsAppRejectJoinRequests(ctx context.Context, jid string, deviceID string
 		return nil, err
 	}
 
-	groupJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, groupID)
+	groupJID, err := WhatsAppCheckJID(ctx, jid, deviceID, groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -4086,7 +4640,7 @@ func WhatsAppRejectJoinRequests(ctx context.Context, jid string, deviceID string
 
 	jidList := make([]types.JID, 0, len(userIDs))
 	for _, userID := range userIDs {
-		parsed, err := WhatsAppCheckJID(context.Background(), jid, deviceID, userID)
+		parsed, err := WhatsAppCheckJID(ctx, jid, deviceID, userID)
 		if err != nil {
 			continue
 		}
@@ -4112,7 +4666,7 @@ func WhatsAppPromoteAdmins(ctx context.Context, jid string, deviceID string, gro
 		return nil, err
 	}
 
-	groupJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, groupID)
+	groupJID, err := WhatsAppCheckJID(ctx, jid, deviceID, groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -4122,7 +4676,7 @@ func WhatsAppPromoteAdmins(ctx context.Context, jid string, deviceID string, gro
 
 	jidList := make([]types.JID, 0, len(userIDs))
 	for _, userID := range userIDs {
-		parsed, err := WhatsAppCheckJID(context.Background(), jid, deviceID, userID)
+		parsed, err := WhatsAppCheckJID(ctx, jid, deviceID, userID)
 		if err != nil {
 			continue
 		}
@@ -4148,7 +4702,7 @@ func WhatsAppDemoteAdmins(ctx context.Context, jid string, deviceID string, grou
 		return nil, err
 	}
 
-	groupJID, err := WhatsAppCheckJID(context.Background(), jid, deviceID, groupID)
+	groupJID, err := WhatsAppCheckJID(ctx, jid, deviceID, groupID)
 	if err != nil {
 		return nil, err
 	}
@@ -4158,7 +4712,7 @@ func WhatsAppDemoteAdmins(ctx context.Context, jid string, deviceID string, grou
 
 	jidList := make([]types.JID, 0, len(userIDs))
 	for _, userID := range userIDs {
-		parsed, err := WhatsAppCheckJID(context.Background(), jid, deviceID, userID)
+		parsed, err := WhatsAppCheckJID(ctx, jid, deviceID, userID)
 		if err != nil {
 			continue
 		}
@@ -4245,7 +4799,7 @@ func WhatsAppCreateGroupEnhanced(ctx context.Context, jid string, deviceID strin
 	if len(participants) > 0 {
 		jidList := make([]types.JID, 0, len(participants))
 		for _, participant := range participants {
-			parsed, err := WhatsAppCheckJID(context.Background(), jid, deviceID, participant)
+			parsed, err := WhatsAppCheckJID(ctx, jid, deviceID, participant)
 			if err != nil {
 				continue
 			}
@@ -4353,7 +4907,21 @@ func WhatsAppArchiveChat(ctx context.Context, jid string, deviceID string, chatJ
 	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
 		return err
 	}
-	return client.SendAppState(ctx, appstate.BuildMute(chatJID, archive, 0))
+	return client.SendAppState(ctx, appstate.BuildArchive(chatJID, archive, time.Time{}, nil))
+}
+
+func WhatsAppMuteChat(ctx context.Context, jid string, deviceID string, chatJID types.JID, mute bool, duration time.Duration) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return err
+	}
+	return client.SendAppState(ctx, appstate.BuildMute(chatJID, mute, duration))
 }
 
 func WhatsAppPinChat(ctx context.Context, jid string, deviceID string, chatJID types.JID, pin bool) error {
@@ -4368,6 +4936,34 @@ func WhatsAppPinChat(ctx context.Context, jid string, deviceID string, chatJID t
 		return err
 	}
 	return client.SendAppState(ctx, appstate.BuildPin(chatJID, pin))
+}
+
+func WhatsAppMarkChatAsRead(ctx context.Context, jid string, deviceID string, chatJID types.JID, read bool, lastMessageTimestamp time.Time) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return err
+	}
+	return client.SendAppState(ctx, appstate.BuildMarkChatAsRead(chatJID, read, lastMessageTimestamp, nil))
+}
+
+func WhatsAppDeleteChat(ctx context.Context, jid string, deviceID string, chatJID types.JID, deleteMedia bool) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := currentClient(jid, deviceID)
+	if err != nil {
+		return err
+	}
+	if err = WhatsAppIsClientOK(jid, deviceID); err != nil {
+		return err
+	}
+	return client.SendAppState(ctx, appstate.BuildDeleteChat(chatJID, time.Now(), nil, deleteMedia))
 }
 
 func WhatsAppMarkRead(jid string, deviceID string, chatJID types.JID, senderJID types.JID, messageID string) error {
@@ -4791,14 +5387,14 @@ func WhatsAppRejectCall(ctx context.Context, jid string, deviceID string, callFr
 
 // BusinessProfile represents a WhatsApp business profile
 type BusinessProfile struct {
-	JID             string                    `json:"jid"`
-	Description     string                    `json:"description"`
-	Address         string                    `json:"address"`
-	Email           string                    `json:"email"`
-	Categories      []BusinessProfileCategory `json:"categories"`
-	ProfileOptions  map[string]string         `json:"profile_options"`
-	Websites        []string                  `json:"websites"`
-	BusinessHours   []BusinessProfileHours    `json:"business_hours"`
+	JID            string                    `json:"jid"`
+	Description    string                    `json:"description"`
+	Address        string                    `json:"address"`
+	Email          string                    `json:"email"`
+	Categories     []BusinessProfileCategory `json:"categories"`
+	ProfileOptions map[string]string         `json:"profile_options"`
+	Websites       []string                  `json:"websites"`
+	BusinessHours  []BusinessProfileHours    `json:"business_hours"`
 }
 
 type BusinessProfileCategory struct {
@@ -4836,11 +5432,11 @@ func WhatsAppGetBusinessProfile(ctx context.Context, jid string, deviceID string
 
 // BusinessMessageLinkTarget represents a resolved business message link
 type BusinessMessageLinkTarget struct {
-	JID           string `json:"jid"`
-	PushName      string `json:"push_name"`
-	VerifiedName  string `json:"verified_name"`
-	IsBusiness    bool   `json:"is_business"`
-	Message       string `json:"message"`
+	JID          string `json:"jid"`
+	PushName     string `json:"push_name"`
+	VerifiedName string `json:"verified_name"`
+	IsBusiness   bool   `json:"is_business"`
+	Message      string `json:"message"`
 }
 
 // WhatsAppResolveBusinessMessageLink resolves a business message link (wa.me/message/XXX)
@@ -4893,9 +5489,9 @@ func WhatsAppResolveContactQRLink(ctx context.Context, jid string, deviceID stri
 
 // BotInfo represents basic info about a bot
 type BotInfo struct {
-	JID          string `json:"jid"`
-	PluginType   string `json:"plugin_type"`
-	PluginName   string `json:"plugin_name"`
+	JID        string `json:"jid"`
+	PluginType string `json:"plugin_type"`
+	PluginName string `json:"plugin_name"`
 }
 
 // WhatsAppGetBotListV2 retrieves the list of available bots
@@ -5053,7 +5649,7 @@ func WhatsAppSendMediaRetryReceipt(ctx context.Context, jid string, deviceID str
 	}
 
 	msgInfo := &types.MessageInfo{
-		ID:        messageID,
+		ID: messageID,
 		MessageSource: types.MessageSource{
 			Chat:   chat,
 			Sender: sender,

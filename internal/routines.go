@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"errors"
 	"os"
 	"strconv"
 	"strings"
@@ -119,7 +120,12 @@ func Routines(cron *cron.Cron) {
 
 				// Client doesn't exist in memory - try to restore from whatsmeow store
 				// This is the key fix: devices that were "active" before restart but not in memory
-				storeDevice, err := pkgWhatsApp.WhatsAppDatastore.GetDevice(ctx, parseJID(device.WhatsMeowJID))
+				parsedJID, parseErr := parseJID(device.WhatsMeowJID)
+				if parseErr != nil {
+					log.Print(nil).WithField("device_id", device.DeviceID).WithField("jid", device.WhatsMeowJID).Warn("Invalid whatsmeow JID, skipping recovery")
+					continue
+				}
+				storeDevice, err := pkgWhatsApp.WhatsAppDatastore.GetDevice(ctx, parsedJID)
 				if err != nil || storeDevice == nil {
 					log.Print(nil).WithField("device_id", device.DeviceID).Warn("Device not found in whatsmeow store, marking as logged_out")
 					_ = pkgWhatsApp.UpdateDeviceStatus(ctx, device.DeviceID, "logged_out")
@@ -266,10 +272,10 @@ func extractJIDUser(fullJID string) string {
 }
 
 // parseJID parses a JID string into types.JID
-func parseJID(jidStr string) types.JID {
-	jid, _ := types.ParseJID(jidStr)
-	return jid
+func parseJID(jidStr string) (types.JID, error) {
+	jid, err := types.ParseJID(jidStr)
+	if err != nil || jid.User == "" {
+		return types.EmptyJID, errors.New("invalid JID")
+	}
+	return jid, nil
 }
-
-// Ensure whatsmeow import is used
-var _ whatsmeow.Client

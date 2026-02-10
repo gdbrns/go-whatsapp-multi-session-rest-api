@@ -1,6 +1,6 @@
 BUILD_CGO_ENABLED  := 0
 SERVICE_NAME       := go-whatsapp-multidevice-rest
-SERVICE_PORT       := 8000
+SERVICE_PORT       := 7001
 IMAGE_NAME         := go-whatsapp-multidevice-rest
 IMAGE_TAG          := latest
 REBASE_URL         := "github.com/gdbrns/go-whatsapp-multi-session-rest-api"

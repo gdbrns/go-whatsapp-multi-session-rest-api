@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"crypto/subtle"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -22,7 +23,7 @@ func AdminAuth() fiber.Handler {
 			return router.ResponseInternalError(c, "Admin secret key not configured")
 		}
 
-		if adminSecret != AdminSecretKey {
+		if subtle.ConstantTimeCompare([]byte(adminSecret), []byte(AdminSecretKey)) != 1 {
 			return router.ResponseUnauthorized(c, "Invalid admin secret")
 		}
 

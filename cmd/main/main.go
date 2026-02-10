@@ -85,7 +85,7 @@ func main() {
 	// Router CORS
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: router.CORSOrigin,
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
+		AllowHeaders: "Origin, Content-Type, Accept, Authorization, X-API-Key, X-Admin-Secret, X-Request-ID",
 		AllowMethods: "GET,POST,PUT,PATCH,DELETE",
 	}))
 
@@ -98,7 +98,6 @@ func main() {
 
 	// Router Cache
 	app.Use(router.HttpCacheInMemory(
-		router.CacheCapacity,
 		router.CacheTTLSeconds,
 	))
 

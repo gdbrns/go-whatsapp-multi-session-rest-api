@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -61,9 +62,19 @@ func NewEngine(store *Store) *Engine {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
+	transport := &http.Transport{
+		Proxy:               http.ProxyFromEnvironment,
+		DialContext:         (&net.Dialer{Timeout: 5 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 20,
+		IdleConnTimeout:     90 * time.Second,
+		TLSHandshakeTimeout: 10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+
 	engine := &Engine{
 		store:        store,
-		httpClient:   &http.Client{Timeout: 10 * time.Second},
+		httpClient:   &http.Client{Timeout: 10 * time.Second, Transport: transport},
 		queue:        make(chan *deliveryTask, 1000),
 		workers:      workers,
 		retryLimit:   retryLimit,
@@ -227,8 +238,13 @@ func (e *Engine) validateURL(rawURL string) error {
 	}
 
 	host := strings.ToLower(u.Hostname())
-	if host == "localhost" || host == "127.0.0.1" || host == "0.0.0.0" || strings.HasPrefix(host, "192.168.") || strings.HasPrefix(host, "10.") || strings.HasPrefix(host, "172.") {
+	if host == "localhost" || host == "0.0.0.0" {
 		return fmt.Errorf("private/local network URLs are not allowed")
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+			return fmt.Errorf("private/local network URLs are not allowed")
+		}
 	}
 
 	return nil

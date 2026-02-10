@@ -1,7 +1,10 @@
 package internal
 
 import (
+	"time"
+
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
 	swagger "github.com/gofiber/swagger"
 
 	"github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/auth"
@@ -20,9 +23,9 @@ import (
 	ctlMessage "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/message"
 	ctlMessaging "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/messaging"
 	ctlNewsletter "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/newsletter"
-	ctlStatus "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/status"
 	ctlPoll "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/poll"
 	ctlPresence "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/presence"
+	ctlStatus "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/status"
 	ctlUser "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/user"
 	ctlWebhooks "github.com/gdbrns/go-whatsapp-multi-session-rest-api/internal/webhooks"
 )
@@ -57,7 +60,7 @@ func Routes(app *fiber.App) {
 	// ADMIN ROUTES (X-Admin-Secret authentication)
 	// ============================================================
 	adminMiddleware := auth.AdminAuth()
-	
+
 	// Admin Dashboard APIs
 	app.Get(router.BaseURL+"/admin/stats", adminMiddleware, ctlAdmin.GetStats)
 	app.Get(router.BaseURL+"/admin/health", adminMiddleware, ctlAdmin.GetHealth)
@@ -67,7 +70,7 @@ func Routes(app *fiber.App) {
 	app.Get(router.BaseURL+"/admin/devices/status", adminMiddleware, ctlAdmin.GetAllDevicesStatus)
 	app.Post(router.BaseURL+"/admin/devices/reconnect", adminMiddleware, ctlAdmin.ReconnectAllDevices)
 	app.Get(router.BaseURL+"/admin/webhooks/stats", adminMiddleware, ctlAdmin.GetWebhookStats)
-	
+
 	// API Key Management
 	app.Post(router.BaseURL+"/admin/api-keys", adminMiddleware, ctlAdmin.CreateAPIKey)
 	app.Get(router.BaseURL+"/admin/api-keys", adminMiddleware, ctlAdmin.ListAPIKeys)
@@ -87,7 +90,23 @@ func Routes(app *fiber.App) {
 	// ============================================================
 	// TOKEN REGENERATION (No auth - uses device credentials in body)
 	// ============================================================
-	app.Post(router.BaseURL+"/devices/token", ctlAuth.RegenerateToken)
+	tokenLimiter := limiter.New(limiter.Config{
+		Max:        10,
+		Expiration: time.Minute,
+		KeyGenerator: func(c *fiber.Ctx) string {
+			return c.IP()
+		},
+		LimitReached: func(c *fiber.Ctx) error {
+			resp := router.Response{
+				Status:  false,
+				Code:    fiber.StatusTooManyRequests,
+				Message: "Too many requests",
+				Error:   "Too many requests",
+			}
+			return c.Status(resp.Code).JSON(resp)
+		},
+	})
+	app.Post(router.BaseURL+"/devices/token", tokenLimiter, ctlAuth.RegenerateToken)
 
 	// ============================================================
 	// DEVICE OPERATIONS (JWT Bearer token authentication)
@@ -145,6 +164,9 @@ func Routes(app *fiber.App) {
 	app.Get(router.BaseURL+"/chats/:chat_jid/messages", deviceAuthMiddleware, ctlMessaging.GetMessages)
 	app.Post(router.BaseURL+"/chats/:chat_jid/archive", deviceAuthMiddleware, ctlMessaging.ArchiveChat)
 	app.Post(router.BaseURL+"/chats/:chat_jid/pin", deviceAuthMiddleware, ctlMessaging.PinChat)
+	app.Post(router.BaseURL+"/chats/:chat_jid/mute", deviceAuthMiddleware, ctlMessaging.MuteChat)
+	app.Post(router.BaseURL+"/chats/:chat_jid/mark-read", deviceAuthMiddleware, ctlMessaging.MarkChatRead)
+	app.Delete(router.BaseURL+"/chats/:chat_jid", deviceAuthMiddleware, ctlMessaging.DeleteChat)
 
 	// Message routes
 	app.Post(router.BaseURL+"/messages/:message_id/read", deviceAuthMiddleware, ctlMessage.MarkRead)
@@ -258,7 +280,7 @@ func Routes(app *fiber.App) {
 
 	// Presence subscription route
 	app.Post(router.BaseURL+"/presence/subscribe", deviceAuthMiddleware, ctlPresence.SubscribePresence)
-	
+
 	// Passive mode route
 	app.Post(router.BaseURL+"/devices/me/passive", deviceAuthMiddleware, ctlPresence.SetPassive)
 

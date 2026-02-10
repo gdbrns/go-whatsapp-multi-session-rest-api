@@ -63,7 +63,7 @@
 - 🔔 **Push Notifications** - Register for push notifications (reuses webhook system)
 - 🧲 **Server Push Config** - Configure WhatsApp server push settings (FCM/APNs/Web)
 - ✅ **Active Delivery Receipts** - Force active delivery receipts when needed
-- 🪝 **Webhook Integration** - 35+ event types with real-time notifications and retry support
+- 🪝 **Webhook Integration** - 85 event types with real-time notifications and retry support
 - 🏗️ **Production Ready** - Docker support, environment configuration, logging
 - 📖 **OpenAPI/Swagger** - Interactive API documentation at `/docs/`
 - 🔑 **Admin Dashboard Ready** - Manage API keys and devices with admin endpoints
@@ -99,6 +99,8 @@
 brew install ffmpeg
 export CGO_CFLAGS_ALLOW="-Xpreprocessor"
 ```
+
+Note: token regeneration is rate limited to 10 requests per minute per IP.
 
 #### Linux (Debian/Ubuntu)
 ```bash
@@ -335,21 +337,21 @@ curl -X POST "http://localhost:7001/webhooks" \
   }'
 ```
 
-### Webhook Events Summary (31 Event Types)
+### Webhook Events Summary (85 Event Types)
 
-| Category | Events |
-|----------|--------|
-| **Messages** (5) | `message.received`, `message.delivered`, `message.read`, `message.played`, `message.deleted` |
-| **Connection** (6) | `connection.connected`, `connection.disconnected`, `connection.logged_out`, `connection.reconnecting`, `connection.keepalive_timeout`, `connection.temporary_ban` |
-| **Calls** (4) | `call.offer`, `call.accept`, `call.terminate`, `call.reject` |
-| **Groups** (4) | `group.join`, `group.leave`, `group.participant_update`, `group.info_update` |
-| **Newsletter** (4) | `newsletter.join`, `newsletter.leave`, `newsletter.message_received`, `newsletter.update` |
-| **Polls** (3) | `poll.created`, `poll.vote`, `poll.update` |
-| **Status** (3) | `status.posted`, `status.viewed`, `status.deleted` |
-| **Media** (2) | `media.received`, `media.downloaded` |
-| **Contact** (2) | `contact.update`, `blocklist.change` |
-| **App State** (2) | `appstate.sync_complete`, `appstate.patch_received` |
-| **History** (1) | `history.sync` |
+| Category | Examples |
+|----------|----------|
+| **Messages & Media** | `message.received`, `message.undecryptable`, `media.received` |
+| **Connection & Pairing** | `connection.connected`, `connection.qr`, `connection.pair_success` |
+| **Calls** | `call.offer`, `call.pre_accept`, `call.terminate` |
+| **Groups** | `group.join`, `group.participant_update`, `group.info_update` |
+| **Newsletters** | `newsletter.message_received`, `newsletter.mute_change` |
+| **Presence & Profile** | `presence.update`, `picture.update`, `privacy.settings` |
+| **Chat State** | `chat.mute`, `label.edit`, `settings.unarchive_chats` |
+| **History & Offline** | `history.sync`, `offline.sync_completed` |
+| **Status & Polls** | `status.posted`, `poll.created` |
+| **Blocklist** | `blocklist.change` |
+| **App State** | `appstate.sync_complete`, `appstate.patch_received` |
 
 📖 See [`docs/WEBHOOK_EVENTS.md`](docs/WEBHOOK_EVENTS.md) for detailed event payloads.
 
@@ -357,7 +359,7 @@ curl -X POST "http://localhost:7001/webhooks" \
 
 ### All Endpoints
 
-**Organized by category** with most commonly used endpoints first. All paths honor optional `HTTP_BASE_URL` (prefix not shown below). Total: **122 endpoints** (123 when `HTTP_BASE_URL` is set because the index path is registered with and without a trailing slash).
+**Organized by category** with most commonly used endpoints first. All paths honor optional `HTTP_BASE_URL` (prefix not shown below). Total: **125 endpoints** (126 when `HTTP_BASE_URL` is set because the index path is registered with and without a trailing slash).
 
 **Input & validation notes**
 - Phone numbers must be in international format (no leading `0`, digits only, 6-16 chars). Requests with invalid/unknown numbers return 4xx.
@@ -426,95 +428,98 @@ curl -X POST "http://localhost:7001/webhooks" \
 | 48 | POST | `/chats/{chat_jid}/documents` | JWT | Send document |
 | 49 | POST | `/chats/{chat_jid}/archive` | JWT | Archive/unarchive chat |
 | 50 | POST | `/chats/{chat_jid}/pin` | JWT | Pin/unpin chat |
+| 51 | POST | `/chats/{chat_jid}/mute` | JWT | Mute/unmute chat |
+| 52 | POST | `/chats/{chat_jid}/mark-read` | JWT | Mark chat read/unread |
+| 53 | DELETE | `/chats/{chat_jid}` | JWT | Delete chat |
 | | | **Message Actions** | | |
-| 51 | POST | `/messages/{message_id}/read` | JWT | Mark message as read |
-| 52 | POST | `/messages/{message_id}/reaction` | JWT | React to message |
-| 53 | PATCH | `/messages/{message_id}` | JWT | Edit message |
-| 54 | DELETE | `/messages/{message_id}` | JWT | Delete message |
-| 55 | POST | `/messages/{message_id}/reply` | JWT | Reply to message |
-| 56 | POST | `/messages/{message_id}/forward` | JWT | Forward message |
+| 54 | POST | `/messages/{message_id}/read` | JWT | Mark message as read |
+| 55 | POST | `/messages/{message_id}/reaction` | JWT | React to message |
+| 56 | PATCH | `/messages/{message_id}` | JWT | Edit message |
+| 57 | DELETE | `/messages/{message_id}` | JWT | Delete message |
+| 58 | POST | `/messages/{message_id}/reply` | JWT | Reply to message |
+| 59 | POST | `/messages/{message_id}/forward` | JWT | Forward message |
 | | | **Polls** | | |
-| 57 | POST | `/chats/{chat_jid}/polls` | JWT | Create poll |
-| 58 | POST | `/polls/{poll_id}/vote` | JWT | Vote on poll |
-| 59 | GET | `/polls/{poll_id}/results` | JWT | Get poll results |
-| 60 | DELETE | `/polls/{poll_id}` | JWT | Delete poll |
+| 60 | POST | `/chats/{chat_jid}/polls` | JWT | Create poll |
+| 61 | POST | `/polls/{poll_id}/vote` | JWT | Vote on poll |
+| 62 | GET | `/polls/{poll_id}/results` | JWT | Get poll results |
+| 63 | DELETE | `/polls/{poll_id}` | JWT | Delete poll |
 | | | **Calls (NEW)** | | |
-| 61 | POST | `/calls/reject` | JWT | Reject incoming call |
+| 64 | POST | `/calls/reject` | JWT | Reject incoming call |
 | | | **Business (NEW)** | | |
-| 62 | GET | `/business/{jid}/profile` | JWT | Get business profile |
-| 63 | GET | `/business/link/{code}` | JWT | Resolve wa.me/message link |
+| 65 | GET | `/business/{jid}/profile` | JWT | Get business profile |
+| 66 | GET | `/business/link/{code}` | JWT | Resolve wa.me/message link |
 | | | **Bots (NEW)** | | |
-| 64 | GET | `/bots` | JWT | List available WhatsApp bots |
-| 65 | GET | `/bots/profiles` | JWT | Get bot profiles |
+| 67 | GET | `/bots` | JWT | List available WhatsApp bots |
+| 68 | GET | `/bots/profiles` | JWT | Get bot profiles |
 | | | **Group Management** | | |
-| 66 | GET | `/groups` | JWT | List all groups with members |
-| 67 | POST | `/groups` | JWT | Create group |
-| 68 | GET | `/groups/{group_jid}` | JWT | Get group info |
-| 69 | POST | `/groups/{group_jid}/leave` | JWT | Leave group |
-| 70 | PATCH | `/groups/{group_jid}/name` | JWT | Update group name |
-| 71 | PATCH | `/groups/{group_jid}/description` | JWT | Update group description |
-| 72 | POST | `/groups/{group_jid}/photo` | JWT | Update group photo |
-| 73 | GET | `/groups/{group_jid}/invite-link` | JWT | Get invite link |
-| 74 | PATCH | `/groups/{group_jid}/settings` | JWT | Update group settings |
-| 75 | GET | `/groups/{group_jid}/participant-requests` | JWT | Get join requests |
-| 76 | POST | `/groups/{group_jid}/join-approval` | JWT | Set join approval mode |
-| 77 | GET | `/groups/invite/{invite_code}` | JWT | Preview group from invite |
-| 78 | POST | `/groups/{group_jid}/join-invite` | JWT | Join group via invite |
-| 79 | PATCH | `/groups/{group_jid}/member-add-mode` | JWT | Set member add mode |
-| 80 | PATCH | `/groups/{group_jid}/topic` | JWT | Update group topic |
-| 81 | POST | `/groups/{parent_group_jid}/link/{group_jid}` | JWT | Link subgroup |
-| 82 | DELETE | `/groups/{parent_jid}/link/{child_jid}` | JWT | Unlink subgroup (NEW) |
-| 83 | GET | `/groups/{community_jid}/linked-participants` | JWT | Get community members |
-| 84 | GET | `/groups/{community_jid}/subgroups` | JWT | List community subgroups |
-| 85 | POST | `/groups/{group_jid}/participants` | JWT | Add participants |
-| 86 | DELETE | `/groups/{group_jid}/participants` | JWT | Remove participants |
-| 87 | POST | `/groups/{group_jid}/requests/approve` | JWT | Approve join requests |
-| 88 | POST | `/groups/{group_jid}/requests/reject` | JWT | Reject join requests |
-| 89 | POST | `/groups/{group_jid}/admins` | JWT | Promote to admin |
-| 90 | DELETE | `/groups/{group_jid}/admins` | JWT | Demote from admin |
+| 69 | GET | `/groups` | JWT | List all groups with members |
+| 70 | POST | `/groups` | JWT | Create group |
+| 71 | GET | `/groups/{group_jid}` | JWT | Get group info |
+| 72 | POST | `/groups/{group_jid}/leave` | JWT | Leave group |
+| 73 | PATCH | `/groups/{group_jid}/name` | JWT | Update group name |
+| 74 | PATCH | `/groups/{group_jid}/description` | JWT | Update group description |
+| 75 | POST | `/groups/{group_jid}/photo` | JWT | Update group photo |
+| 76 | GET | `/groups/{group_jid}/invite-link` | JWT | Get invite link |
+| 77 | PATCH | `/groups/{group_jid}/settings` | JWT | Update group settings |
+| 78 | GET | `/groups/{group_jid}/participant-requests` | JWT | Get join requests |
+| 79 | POST | `/groups/{group_jid}/join-approval` | JWT | Set join approval mode |
+| 80 | GET | `/groups/invite/{invite_code}` | JWT | Preview group from invite |
+| 81 | POST | `/groups/{group_jid}/join-invite` | JWT | Join group via invite |
+| 82 | PATCH | `/groups/{group_jid}/member-add-mode` | JWT | Set member add mode |
+| 83 | PATCH | `/groups/{group_jid}/topic` | JWT | Update group topic |
+| 84 | POST | `/groups/{parent_group_jid}/link/{group_jid}` | JWT | Link subgroup |
+| 85 | DELETE | `/groups/{parent_jid}/link/{child_jid}` | JWT | Unlink subgroup (NEW) |
+| 86 | GET | `/groups/{community_jid}/linked-participants` | JWT | Get community members |
+| 87 | GET | `/groups/{community_jid}/subgroups` | JWT | List community subgroups |
+| 88 | POST | `/groups/{group_jid}/participants` | JWT | Add participants |
+| 89 | DELETE | `/groups/{group_jid}/participants` | JWT | Remove participants |
+| 90 | POST | `/groups/{group_jid}/requests/approve` | JWT | Approve join requests |
+| 91 | POST | `/groups/{group_jid}/requests/reject` | JWT | Reject join requests |
+| 92 | POST | `/groups/{group_jid}/admins` | JWT | Promote to admin |
+| 93 | DELETE | `/groups/{group_jid}/admins` | JWT | Demote from admin |
 | | | **Presence & Status** | | |
-| 91 | POST | `/chats/{chat_jid}/presence` | JWT | Send typing/recording indicator |
-| 92 | POST | `/presence/status` | JWT | Update availability status |
-| 93 | POST | `/presence/subscribe` | JWT | Subscribe to presence updates (NEW) |
-| 94 | PATCH | `/chats/{chat_jid}/disappearing-timer` | JWT | Set disappearing messages timer |
+| 94 | POST | `/chats/{chat_jid}/presence` | JWT | Send typing/recording indicator |
+| 95 | POST | `/presence/status` | JWT | Update availability status |
+| 96 | POST | `/presence/subscribe` | JWT | Subscribe to presence updates (NEW) |
+| 97 | PATCH | `/chats/{chat_jid}/disappearing-timer` | JWT | Set disappearing messages timer |
 | | | **App State** | | |
-| 95 | GET | `/app-state/{name}` | JWT | Fetch app state |
-| 96 | POST | `/app-state` | JWT | Send app state patch |
-| 97 | POST | `/app-state/mark-clean` | JWT | Mark app state as clean |
+| 98 | GET | `/app-state/{name}` | JWT | Fetch app state |
+| 99 | POST | `/app-state` | JWT | Send app state patch |
+| 100 | POST | `/app-state/mark-clean` | JWT | Mark app state as clean |
 | | | **Webhooks** | | |
-| 98 | GET | `/webhooks` | JWT | List webhooks |
-| 99 | POST | `/webhooks` | JWT | Create webhook |
-| 100 | GET | `/webhooks/{webhook_id}` | JWT | Get webhook details |
-| 101 | PATCH | `/webhooks/{webhook_id}` | JWT | Update webhook |
-| 102 | DELETE | `/webhooks/{webhook_id}` | JWT | Delete webhook |
-| 103 | GET | `/webhooks/{webhook_id}/logs` | JWT | Get webhook logs |
-| 104 | POST | `/webhooks/{webhook_id}/test` | JWT | Test webhook |
+| 101 | GET | `/webhooks` | JWT | List webhooks |
+| 102 | POST | `/webhooks` | JWT | Create webhook |
+| 103 | GET | `/webhooks/{webhook_id}` | JWT | Get webhook details |
+| 104 | PATCH | `/webhooks/{webhook_id}` | JWT | Update webhook |
+| 105 | DELETE | `/webhooks/{webhook_id}` | JWT | Delete webhook |
+| 106 | GET | `/webhooks/{webhook_id}/logs` | JWT | Get webhook logs |
+| 107 | POST | `/webhooks/{webhook_id}/test` | JWT | Test webhook |
 | | | **Newsletter/Channels** | | |
-| 105 | GET | `/newsletters` | JWT | List subscribed newsletters |
-| 106 | POST | `/newsletters` | JWT | Create newsletter |
-| 107 | GET | `/newsletters/{jid}` | JWT | Get newsletter info |
-| 108 | POST | `/newsletters/{jid}/follow` | JWT | Follow newsletter |
-| 109 | DELETE | `/newsletters/{jid}/follow` | JWT | Unfollow newsletter |
-| 110 | GET | `/newsletters/{jid}/messages` | JWT | Get newsletter messages |
-| 111 | POST | `/newsletters/{jid}/messages` | JWT | Send newsletter message |
-| 112 | POST | `/newsletters/{jid}/reaction` | JWT | React to newsletter message |
-| 113 | POST | `/newsletters/{jid}/mute` | JWT | Toggle newsletter mute |
-| 114 | POST | `/newsletters/{jid}/viewed` | JWT | Mark messages viewed |
-| 115 | GET | `/newsletters/invite/{code}` | JWT | Get info from invite |
-| 116 | POST | `/newsletters/{jid}/live` | JWT | Subscribe to live updates |
-| 117 | POST | `/newsletters/{jid}/photo` | JWT | Update newsletter photo |
-| 118 | GET | `/newsletters/{jid}/updates` | JWT | Get message updates (NEW) |
-| 119 | POST | `/newsletters/tos/accept` | JWT | Accept TOS notice (NEW) |
+| 108 | GET | `/newsletters` | JWT | List subscribed newsletters |
+| 109 | POST | `/newsletters` | JWT | Create newsletter |
+| 110 | GET | `/newsletters/{jid}` | JWT | Get newsletter info |
+| 111 | POST | `/newsletters/{jid}/follow` | JWT | Follow newsletter |
+| 112 | DELETE | `/newsletters/{jid}/follow` | JWT | Unfollow newsletter |
+| 113 | GET | `/newsletters/{jid}/messages` | JWT | Get newsletter messages |
+| 114 | POST | `/newsletters/{jid}/messages` | JWT | Send newsletter message |
+| 115 | POST | `/newsletters/{jid}/reaction` | JWT | React to newsletter message |
+| 116 | POST | `/newsletters/{jid}/mute` | JWT | Toggle newsletter mute |
+| 117 | POST | `/newsletters/{jid}/viewed` | JWT | Mark messages viewed |
+| 118 | GET | `/newsletters/invite/{code}` | JWT | Get info from invite |
+| 119 | POST | `/newsletters/{jid}/live` | JWT | Subscribe to live updates |
+| 120 | POST | `/newsletters/{jid}/photo` | JWT | Update newsletter photo |
+| 121 | GET | `/newsletters/{jid}/updates` | JWT | Get message updates (NEW) |
+| 122 | POST | `/newsletters/tos/accept` | JWT | Accept TOS notice (NEW) |
 | | | **Status/Stories** | | |
-| 120 | POST | `/status` | JWT | Post status (text/image/video) |
-| 121 | GET | `/status` | JWT | Get status updates |
-| 122 | DELETE | `/status/{status_id}` | JWT | Delete status |
-| 123 | GET | `/status/{user_jid}` | JWT | Get user status |
+| 123 | POST | `/status` | JWT | Post status (text/image/video) |
+| 124 | GET | `/status` | JWT | Get status updates |
+| 125 | DELETE | `/status/{status_id}` | JWT | Delete status |
+| 126 | GET | `/status/{user_jid}` | JWT | Get user status |
 | | | **System** | | |
-| 124 | GET | `/` | - | Server status |
-| 125 | GET | `/docs/*` | - | Swagger UI |
-| 126 | GET | `/docs/swagger.json` | - | OpenAPI JSON spec |
-| 127 | GET | `/docs/swagger.yaml` | - | OpenAPI YAML spec |
+| 127 | GET | `/` | - | Server status |
+| 128 | GET | `/docs/*` | - | Swagger UI |
+| 129 | GET | `/docs/swagger.json` | - | OpenAPI JSON spec |
+| 130 | GET | `/docs/swagger.yaml` | - | OpenAPI YAML spec |
 
 **Authentication Types:**
 - **Admin**: `X-Admin-Secret` header
@@ -674,7 +679,6 @@ docker run -d \
 | `HTTP_CORS_ORIGIN` | ❌ | `*` | `*`, `https://example.com`, comma-separated | Allowed CORS origins. Use `*` for any, or specific domains |
 | `HTTP_BODY_LIMIT_SIZE` | ❌ | `8M` | `1M`, `8M`, `50M`, `100M` | Max request body size (K/M/G suffix) |
 | `HTTP_GZIP_LEVEL` | ❌ | `1` | `1`-`9` | GZIP compression level. 1=fastest, 9=smallest |
-| `HTTP_CACHE_CAPACITY` | ❌ | `100` | `50`-`10000` | In-memory cache max entries |
 | `HTTP_CACHE_TTL_SECONDS` | ❌ | `5` | `1`-`3600` | Cache TTL in seconds |
 | **💾 Database** | | | | |
 | `WHATSAPP_DATASTORE_TYPE` | ❌ | `postgres` | `postgres`, `sqlite3` | Database driver type |
@@ -786,7 +790,6 @@ HTTP_BASE_URL=
 HTTP_CORS_ORIGIN=*
 HTTP_BODY_LIMIT_SIZE=8M
 # HTTP_GZIP_LEVEL=1
-# HTTP_CACHE_CAPACITY=100
 # HTTP_CACHE_TTL_SECONDS=5
 
 # Logging

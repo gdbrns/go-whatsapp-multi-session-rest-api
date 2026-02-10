@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   title: WhatsApp Multi-Device REST API
-  description: "Enterprise-grade RESTful API for WhatsApp Multi-Device and Multi-Session implementation built with Go and whatsmeow.\n\n## Authentication\n\nThis API uses a **3-tier authentication system**:\n\n### 1. Admin Authentication (X-Admin-Secret)\nFor managing API keys and system administration.\n```\nX-Admin-Secret: your-admin-secret\n```\n\n### 2. API Key Authentication (X-API-Key)\nFor creating devices. Each API key can create up to `max_devices` devices.\n```\nX-API-Key: wam_xxxxxxxxxxxxxxxx\n```\n\n### 3. JWT Bearer Token (Authorization)\nFor all device operations. Obtained when creating a device.\n```\nAuthorization: Bearer eyJhbGciOiJIUzI1NiIs...\n```\n\n## Quick Start\n\n1. **Admin creates API Key** → `POST /admin/api-keys`\n2. **Customer creates Device** → `POST /devices` (returns JWT)\n3. **Customer uses JWT** → All `/devices/me/*` endpoints\n\n## Features\n\n- 127+ production-ready endpoints for complete WhatsApp automation\n- JWT tokens with stateless authentication (no DB lookup per request)\n- Multi-tenant support via API keys with device quotas\n- 35+ webhook event types for real-time notifications\n- Rich messaging: text, images, videos, audio, stickers, documents, contacts, locations\n- Polls, newsletters/channels, status/stories support\n- Group management with community support\n- Anti-detection features: typing simulation, presence, read receipt jitter"
+  description: "Enterprise-grade RESTful API for WhatsApp Multi-Device and Multi-Session implementation built with Go and whatsmeow.\n\n## Authentication\n\nThis API uses a **3-tier authentication system**:\n\n### 1. Admin Authentication (X-Admin-Secret)\nFor managing API keys and system administration.\n```\nX-Admin-Secret: your-admin-secret\n```\n\n### 2. API Key Authentication (X-API-Key)\nFor creating devices. Each API key can create up to `max_devices` devices.\n```\nX-API-Key: wam_xxxxxxxxxxxxxxxx\n```\n\n### 3. JWT Bearer Token (Authorization)\nFor all device operations. Obtained when creating a device.\n```\nAuthorization: Bearer eyJhbGciOiJIUzI1NiIs...\n```\n\n## Quick Start\n\n1. **Admin creates API Key** → `POST /admin/api-keys`\n2. **Customer creates Device** → `POST /devices` (returns JWT)\n3. **Customer uses JWT** → All `/devices/me/*` endpoints\n\n## Features\n\n- 127+ production-ready endpoints for complete WhatsApp automation\n- JWT tokens with stateless authentication (no DB lookup per request)\n- Multi-tenant support via API keys with device quotas\n- 85 webhook event types for real-time notifications\n- Rich messaging: text, images, videos, audio, stickers, documents, contacts, locations\n- Polls, newsletters/channels, status/stories support\n- Group management with community support\n- Anti-detection features: typing simulation, presence, read receipt jitter"
   version: 1.2.1
   contact:
     name: API Support
@@ -1889,7 +1889,7 @@ paths:
       tags:
         - 03 - Device Registration
       summary: Regenerate JWT Token
-      description: "Regenerate JWT token for a device. This invalidates all previous tokens for this device.\n\n**Use case:** If a token is compromised, regenerate to revoke access."
+      description: "Regenerate JWT token for a device. This invalidates all previous tokens for this device.\n\n**Use case:** If a token is compromised, regenerate to revoke access.\n\n**Rate limit:** 10 requests per minute per IP."
       consumes:
         - application/json
       parameters:
@@ -1934,6 +1934,8 @@ paths:
                   token:
                     type: string
                     description: New JWT token (old tokens are now invalid)
+        429:
+          description: Too many requests (rate limit exceeded)
   "/devices/me":
     get:
       security:
@@ -3706,6 +3708,132 @@ paths:
       responses:
         200:
           description: Chat pinned/unpinned
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  "/chats/{chat_jid}/mute":
+    post:
+      security:
+        -
+          BearerAuth: []
+
+      tags:
+        - 06 - Messaging
+      summary: Mute/Unmute Chat
+      consumes:
+        - application/json
+      parameters:
+        -
+          name: chat_jid
+          in: path
+          required: true
+          type: string
+
+        -
+          name: body
+          in: body
+          schema:
+            type: object
+            properties:
+              muted:
+                type: boolean
+              duration:
+                type: integer
+                description: Mute duration in seconds (0 for indefinite)
+
+      responses:
+        200:
+          description: Chat muted/unmuted
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  "/chats/{chat_jid}/mark-read":
+    post:
+      security:
+        -
+          BearerAuth: []
+
+      tags:
+        - 06 - Messaging
+      summary: Mark Chat Read/Unread
+      consumes:
+        - application/json
+      parameters:
+        -
+          name: chat_jid
+          in: path
+          required: true
+          type: string
+
+        -
+          name: body
+          in: body
+          schema:
+            type: object
+            properties:
+              read:
+                type: boolean
+              last_message_ts:
+                type: integer
+                description: Unix timestamp for the last message (optional)
+
+      responses:
+        200:
+          description: Chat read state updated
+          schema:
+            $ref: "#/definitions/SuccessResponse"
+        401:
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: Internal server error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+  "/chats/{chat_jid}":
+    delete:
+      security:
+        -
+          BearerAuth: []
+
+      tags:
+        - 06 - Messaging
+      summary: Delete Chat
+      consumes:
+        - application/json
+      parameters:
+        -
+          name: chat_jid
+          in: path
+          required: true
+          type: string
+
+        -
+          name: body
+          in: body
+          schema:
+            type: object
+            properties:
+              delete_media:
+                type: boolean
+
+      responses:
+        200:
+          description: Chat deleted
           schema:
             $ref: "#/definitions/SuccessResponse"
         401:

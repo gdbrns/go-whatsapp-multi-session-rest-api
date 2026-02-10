@@ -6,6 +6,7 @@ import (
 	"io"
 	"mime/multipart"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -315,6 +316,120 @@ func PinChat(c *fiber.Ctx) error {
 	log.MessageOpCtx(c, "PinChat", chatJID).WithField("pin", req.Pin).Info("Chat pin status updated successfully")
 
 	return router.ResponseSuccess(c, "Success pin chat")
+}
+
+func MuteChat(c *fiber.Ctx) error {
+	deviceID, jid := getDeviceContext(c)
+	chatJID := c.Params("chat_jid")
+
+	if err := validation.ValidateChatJID(chatJID); err != nil {
+		log.MessageOpCtx(c, "MuteChat", chatJID).Warn("Invalid chat_jid")
+		return router.ResponseBadRequest(c, err.Error())
+	}
+
+	var req struct {
+		Muted    bool  `json:"muted"`
+		Duration int64 `json:"duration"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		log.MessageOpCtx(c, "MuteChat", chatJID).Warn("Failed to parse body request")
+		return router.ResponseBadRequest(c, "Failed parse body request")
+	}
+	if req.Duration < 0 {
+		return router.ResponseBadRequest(c, "duration must be >= 0")
+	}
+
+	log.MessageOpCtx(c, "MuteChat", chatJID).WithField("muted", req.Muted).WithField("duration", req.Duration).Info("Muting/unmuting chat")
+
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	chatID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, chatJID)
+	if err := pkgWhatsApp.WhatsAppMuteChat(ctx, jid, deviceID, chatID, req.Muted, time.Duration(req.Duration)*time.Second); err != nil {
+		log.MessageOpCtx(c, "MuteChat", chatJID).WithError(err).Error("Failed to mute/unmute chat")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.MessageOpCtx(c, "MuteChat", chatJID).WithField("muted", req.Muted).Info("Chat mute status updated successfully")
+
+	return router.ResponseSuccess(c, "Success mute chat")
+}
+
+func MarkChatRead(c *fiber.Ctx) error {
+	deviceID, jid := getDeviceContext(c)
+	chatJID := c.Params("chat_jid")
+
+	if err := validation.ValidateChatJID(chatJID); err != nil {
+		log.MessageOpCtx(c, "MarkChatRead", chatJID).Warn("Invalid chat_jid")
+		return router.ResponseBadRequest(c, err.Error())
+	}
+
+	var req struct {
+		Read           bool  `json:"read"`
+		LastMessageTS  int64 `json:"last_message_ts"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		log.MessageOpCtx(c, "MarkChatRead", chatJID).Warn("Failed to parse body request")
+		return router.ResponseBadRequest(c, "Failed parse body request")
+	}
+
+	log.MessageOpCtx(c, "MarkChatRead", chatJID).WithField("read", req.Read).Info("Marking chat read/unread")
+
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	chatID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, chatJID)
+	var lastTS time.Time
+	if req.LastMessageTS > 0 {
+		lastTS = time.Unix(req.LastMessageTS, 0)
+	}
+	if err := pkgWhatsApp.WhatsAppMarkChatAsRead(ctx, jid, deviceID, chatID, req.Read, lastTS); err != nil {
+		log.MessageOpCtx(c, "MarkChatRead", chatJID).WithError(err).Error("Failed to mark chat read/unread")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.MessageOpCtx(c, "MarkChatRead", chatJID).WithField("read", req.Read).Info("Chat read status updated successfully")
+
+	return router.ResponseSuccess(c, "Success mark chat read")
+}
+
+func DeleteChat(c *fiber.Ctx) error {
+	deviceID, jid := getDeviceContext(c)
+	chatJID := c.Params("chat_jid")
+
+	if err := validation.ValidateChatJID(chatJID); err != nil {
+		log.MessageOpCtx(c, "DeleteChat", chatJID).Warn("Invalid chat_jid")
+		return router.ResponseBadRequest(c, err.Error())
+	}
+
+	var req struct {
+		DeleteMedia bool `json:"delete_media"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		log.MessageOpCtx(c, "DeleteChat", chatJID).Warn("Failed to parse body request")
+		return router.ResponseBadRequest(c, "Failed parse body request")
+	}
+
+	log.MessageOpCtx(c, "DeleteChat", chatJID).WithField("delete_media", req.DeleteMedia).Info("Deleting chat")
+
+	ctx := c.UserContext()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	chatID := pkgWhatsApp.WhatsAppGetJID(ctx, jid, deviceID, chatJID)
+	if err := pkgWhatsApp.WhatsAppDeleteChat(ctx, jid, deviceID, chatID, req.DeleteMedia); err != nil {
+		log.MessageOpCtx(c, "DeleteChat", chatJID).WithError(err).Error("Failed to delete chat")
+		return router.ResponseInternalError(c, err.Error())
+	}
+
+	log.MessageOpCtx(c, "DeleteChat", chatJID).WithField("delete_media", req.DeleteMedia).Info("Chat deleted successfully")
+
+	return router.ResponseSuccess(c, "Success delete chat")
 }
 
 func SendVideo(c *fiber.Ctx) error {

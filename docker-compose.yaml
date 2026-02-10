@@ -22,6 +22,8 @@ services:
       dockerfile: ./Dockerfile
     image: 'go-whatsapp-multi-session-rest-api:latest'
     container_name: 'go-whatsapp-multi-session-rest-api'
+    profiles:
+      - dev
     networks:
       - whatsapp
     ports:

@@ -24,8 +24,6 @@ require (
 	google.golang.org/protobuf v1.36.11
 )
 
-replace golang.org/x/tools v0.37.0 => golang.org/x/tools v0.13.0
-
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/HugoSmits86/nativewebp v1.1.0 // indirect

@@ -7,15 +7,14 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cache"
 )
 
-func HttpCacheInMemory(capacity int, ttl int) fiber.Handler {
-	if capacity <= 0 {
-		capacity = 1000
-	}
+func HttpCacheInMemory(ttl int) fiber.Handler {
 	if ttl <= 0 {
 		ttl = 5
 	}
-	_ = capacity // capacity reserved for future use with custom storage
 	return cache.New(cache.Config{
+		Next: func(c *fiber.Ctx) bool {
+			return c.Method() != fiber.MethodGet
+		},
 		Expiration: time.Duration(ttl) * time.Second,
 	})
 }

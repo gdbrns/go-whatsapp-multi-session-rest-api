@@ -20,6 +20,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] - 2026-02-06
+
+### ✨ Added
+
+- Chat state endpoints: mute/unmute, mark read/unread, delete chat
+
+### 🐛 Fixed
+
+- Archive chat app state now uses the correct archive mutation
+
+### 📝 Documentation
+
+- Align webhook event docs with current 85-event coverage
+- Remove deprecated `HTTP_CACHE_CAPACITY` references in docs/examples
+- Document rate limiting on `POST /devices/token`
+- Add chat state endpoints to OpenAPI and README
+
+### 🧰 Configuration
+
+- Remove `HTTP_CACHE_CAPACITY` from docker-compose and env examples
+
+---
+
 ## [1.2.8] - 2026-01-20
 
 ### 🚀 Changed

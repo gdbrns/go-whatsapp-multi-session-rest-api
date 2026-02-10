@@ -9,7 +9,7 @@ import (
 
 var BaseURL, CORSOrigin, BodyLimit string
 var GZipLevel int
-var CacheCapacity, CacheTTLSeconds int
+var CacheTTLSeconds int
 var bodyLimitBytes int
 
 func init() {
@@ -32,9 +32,6 @@ func init() {
 
 	// HTTP_GZIP_LEVEL: default 1
 	GZipLevel = env.GetEnvIntOrDefault("HTTP_GZIP_LEVEL", 1)
-
-	// HTTP_CACHE_CAPACITY: default 100
-	CacheCapacity = env.GetEnvIntOrDefault("HTTP_CACHE_CAPACITY", 100)
 
 	// HTTP_CACHE_TTL_SECONDS: default 5
 	CacheTTLSeconds = env.GetEnvIntOrDefault("HTTP_CACHE_TTL_SECONDS", 5)

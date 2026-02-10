@@ -43,7 +43,6 @@ services:
       HTTP_CORS_ORIGIN: ${HTTP_CORS_ORIGIN:-*}
       HTTP_BODY_LIMIT_SIZE: ${HTTP_BODY_LIMIT_SIZE:-8M}
       HTTP_GZIP_LEVEL: ${HTTP_GZIP_LEVEL:-1}
-      HTTP_CACHE_CAPACITY: ${HTTP_CACHE_CAPACITY:-100}
       HTTP_CACHE_TTL_SECONDS: ${HTTP_CACHE_TTL_SECONDS:-5}
 
       # -------------------------------------------------------------------

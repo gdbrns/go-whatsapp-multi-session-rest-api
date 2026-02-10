@@ -4,14 +4,74 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"sync"
+	"time"
+
+	"github.com/gdbrns/go-whatsapp-multi-session-rest-api/pkg/env"
 )
 
 type Store struct {
-	db *sql.DB
+	db             *sql.DB
+	cacheMu        sync.RWMutex
+	activeCache    map[string]activeCacheEntry
+	activeCacheTTL time.Duration
+}
+
+type activeCacheEntry struct {
+	webhooks  []WebhookConfig
+	expiresAt time.Time
 }
 
 func NewStore(db *sql.DB) *Store {
-	return &Store{db: db}
+	ttlSeconds := env.GetEnvIntOrDefault("WEBHOOK_CACHE_TTL_SECONDS", 15)
+	if ttlSeconds < 0 {
+		ttlSeconds = 0
+	}
+	return &Store{
+		db:             db,
+		activeCache:    make(map[string]activeCacheEntry),
+		activeCacheTTL: time.Duration(ttlSeconds) * time.Second,
+	}
+}
+
+func (s *Store) getActiveCache(deviceID string) ([]WebhookConfig, bool) {
+	if s.activeCacheTTL <= 0 {
+		return nil, false
+	}
+	s.cacheMu.RLock()
+	entry, ok := s.activeCache[deviceID]
+	s.cacheMu.RUnlock()
+	if !ok {
+		return nil, false
+	}
+	if time.Now().After(entry.expiresAt) {
+		s.cacheMu.Lock()
+		delete(s.activeCache, deviceID)
+		s.cacheMu.Unlock()
+		return nil, false
+	}
+	return entry.webhooks, true
+}
+
+func (s *Store) setActiveCache(deviceID string, webhooks []WebhookConfig) {
+	if s.activeCacheTTL <= 0 {
+		return
+	}
+	s.cacheMu.Lock()
+	s.activeCache[deviceID] = activeCacheEntry{
+		webhooks:  webhooks,
+		expiresAt: time.Now().Add(s.activeCacheTTL),
+	}
+	s.cacheMu.Unlock()
+}
+
+func (s *Store) invalidateActiveCache(deviceID string) {
+	if s.activeCacheTTL <= 0 {
+		return
+	}
+	s.cacheMu.Lock()
+	delete(s.activeCache, deviceID)
+	s.cacheMu.Unlock()
 }
 
 func (s *Store) GetAllWebhooks(ctx context.Context, deviceID string) ([]WebhookConfig, error) {
@@ -42,6 +102,10 @@ func (s *Store) GetAllWebhooks(ctx context.Context, deviceID string) ([]WebhookC
 }
 
 func (s *Store) GetActiveWebhooks(ctx context.Context, deviceID string) ([]WebhookConfig, error) {
+	if cached, ok := s.getActiveCache(deviceID); ok {
+		return cached, nil
+	}
+
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, device_id, url, secret, events, active, created_at, updated_at
 		FROM wa_webhooks
@@ -65,7 +129,11 @@ func (s *Store) GetActiveWebhooks(ctx context.Context, deviceID string) ([]Webho
 		}
 		webhooks = append(webhooks, w)
 	}
-	return webhooks, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	s.setActiveCache(deviceID, webhooks)
+	return webhooks, nil
 }
 
 func (s *Store) GetWebhook(ctx context.Context, webhookID int64, deviceID string) (*WebhookConfig, error) {
@@ -97,6 +165,9 @@ func (s *Store) CreateWebhook(ctx context.Context, deviceID, url, secret string,
 		VALUES ($1, $2, $3, $4::jsonb, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 		RETURNING id
 	`, deviceID, url, secret, string(eventsJSON)).Scan(&id)
+	if err == nil {
+		s.invalidateActiveCache(deviceID)
+	}
 	return id, err
 }
 
@@ -110,6 +181,9 @@ func (s *Store) UpdateWebhook(ctx context.Context, webhookID int64, deviceID, ur
 		SET url = $1, secret = $2, events = $3::jsonb, active = $4, updated_at = CURRENT_TIMESTAMP
 		WHERE id = $5 AND device_id = $6
 	`, url, secret, string(eventsJSON), active, webhookID, deviceID)
+	if err == nil {
+		s.invalidateActiveCache(deviceID)
+	}
 	return err
 }
 
@@ -117,6 +191,9 @@ func (s *Store) DeleteWebhook(ctx context.Context, webhookID int64, deviceID str
 	_, err := s.db.ExecContext(ctx, `
 		DELETE FROM wa_webhooks WHERE id = $1 AND device_id = $2
 	`, webhookID, deviceID)
+	if err == nil {
+		s.invalidateActiveCache(deviceID)
+	}
 	return err
 }
 

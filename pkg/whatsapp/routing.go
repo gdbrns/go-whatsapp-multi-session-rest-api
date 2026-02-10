@@ -1402,53 +1402,30 @@ func GetAdminStats(ctx context.Context) (*AdminStats, error) {
 
 	stats := &AdminStats{}
 
-	// Count API keys
-	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM api_keys`).Scan(&stats.TotalAPIKeys)
+	err = db.QueryRowContext(ctx, `
+		SELECT
+			(SELECT COUNT(*) FROM api_keys) AS total_api_keys,
+			(SELECT COUNT(*) FROM api_keys WHERE is_active = TRUE) AS active_api_keys,
+			(SELECT COUNT(*) FROM devices) AS total_devices,
+			(SELECT COUNT(*) FROM devices WHERE status = 'active') AS connected_devices,
+			(SELECT COUNT(*) FROM devices WHERE status = 'disconnected') AS disconnected_devices,
+			(SELECT COUNT(*) FROM devices WHERE status = 'pending') AS pending_devices,
+			(SELECT COUNT(*) FROM devices WHERE status = 'logged_out') AS logged_out_devices,
+			(SELECT COUNT(*) FROM wa_webhooks) AS total_webhooks,
+			(SELECT COUNT(*) FROM wa_webhooks WHERE active = TRUE) AS active_webhooks
+	`).Scan(
+		&stats.TotalAPIKeys,
+		&stats.ActiveAPIKeys,
+		&stats.TotalDevices,
+		&stats.ConnectedDevices,
+		&stats.DisconnectedDevices,
+		&stats.PendingDevices,
+		&stats.LoggedOutDevices,
+		&stats.TotalWebhooks,
+		&stats.ActiveWebhooks,
+	)
 	if err != nil {
 		return nil, err
-	}
-
-	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM api_keys WHERE is_active = TRUE`).Scan(&stats.ActiveAPIKeys)
-	if err != nil {
-		return nil, err
-	}
-
-	// Count devices by status
-	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices`).Scan(&stats.TotalDevices)
-	if err != nil {
-		return nil, err
-	}
-
-	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices WHERE status = 'active'`).Scan(&stats.ConnectedDevices)
-	if err != nil {
-		return nil, err
-	}
-
-	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices WHERE status = 'disconnected'`).Scan(&stats.DisconnectedDevices)
-	if err != nil {
-		return nil, err
-	}
-
-	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices WHERE status = 'pending'`).Scan(&stats.PendingDevices)
-	if err != nil {
-		return nil, err
-	}
-
-	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices WHERE status = 'logged_out'`).Scan(&stats.LoggedOutDevices)
-	if err != nil {
-		return nil, err
-	}
-
-	// Count webhooks
-	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM wa_webhooks`).Scan(&stats.TotalWebhooks)
-	if err != nil {
-		// Table might not exist, set to 0
-		stats.TotalWebhooks = 0
-	}
-
-	err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM wa_webhooks WHERE active = TRUE`).Scan(&stats.ActiveWebhooks)
-	if err != nil {
-		stats.ActiveWebhooks = 0
 	}
 
 	return stats, nil
