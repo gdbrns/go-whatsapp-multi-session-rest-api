@@ -872,11 +872,12 @@ func CreateDevice(ctx context.Context, apiKeyID int64, deviceName string) (*Devi
 
 	var deviceID string
 	var createdAt time.Time
+	var jwtVersion int
 	err = db.QueryRowContext(ctx, `
 		INSERT INTO devices (api_key_id, device_secret, device_name, status)
 		VALUES ($1, $2, $3, 'pending')
-		RETURNING device_id, created_at
-	`, apiKeyID, secret, deviceName).Scan(&deviceID, &createdAt)
+		RETURNING device_id, created_at, jwt_version
+	`, apiKeyID, secret, deviceName).Scan(&deviceID, &createdAt, &jwtVersion)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create device: %w", err)
 	}
@@ -897,6 +898,7 @@ func CreateDevice(ctx context.Context, apiKeyID int64, deviceName string) (*Devi
 		DeviceSecret: secret,
 		DeviceName:   deviceName,
 		Status:       "pending",
+		JWTVersion:   jwtVersion,
 		CreatedAt:    createdAt,
 	}, nil
 }
