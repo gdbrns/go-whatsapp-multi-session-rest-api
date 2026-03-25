@@ -1,7 +1,7 @@
 # Builder Image
 # ---------------------------------------------------
-# Go 1.24.x as specified in go.mod (toolchain go1.24.5)
-FROM golang:1.24-alpine AS go-builder
+# Go 1.25.x as specified in go.mod
+FROM golang:1.25-alpine AS go-builder
 
 WORKDIR /usr/src/app
 

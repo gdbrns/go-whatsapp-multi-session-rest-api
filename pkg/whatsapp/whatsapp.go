@@ -1,4 +1,4 @@
-﻿package whatsapp
+package whatsapp
 
 import (
 	"bytes"
@@ -103,11 +103,11 @@ var (
 	readReceiptDelayMax      time.Duration
 	appStateWebhookEnabled   bool
 
-	rateLimitEnabled    bool
-	rateLimitPerMinute  int
-	rateLimitBurstSize  int
-	deviceRateLimiters  = make(map[string]*rate.Limiter)
-	deviceRateLimiterMu sync.Mutex
+	rateLimitEnabled     bool
+	rateLimitPerMinute   int
+	rateLimitBurstSize   int
+	deviceRateLimiters   = make(map[string]*rate.Limiter)
+	deviceRateLimiterMu  sync.Mutex
 	lastClientMu         sync.RWMutex
 	lastClientByDeviceID = make(map[string]*whatsmeow.Client)
 
@@ -194,7 +194,7 @@ var (
 	}
 
 	allowedDocumentMimes = map[string]bool{
-		"application/pdf": true,
+		"application/pdf":    true,
 		"application/msword": true,
 		"application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
 		"application/vnd.ms-excel": true,
@@ -1155,14 +1155,18 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 					})
 				}
 				if e.Message != nil {
+					if richResponse := e.Message.GetRichResponseMessage(); richResponse != nil {
+						dispatchWebhook(deviceID, webhook.EventMessageAIRichResponse, buildAIRichResponseWebhookPayload(currentJID, e, richResponse))
+						log.Msg("ai_rich_response", deviceID, e.Info.ID, e.Info.Chat.String())
+					}
 					if poll := e.Message.GetPollCreationMessage(); poll != nil {
 						dispatchWebhook(deviceID, webhook.EventPollCreated, map[string]interface{}{
-							"jid":                    currentJID,
-							"message_id":             e.Info.ID,
-							"chat":                   e.Info.Chat.String(),
-							"poll_name":              poll.GetName(),
-							"options_count":          len(poll.GetOptions()),
-							"selectable_options":      poll.GetSelectableOptionsCount(),
+							"jid":                currentJID,
+							"message_id":         e.Info.ID,
+							"chat":               e.Info.Chat.String(),
+							"poll_name":          poll.GetName(),
+							"options_count":      len(poll.GetOptions()),
+							"selectable_options": poll.GetSelectableOptionsCount(),
 						})
 					}
 					if e.Message.GetPollUpdateMessage() != nil {
@@ -1268,19 +1272,19 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 		case *events.AppStateSyncComplete:
 			if appStateWebhookEnabled {
 				dispatchWebhook(deviceID, webhook.EventAppStateSyncComplete, map[string]interface{}{
-					"jid":  currentJID,
-					"name": e.Name,
-					"version": e.Version,
+					"jid":      currentJID,
+					"name":     e.Name,
+					"version":  e.Version,
 					"recovery": e.Recovery,
 				})
 			}
 		case *events.AppStateSyncError:
 			if appStateWebhookEnabled {
 				dispatchWebhook(deviceID, webhook.EventAppStateSyncError, map[string]interface{}{
-					"jid":      currentJID,
-					"name":     e.Name,
+					"jid":       currentJID,
+					"name":      e.Name,
 					"full_sync": e.FullSync,
-					"error":    fmt.Sprintf("%v", e.Error),
+					"error":     fmt.Sprintf("%v", e.Error),
 				})
 			}
 		case *events.AppState:
@@ -1374,8 +1378,8 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 		// Blocklist change events
 		case *events.Blocklist:
 			dispatchWebhook(deviceID, webhook.EventBlocklistChange, map[string]interface{}{
-				"jid":    currentJID,
-				"action": string(e.Action),
+				"jid":     currentJID,
+				"action":  string(e.Action),
 				"changes": e.Changes,
 			})
 		// Group join events
@@ -1475,12 +1479,12 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 			})
 		case *events.OfflineSyncPreview:
 			dispatchWebhook(deviceID, webhook.EventOfflineSyncPreview, map[string]interface{}{
-				"jid":               currentJID,
-				"total":             e.Total,
-				"app_data_changes":  e.AppDataChanges,
-				"messages":          e.Messages,
-				"notifications":     e.Notifications,
-				"receipts":          e.Receipts,
+				"jid":              currentJID,
+				"total":            e.Total,
+				"app_data_changes": e.AppDataChanges,
+				"messages":         e.Messages,
+				"notifications":    e.Notifications,
+				"receipts":         e.Receipts,
 			})
 		case *events.OfflineSyncCompleted:
 			dispatchWebhook(deviceID, webhook.EventOfflineSyncCompleted, map[string]interface{}{
@@ -1489,12 +1493,12 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 			})
 		case *events.ChatPresence:
 			dispatchWebhook(deviceID, webhook.EventChatPresence, map[string]interface{}{
-				"jid":         currentJID,
-				"chat":        e.Chat.String(),
-				"sender":      e.Sender.String(),
-				"is_from_me":  e.IsFromMe,
-				"state":       e.State,
-				"media":       e.Media,
+				"jid":        currentJID,
+				"chat":       e.Chat.String(),
+				"sender":     e.Sender.String(),
+				"is_from_me": e.IsFromMe,
+				"state":      e.State,
+				"media":      e.Media,
 			})
 		case *events.Presence:
 			dispatchWebhook(deviceID, webhook.EventPresence, map[string]interface{}{
@@ -1528,38 +1532,38 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 			})
 		case *events.PrivacySettings:
 			dispatchWebhook(deviceID, webhook.EventPrivacySettings, map[string]interface{}{
-				"jid":                 currentJID,
-				"settings":            e.NewSettings,
-				"group_add_changed":   e.GroupAddChanged,
-				"last_seen_changed":   e.LastSeenChanged,
-				"status_changed":      e.StatusChanged,
-				"profile_changed":     e.ProfileChanged,
+				"jid":                   currentJID,
+				"settings":              e.NewSettings,
+				"group_add_changed":     e.GroupAddChanged,
+				"last_seen_changed":     e.LastSeenChanged,
+				"status_changed":        e.StatusChanged,
+				"profile_changed":       e.ProfileChanged,
 				"read_receipts_changed": e.ReadReceiptsChanged,
-				"online_changed":      e.OnlineChanged,
-				"call_add_changed":    e.CallAddChanged,
+				"online_changed":        e.OnlineChanged,
+				"call_add_changed":      e.CallAddChanged,
 			})
 		case *events.PushName:
 			dispatchWebhook(deviceID, webhook.EventPushName, map[string]interface{}{
-				"jid":         currentJID,
-				"target":      e.JID.String(),
-				"target_alt":  e.JIDAlt.String(),
-				"old":         e.OldPushName,
-				"new":         e.NewPushName,
+				"jid":        currentJID,
+				"target":     e.JID.String(),
+				"target_alt": e.JIDAlt.String(),
+				"old":        e.OldPushName,
+				"new":        e.NewPushName,
 			})
 		case *events.BusinessName:
 			dispatchWebhook(deviceID, webhook.EventBusinessName, map[string]interface{}{
-				"jid":   currentJID,
+				"jid":    currentJID,
 				"target": e.JID.String(),
-				"old":   e.OldBusinessName,
-				"new":   e.NewBusinessName,
+				"old":    e.OldBusinessName,
+				"new":    e.NewBusinessName,
 			})
 		case *events.FBMessage:
 			dispatchWebhook(deviceID, webhook.EventMessageFBReceived, map[string]interface{}{
-				"jid":        currentJID,
-				"message_id": e.Info.ID,
-				"from":       e.Info.Sender.String(),
-				"chat":       e.Info.Chat.String(),
-				"timestamp":  e.Info.Timestamp.Unix(),
+				"jid":         currentJID,
+				"message_id":  e.Info.ID,
+				"from":        e.Info.Sender.String(),
+				"chat":        e.Info.Chat.String(),
+				"timestamp":   e.Info.Timestamp.Unix(),
 				"retry_count": e.RetryCount,
 			})
 		case *events.UndecryptableMessage:
@@ -1576,58 +1580,58 @@ func handleWhatsAppEvents(jid string, deviceID string) func(interface{}) {
 			})
 		case *events.Mute:
 			dispatchWebhook(deviceID, webhook.EventChatMute, map[string]interface{}{
-				"jid":         currentJID,
-				"chat":        e.JID.String(),
-				"timestamp":   e.Timestamp,
-				"from_full":   e.FromFullSync,
-				"action_raw":  e.Action,
+				"jid":        currentJID,
+				"chat":       e.JID.String(),
+				"timestamp":  e.Timestamp,
+				"from_full":  e.FromFullSync,
+				"action_raw": e.Action,
 			})
 		case *events.Archive:
 			dispatchWebhook(deviceID, webhook.EventChatArchive, map[string]interface{}{
-				"jid":         currentJID,
-				"chat":        e.JID.String(),
-				"timestamp":   e.Timestamp,
-				"from_full":   e.FromFullSync,
-				"action_raw":  e.Action,
+				"jid":        currentJID,
+				"chat":       e.JID.String(),
+				"timestamp":  e.Timestamp,
+				"from_full":  e.FromFullSync,
+				"action_raw": e.Action,
 			})
 		case *events.Pin:
 			dispatchWebhook(deviceID, webhook.EventChatPin, map[string]interface{}{
-				"jid":         currentJID,
-				"chat":        e.JID.String(),
-				"timestamp":   e.Timestamp,
-				"from_full":   e.FromFullSync,
-				"action_raw":  e.Action,
+				"jid":        currentJID,
+				"chat":       e.JID.String(),
+				"timestamp":  e.Timestamp,
+				"from_full":  e.FromFullSync,
+				"action_raw": e.Action,
 			})
 		case *events.Star:
 			dispatchWebhook(deviceID, webhook.EventChatStar, map[string]interface{}{
-				"jid":         currentJID,
-				"chat":        e.ChatJID.String(),
-				"sender":      e.SenderJID.String(),
-				"message_id":  e.MessageID,
-				"timestamp":   e.Timestamp,
-				"is_from_me":  e.IsFromMe,
-				"from_full":   e.FromFullSync,
-				"action_raw":  e.Action,
+				"jid":        currentJID,
+				"chat":       e.ChatJID.String(),
+				"sender":     e.SenderJID.String(),
+				"message_id": e.MessageID,
+				"timestamp":  e.Timestamp,
+				"is_from_me": e.IsFromMe,
+				"from_full":  e.FromFullSync,
+				"action_raw": e.Action,
 			})
 		case *events.DeleteForMe:
 			dispatchWebhook(deviceID, webhook.EventChatDeleteForMe, map[string]interface{}{
-				"jid":         currentJID,
-				"chat":        e.ChatJID.String(),
-				"sender":      e.SenderJID.String(),
-				"message_id":  e.MessageID,
-				"timestamp":   e.Timestamp,
-				"is_from_me":  e.IsFromMe,
-				"from_full":   e.FromFullSync,
-				"action_raw":  e.Action,
+				"jid":        currentJID,
+				"chat":       e.ChatJID.String(),
+				"sender":     e.SenderJID.String(),
+				"message_id": e.MessageID,
+				"timestamp":  e.Timestamp,
+				"is_from_me": e.IsFromMe,
+				"from_full":  e.FromFullSync,
+				"action_raw": e.Action,
 			})
 		case *events.ClearChat:
 			dispatchWebhook(deviceID, webhook.EventChatClear, map[string]interface{}{
-				"jid":         currentJID,
-				"chat":        e.JID.String(),
-				"timestamp":   e.Timestamp,
+				"jid":          currentJID,
+				"chat":         e.JID.String(),
+				"timestamp":    e.Timestamp,
 				"delete_media": e.DeleteMedia,
-				"from_full":   e.FromFullSync,
-				"action_raw":  e.Action,
+				"from_full":    e.FromFullSync,
+				"action_raw":   e.Action,
 			})
 		case *events.DeleteChat:
 			dispatchWebhook(deviceID, webhook.EventChatDelete, map[string]interface{}{

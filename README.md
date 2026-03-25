@@ -4,10 +4,10 @@
 [![Docker Image](https://img.shields.io/docker/v/ghiovanidebrians/go-whatsapp-multi-session-rest-api?label=Docker&logo=docker&sort=semver)](https://hub.docker.com/r/ghiovanidebrians/go-whatsapp-multi-session-rest-api)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gdbrns/go-whatsapp-multi-session-rest-api)](https://goreportcard.com/report/github.com/gdbrns/go-whatsapp-multi-session-rest-api)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![whatsmeow](https://img.shields.io/badge/whatsmeow-v0.0.0--20260129-brightgreen.svg)](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20260129212019-7787ab952245)
+[![whatsmeow](https://img.shields.io/badge/whatsmeow-v0.0.0--20260322-brightgreen.svg)](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20260322133016-ce4daa5e5a86)
 [![API Docs](https://img.shields.io/badge/API%20Docs-Bump.sh-blue.svg)](https://bump.sh/gdbrns/doc/go-whatsapp-multi-session-rest)
 
-> A minimal REST API for WhatsApp Multi-Device and Multi-Session implementation built with Go and **[whatsmeow v0.0.0-20260129212019-7787ab952245](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20260129212019-7787ab952245)**. Supports multiple accounts and devices simultaneously with efficient memory use and production-ready deployments.
+> A minimal REST API for WhatsApp Multi-Device and Multi-Session implementation built with Go and **[whatsmeow v0.0.0-20260322133016-ce4daa5e5a86](https://pkg.go.dev/go.mau.fi/whatsmeow@v0.0.0-20260322133016-ce4daa5e5a86)**. Supports multiple accounts and devices simultaneously with efficient memory use and production-ready deployments.
 
 ## 📚 API Documentation
 
@@ -63,7 +63,8 @@
 - 🔔 **Push Notifications** - Register for push notifications (reuses webhook system)
 - 🧲 **Server Push Config** - Configure WhatsApp server push settings (FCM/APNs/Web)
 - ✅ **Active Delivery Receipts** - Force active delivery receipts when needed
-- 🪝 **Webhook Integration** - 85 event types with real-time notifications and retry support
+- 🪝 **Webhook Integration** - 86 event types with real-time notifications and retry support
+- 🤖 **AI Rich Response Webhooks** - Normalized AIRichResponseMessage payloads for downstream processing
 - 🏗️ **Production Ready** - Docker support, environment configuration, logging
 - 📖 **OpenAPI/Swagger** - Interactive API documentation at `/docs/`
 - 🔑 **Admin Dashboard Ready** - Manage API keys and devices with admin endpoints
@@ -82,7 +83,7 @@
 
 ### System Requirements
 
-- **Go**: 1.24 or higher (matches `go.mod` 1.24.5; use the latest stable toolchain)
+- **Go**: 1.25 or higher (matches `go.mod` 1.25.0; use the latest stable toolchain)
 - **PostgreSQL**: Primary datastore for sessions and app metadata
 - **FFmpeg**: For media processing (optional but recommended)
 
@@ -337,11 +338,11 @@ curl -X POST "http://localhost:7001/webhooks" \
   }'
 ```
 
-### Webhook Events Summary (85 Event Types)
+### Webhook Events Summary (86 Event Types)
 
 | Category | Examples |
 |----------|----------|
-| **Messages & Media** | `message.received`, `message.undecryptable`, `media.received` |
+| **Messages & Media** | `message.received`, `message.undecryptable`, `message.ai_rich_response`, `media.received` |
 | **Connection & Pairing** | `connection.connected`, `connection.qr`, `connection.pair_success` |
 | **Calls** | `call.offer`, `call.pre_accept`, `call.terminate` |
 | **Groups** | `group.join`, `group.participant_update`, `group.info_update` |

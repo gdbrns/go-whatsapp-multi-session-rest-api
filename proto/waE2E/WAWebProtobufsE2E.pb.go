@@ -15,6 +15,7 @@ import (
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 
 	waAICommon "go.mau.fi/whatsmeow/proto/waAICommon"
+	waAICommonDeprecated "go.mau.fi/whatsmeow/proto/waAICommonDeprecated"
 	waAdv "go.mau.fi/whatsmeow/proto/waAdv"
 	waCommon "go.mau.fi/whatsmeow/proto/waCommon"
 	waCompanionReg "go.mau.fi/whatsmeow/proto/waCompanionReg"
@@ -15071,8 +15072,8 @@ func (x *MemberLabel) GetLabelTimestamp() int64 {
 
 type AIRichResponseMessage struct {
 	state           protoimpl.MessageState                    `protogen:"open.v1"`
-	MessageType     *waAICommon.AIRichResponseMessageType     `protobuf:"varint,1,opt,name=messageType,enum=WAAICommon.AIRichResponseMessageType" json:"messageType,omitempty"`
-	Submessages     []*waAICommon.AIRichResponseSubMessage    `protobuf:"bytes,2,rep,name=submessages" json:"submessages,omitempty"`
+	MessageType     *waAICommonDeprecated.AIRichResponseMessageType     `protobuf:"varint,1,opt,name=messageType,enum=WAAICommonDeprecated.AIRichResponseMessageType" json:"messageType,omitempty"`
+	Submessages     []*waAICommonDeprecated.AIRichResponseSubMessage    `protobuf:"bytes,2,rep,name=submessages" json:"submessages,omitempty"`
 	UnifiedResponse *waAICommon.AIRichResponseUnifiedResponse `protobuf:"bytes,3,opt,name=unifiedResponse" json:"unifiedResponse,omitempty"`
 	ContextInfo     *ContextInfo                              `protobuf:"bytes,4,opt,name=contextInfo" json:"contextInfo,omitempty"`
 	unknownFields   protoimpl.UnknownFields
@@ -15109,14 +15110,14 @@ func (*AIRichResponseMessage) Descriptor() ([]byte, []int) {
 	return file_waE2E_WAWebProtobufsE2E_proto_rawDescGZIP(), []int{114}
 }
 
-func (x *AIRichResponseMessage) GetMessageType() waAICommon.AIRichResponseMessageType {
+func (x *AIRichResponseMessage) GetMessageType() waAICommonDeprecated.AIRichResponseMessageType {
 	if x != nil && x.MessageType != nil {
 		return *x.MessageType
 	}
-	return waAICommon.AIRichResponseMessageType(0)
+	return waAICommonDeprecated.AIRichResponseMessageType(0)
 }
 
-func (x *AIRichResponseMessage) GetSubmessages() []*waAICommon.AIRichResponseSubMessage {
+func (x *AIRichResponseMessage) GetSubmessages() []*waAICommonDeprecated.AIRichResponseSubMessage {
 	if x != nil {
 		return x.Submessages
 	}
@@ -22327,8 +22328,8 @@ var file_waE2E_WAWebProtobufsE2E_proto_goTypes = []any{
 	(*waAICommon.BotMessageSharingInfo)(nil),                                    // 261: WAAICommon.BotMessageSharingInfo
 	(*waAICommon.BotMetadata)(nil),                                              // 262: WAAICommon.BotMetadata
 	(waAdv.ADVEncryptionType)(0),                                                // 263: WAAdv.ADVEncryptionType
-	(waAICommon.AIRichResponseMessageType)(0),                                   // 264: WAAICommon.AIRichResponseMessageType
-	(*waAICommon.AIRichResponseSubMessage)(nil),                                 // 265: WAAICommon.AIRichResponseSubMessage
+		(waAICommonDeprecated.AIRichResponseMessageType)(0),                         // 264: WAAICommonDeprecated.AIRichResponseMessageType
+		(*waAICommonDeprecated.AIRichResponseSubMessage)(nil),                       // 265: WAAICommonDeprecated.AIRichResponseSubMessage
 	(*waAICommon.AIRichResponseUnifiedResponse)(nil),                            // 266: WAAICommon.AIRichResponseUnifiedResponse
 	(waMmsRetry.MediaRetryNotification_ResultType)(0),                           // 267: WAMmsRetry.MediaRetryNotification.ResultType
 	(*waCompanionReg.DeviceProps_HistorySyncConfig)(nil),                        // 268: WACompanionReg.DeviceProps.HistorySyncConfig
@@ -22675,8 +22676,8 @@ var file_waE2E_WAWebProtobufsE2E_proto_depIdxs = []int32{
 	253, // 338: WAWebProtobufsE2E.TemplateButton.urlButton:type_name -> WAWebProtobufsE2E.TemplateButton.URLButton
 	252, // 339: WAWebProtobufsE2E.TemplateButton.callButton:type_name -> WAWebProtobufsE2E.TemplateButton.CallButton
 	255, // 340: WAWebProtobufsE2E.UrlTrackingMap.urlTrackingMapElements:type_name -> WAWebProtobufsE2E.UrlTrackingMap.UrlTrackingMapElement
-	264, // 341: WAWebProtobufsE2E.AIRichResponseMessage.messageType:type_name -> WAAICommon.AIRichResponseMessageType
-	265, // 342: WAWebProtobufsE2E.AIRichResponseMessage.submessages:type_name -> WAAICommon.AIRichResponseSubMessage
+		264, // 341: WAWebProtobufsE2E.AIRichResponseMessage.messageType:type_name -> WAAICommonDeprecated.AIRichResponseMessageType
+		265, // 342: WAWebProtobufsE2E.AIRichResponseMessage.submessages:type_name -> WAAICommonDeprecated.AIRichResponseSubMessage
 	266, // 343: WAWebProtobufsE2E.AIRichResponseMessage.unifiedResponse:type_name -> WAAICommon.AIRichResponseUnifiedResponse
 	100, // 344: WAWebProtobufsE2E.AIRichResponseMessage.contextInfo:type_name -> WAWebProtobufsE2E.ContextInfo
 	256, // 345: WAWebProtobufsE2E.AIQueryFanout.messageKey:type_name -> WACommon.MessageKey

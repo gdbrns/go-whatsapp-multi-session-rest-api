@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-03-25
+
+### ✨ Added
+
+- **AI Rich Response Webhooks** - Normalize `AIRichResponseMessage` payloads and dispatch them as `message.ai_rich_response`
+- **Whatsmeow Proto Sync Guard** - Verify the checked-in AIRichResponse bindings stay aligned with the pinned whatsmeow release during CI
+- Chat state endpoints: mute/unmute, mark read/unread, delete chat
+
+### 🚀 Changed
+
+- **whatsmeow** - Updated from `v0.0.0-20260129212019-7787ab952245` to `v0.0.0-20260322133016-ce4daa5e5a86`
+- **Go Toolchain Baseline** - Raised repository minimum to Go 1.25.0 and refreshed CI/release build images
+
+### 📝 Documentation
+
+- Update README version badges and webhook coverage counts to match the latest whatsmeow release
+
+### 🐛 Fixed
+
+- Archive chat app state now uses the correct archive mutation
+
+---
+
 ## [1.2.9] - 2026-02-05
 
 ### ✨ Added
@@ -17,18 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🚀 Changed
 
 - **whatsmeow** - Updated from `v0.0.0-20260116142645-06f473759141` to `v0.0.0-20260129212019-7787ab952245`
-
----
-
-## [Unreleased] - 2026-02-06
-
-### ✨ Added
-
-- Chat state endpoints: mute/unmute, mark read/unread, delete chat
-
-### 🐛 Fixed
-
-- Archive chat app state now uses the correct archive mutation
 
 ### 📝 Documentation
 

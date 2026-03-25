@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: ['1.24']
+        go-version: ['1.25']
     
     steps:
       - name: Checkout code
@@ -29,6 +29,9 @@ jobs:
 
       - name: Download dependencies
         run: go mod download
+
+      - name: Verify whatsmeow proto sync
+        run: go run ./cmd/verify-whatsmeow-protos
 
       - name: Run tests
         run: go test -v -race -coverprofile=coverage.out ./...
@@ -52,7 +55,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.25'
           cache-dependency-path: go.sum
 
       - name: Run golangci-lint
@@ -67,7 +70,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        go-version: ['1.24']
+        go-version: ['1.25']
     
     steps:
       - name: Checkout code
